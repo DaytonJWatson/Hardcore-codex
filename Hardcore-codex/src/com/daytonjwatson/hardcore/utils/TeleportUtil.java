@@ -11,18 +11,20 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Player;
 
-public class TeleportUtil {
-	private static final int RADIUS = 5000;
-    private static final int MAX_ATTEMPTS = 40;
+import com.daytonjwatson.hardcore.config.ConfigValues;
 
+public class TeleportUtil {
     public static void randomSafeTeleportNearSpawn(Player player) {
         World world = player.getWorld();
         Location spawn = world.getSpawnLocation();
 
-        for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        int radius = ConfigValues.randomSpawnRadius();
+        int maxAttempts = ConfigValues.randomSpawnAttempts();
 
-            int offsetX = ThreadLocalRandom.current().nextInt(-RADIUS, RADIUS + 1);
-            int offsetZ = ThreadLocalRandom.current().nextInt(-RADIUS, RADIUS + 1);
+        for (int attempt = 0; attempt < maxAttempts; attempt++) {
+
+            int offsetX = ThreadLocalRandom.current().nextInt(-radius, radius + 1);
+            int offsetZ = ThreadLocalRandom.current().nextInt(-radius, radius + 1);
 
             int x = spawn.getBlockX() + offsetX;
             int z = spawn.getBlockZ() + offsetZ;

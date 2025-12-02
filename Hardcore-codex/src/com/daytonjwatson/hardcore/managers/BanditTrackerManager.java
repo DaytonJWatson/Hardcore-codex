@@ -14,8 +14,8 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.enchantments.Enchantment;
-import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Inventory;
@@ -28,25 +28,27 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.daytonjwatson.hardcore.HardcorePlugin;
+import com.daytonjwatson.hardcore.config.ConfigValues;
 import com.daytonjwatson.hardcore.managers.StatsManager;
 import com.daytonjwatson.hardcore.utils.MessageStyler;
+import com.daytonjwatson.hardcore.utils.Util;
 
 /**
  * Handles the bandit tracking compass lifecycle and targeting logic.
  */
 public final class BanditTrackerManager {
 
-    private static final String TRACKER_TITLE = ChatColor.DARK_RED + "" + ChatColor.BOLD + "Bandit Tracker";
+    private static final String TRACKER_TITLE = Util.color(ConfigValues.trackerDisplayName());
     private static final NamespacedKey TRACKER_KEY = new NamespacedKey(HardcorePlugin.getInstance(), "bandit-tracker");
     private static final NamespacedKey TRACKER_RECIPE_KEY = new NamespacedKey(HardcorePlugin.getInstance(),
             "bandit-tracker-recipe");
     private static final DecimalFormat DISTANCE_FORMAT = new DecimalFormat("0.0");
-    private static final long TRACKER_COOLDOWN_MILLIS = 30_000L;
-    private static final double DRIFT_SCALE = 0.025; // 2.5% of distance with a minimum floor
-    private static final double MIN_DRIFT = 4.0; // blocks
+    private static final long TRACKER_COOLDOWN_MILLIS = ConfigValues.trackerCooldownMillis();
+    private static final double DRIFT_SCALE = ConfigValues.trackerDriftScale(); // percentage of distance with a minimum floor
+    private static final double MIN_DRIFT = ConfigValues.trackerMinDrift(); // blocks
     private static final Map<UUID, Long> TRACKER_COOLDOWNS = new HashMap<>();
     private static final Random RANDOM = new Random();
-    private static final String RECIPE_TITLE = ChatColor.DARK_RED + "" + ChatColor.BOLD + "Tracker Recipe";
+    private static final String RECIPE_TITLE = Util.color(ConfigValues.trackerRecipeTitle());
     private static Inventory recipePreview;
 
     private BanditTrackerManager() {}
@@ -102,13 +104,40 @@ public final class BanditTrackerManager {
     }
 
     public static void registerRecipe(JavaPlugin plugin) {
+        if (!ConfigValues.trackerRecipeEnabled()) {
+            return;
+        }
+
+        var recipeSection = ConfigValues.trackerRecipe();
         ShapedRecipe recipe = new ShapedRecipe(TRACKER_RECIPE_KEY, createTrackerItem());
-        recipe.shape("RGR", "ECE", "RIR");
-        recipe.setIngredient('R', Material.REDSTONE);
-        recipe.setIngredient('G', Material.GOLD_INGOT);
-        recipe.setIngredient('E', Material.ENDER_PEARL);
-        recipe.setIngredient('C', Material.COMPASS);
-        recipe.setIngredient('I', Material.IRON_INGOT);
+        List<String> shape = recipeSection != null ? recipeSection.getStringList("shape") : List.of();
+        if (shape.size() == 3) {
+            recipe.shape(shape.get(0), shape.get(1), shape.get(2));
+        } else {
+            recipe.shape("RGR", "ECE", "RIR");
+        }
+
+        Map<Character, Material> ingredients = new HashMap<>();
+        if (recipeSection != null && recipeSection.isConfigurationSection("ingredients")) {
+            for (String key : recipeSection.getConfigurationSection("ingredients").getKeys(false)) {
+                Material mat = ConfigValues.materialOrNull(recipeSection.getString("ingredients." + key));
+                if (mat != null && key.length() == 1) {
+                    ingredients.put(key.charAt(0), mat);
+                }
+            }
+        }
+
+        if (ingredients.isEmpty()) {
+            ingredients.put('R', Material.REDSTONE);
+            ingredients.put('G', Material.GOLD_INGOT);
+            ingredients.put('E', Material.ENDER_PEARL);
+            ingredients.put('C', Material.COMPASS);
+            ingredients.put('I', Material.IRON_INGOT);
+        }
+
+        for (Map.Entry<Character, Material> entry : ingredients.entrySet()) {
+            recipe.setIngredient(entry.getKey(), entry.getValue());
+        }
 
         Bukkit.addRecipe(recipe);
         plugin.getLogger().info("Bandit tracker recipe registered.");
@@ -199,17 +228,20 @@ public final class BanditTrackerManager {
 
         List<String> lore = buildBaseLore();
 
-        lore.add(MessageStyler.bulletText(ChatColor.DARK_RED + "Tracking: " + ChatColor.RED + "Unidentified bandit"));
+        lore.add(MessageStyler.bulletText(Util.color(ConfigValues.trackerLoreTrackingPrefix())));
 
         if (seeker.getWorld().equals(targetLoc.getWorld())) {
             double distance = seeker.getLocation().distance(targetLoc);
             targetLoc = applySignalDrift(targetLoc, distance);
-            lore.add(MessageStyler.bulletText(ChatColor.GRAY + "Distance: " + ChatColor.WHITE
-                    + DISTANCE_FORMAT.format(distance) + ChatColor.GRAY + "m"));
-            lore.add(MessageStyler.bulletText(ChatColor.GRAY + "Signal: " + describeSignal(distance)));
+            lore.add(MessageStyler.bulletText(Util.color(ConfigValues.trackerLoreDistance()
+                    .replace("%meters%", DISTANCE_FORMAT.format(distance)))));
+            lore.add(MessageStyler.bulletText(Util.color(ConfigValues.trackerLoreSignal()
+                    .replace("%quality%", describeSignal(distance)))));
         } else {
-            lore.add(MessageStyler.bulletText(ChatColor.GRAY + "World: " + ChatColor.WHITE + targetLoc.getWorld().getName()));
-            lore.add(MessageStyler.bulletText(ChatColor.GRAY + "Signal: " + ChatColor.RED + "Unstable"));
+            lore.add(MessageStyler.bulletText(Util.color(ConfigValues.trackerLoreWorld()
+                    .replace("%world%", targetLoc.getWorld().getName()))));
+            lore.add(MessageStyler.bulletText(Util.color(ConfigValues.trackerLoreSignal()
+                    .replace("%quality%", ChatColor.RED + "Unstable"))));
         }
 
         meta.setLore(lore);
@@ -233,7 +265,7 @@ public final class BanditTrackerManager {
         }
 
         List<String> lore = buildBaseLore();
-        lore.add(MessageStyler.bulletText(ChatColor.RED + "No bandits online."));
+        lore.add(MessageStyler.bulletText(Util.color(ConfigValues.trackerLoreNoTarget())));
         meta.setLore(lore);
         tracker.setItemMeta(meta);
     }
@@ -251,22 +283,31 @@ public final class BanditTrackerManager {
 
     private static String describeSignal(double distance) {
         if (distance < 75) {
-            return ChatColor.GREEN + "Tight" + ChatColor.GRAY + " (low drift)";
+            return Util.color(ConfigValues.trackerSignalTight());
         }
 
         if (distance < 200) {
-            return ChatColor.YELLOW + "Moderate" + ChatColor.GRAY + " (watch for drift)";
+            return Util.color(ConfigValues.trackerSignalModerate());
         }
 
-        return ChatColor.RED + "Loose" + ChatColor.GRAY + " (hunt carefully)";
+        return Util.color(ConfigValues.trackerSignalLoose());
     }
 
     private static List<String> buildBaseLore() {
+        List<String> configured = ConfigValues.trackerLoreBase();
+        if (!configured.isEmpty()) {
+            List<String> colored = new ArrayList<>();
+            for (String line : configured) {
+                colored.add(Util.color(line));
+            }
+            return colored;
+        }
+
         List<String> lore = new ArrayList<>();
         lore.add(MessageStyler.bulletText(ChatColor.GRAY + "Sneak-right-click to lock onto"));
         lore.add(MessageStyler.bulletText(ChatColor.GRAY + "the nearest " + ChatColor.DARK_RED + "Bandit" + ChatColor.GRAY + "."));
         lore.add(MessageStyler.bulletText(ChatColor.GRAY + "Signal drifts with range; recalibrate often."));
-        lore.add(MessageStyler.bulletText(ChatColor.GRAY + "Cooldown: " + ChatColor.WHITE + "30s" + ChatColor.GRAY + "."));
+        lore.add(MessageStyler.bulletText(ChatColor.GRAY + "Cooldown: " + ChatColor.WHITE + (TRACKER_COOLDOWN_MILLIS / 1000) + "s" + ChatColor.GRAY + "."));
         return lore;
     }
 
