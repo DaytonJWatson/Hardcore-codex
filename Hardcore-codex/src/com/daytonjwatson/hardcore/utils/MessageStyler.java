@@ -4,6 +4,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 
+import com.daytonjwatson.hardcore.utils.Util;
+
 public final class MessageStyler {
 
     private static final String BAR = ChatColor.DARK_GRAY + "" + ChatColor.STRIKETHROUGH + "------------------------------";
@@ -15,18 +17,18 @@ public final class MessageStyler {
 
     public static void sendPanel(CommandSender target, String title, String... lines) {
         target.sendMessage(BAR);
-        target.sendMessage(PREFIX + title);
+        target.sendMessage(PREFIX + Util.color(title));
         for (String line : lines) {
-            target.sendMessage(BULLET + line);
+            target.sendMessage(BULLET + Util.color(line));
         }
         target.sendMessage(BAR);
     }
 
     public static void broadcastPanel(String title, String... lines) {
         Bukkit.broadcastMessage(BAR);
-        Bukkit.broadcastMessage(PREFIX + title);
+        Bukkit.broadcastMessage(PREFIX + Util.color(title));
         for (String line : lines) {
-            Bukkit.broadcastMessage(BULLET + line);
+            Bukkit.broadcastMessage(BULLET + Util.color(line));
         }
         Bukkit.broadcastMessage(BAR);
     }
