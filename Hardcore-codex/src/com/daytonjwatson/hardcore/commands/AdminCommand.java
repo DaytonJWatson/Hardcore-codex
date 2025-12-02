@@ -663,11 +663,30 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
     private void sendAdminHelp(CommandSender sender, String label) {
         MessageStyler.sendPanel(sender, "Hardcore Admin Help",
-                "&6Core: &e/" + label + " list&7 (admins), &e/" + label + " status <p>&7 (flags), &e/" + label + " log [admin] [limit]&7 (recent), &e/" + label + " help",
-                "&6Moderation: &e/" + label + " ban <p> [dur] [reason]&7, &e/" + label + " unban <p>&7, &e/" + label + " mute <p> [dur] [reason]&7, &e/" + label + " unmute <p>&7, &e/" + label + " warn <p> [reason]",
-                "&6Moderation (cont.): &e/" + label + " freeze <p> [reason]&7, &e/" + label + " unfreeze <p>&7, &e/" + label + " kick <p> [reason]&7, &e/" + label + " clearchat [reason]",
-                "&6Insight: &e/" + label + " info <p>&7 (UUID/IP/pos), &e/" + label + " invsee <p>&7, &e/" + label + " endersee <p>",
-                "&6Support: &e/" + label + " tp <p> [target]&7, &e/" + label + " tphere <p>&7, &e/" + label + " heal <p>&7, &e/" + label + " feed <p>");
+                "&6Core",
+                " &e/" + label + " list &7- show admins",
+                " &e/" + label + " status <player> &7- flags",
+                " &e/" + label + " log [admin] [limit] &7- recent actions",
+                " &e/" + label + " help &7- this panel",
+                "&6Moderation",
+                " &e/" + label + " ban <player> [dur] [reason] &7- temp/perma ban",
+                " &e/" + label + " unban <player> &7- lift ban",
+                " &e/" + label + " mute <player> [dur] [reason] &7- temp/perma mute",
+                " &e/" + label + " unmute <player> &7- lift mute",
+                " &e/" + label + " warn <player> [reason] &7- send warning",
+                " &e/" + label + " freeze <player> [reason] &7- lock in place",
+                " &e/" + label + " unfreeze <player> &7- release",
+                " &e/" + label + " kick <player> [reason] &7- kick now",
+                " &e/" + label + " clearchat [reason] &7- wipe chat",
+                "&6Insight",
+                " &e/" + label + " info <player> &7- UUID/IP/pos/flags",
+                " &e/" + label + " invsee <player> &7- view inventory",
+                " &e/" + label + " endersee <player> &7- view ender chest",
+                "&6Support",
+                " &e/" + label + " tp <player> [target] &7- to player or player->player",
+                " &e/" + label + " tphere <player> &7- pull to you",
+                " &e/" + label + " heal <player> &7- restore health",
+                " &e/" + label + " feed <player> &7- restore hunger");
     }
 
     private Duration parseDuration(String raw) {
