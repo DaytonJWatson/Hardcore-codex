@@ -89,16 +89,24 @@ public final class ConfigValues {
 
     public static Sound deathSound() {
         String soundName = config.getString("server.sounds.death", "ENTITY_WITHER_DEATH");
-        Sound resolved = Registry.SOUNDS.get(NamespacedKey.minecraft(soundName.toLowerCase()));
-        if (resolved != null) {
-            return resolved;
+        Sound resolved = resolveSound(soundName);
+        return resolved == null ? Sound.ENTITY_WITHER_DEATH : resolved;
+    }
+
+    private static Sound resolveSound(String configuredName) {
+        NamespacedKey key = NamespacedKey.fromString(configuredName.toLowerCase());
+        if (key != null) {
+            Sound match = Registry.SOUNDS.get(key);
+            if (match != null) return match;
         }
 
-        try {
-            return Sound.valueOf(soundName);
-        } catch (IllegalArgumentException ex) {
-            return Sound.ENTITY_WITHER_DEATH;
+        key = NamespacedKey.fromString(configuredName);
+        if (key != null) {
+            Sound match = Registry.SOUNDS.get(key);
+            if (match != null) return match;
         }
+
+        return null;
     }
 
     public static int banditKillThreshold() {
