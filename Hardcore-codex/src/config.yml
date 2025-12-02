@@ -159,11 +159,11 @@ content:
       title: "&cHardcore Guide"
       author: "Hardcore"
       pages:
-        - "&cHardcore Basics\n\n&7One life only—death bans you\nuntil the next map reset.\nPvP, raiding, and stealing are\nallowed, so hide your base and\nlog out safely.\n\nGather wood, food, and a shield\nwithin minutes of joining."
-        - "&cSurvival Flow\n\n&7Leave spawn to avoid stripped\nland. Hunt animals, craft armor,\nand light caves early. Carry\nblocks, a water bucket, and spare\nfood.\n\nUse /rules and /help if you need\na quick reminder of server norms."
-        - "&cBandits\n\n&7Targeting weaker players gives\n\"unfair kills\". After &c3 unfair\nkills&7, you become a &4Bandit&7 and\nget the [B] chat tag. Bandits are\nbroadcast server-wide.\n\nKill &c3 bandits&7 to redeem and\nlose the status."
-        - "&cHeroes\n\n&7While you are not a bandit, defeat\n&c3 bandits&7 to earn the &6Hero&7 role\nwith the [H] tag. Heroes who turn on\nweaker players lose their status and\ncan be demoted back to bandit."
-        - "&cTracking & Commands\n\n&7Craft the Bandit Tracker with the\ncustom recipe (/bandittracker recipe).\nUse the command to recalibrate it\ntoward the nearest bandit; signals\ndrift with distance, so retune often.\n\nUse /guide for this book anytime,\n/rules for conduct, /stats for your\nrecord, and /help for quick tips."
+        - "&cHardcore World\n\n&7One life. &cPermanent death—no\nrevives&7 and no map resets.\nPvP, griefing, and stealing are\nallowed but frowned upon. Work\ntogether when you can, because\nlosing a fight ends your run."
+        - "&cJoining In\n\n&7New players spawn randomly in\nthe wilderness—no spawn hub to\nbabysit you. Move fast: punch\ntrees, make tools, and grab food\nbefore night. Expect strangers\nto be dangerous but potential\nallies if you talk first."
+        - "&cHardcore Basics\n\n&7Hardcore means your world ends\non death. Log out safely, avoid\nhero jumps, and never dig down.\nCarry a shield, blocks, and a\nwater bucket. Cook extra food,\nkeep spare picks, and stash gear\ndeep underground."
+        - "&cSurvival Tips\n\n&7Secure iron before exploring.\nLight caves, bridge over lava,\nand block creepers. Travel with\na bed for night-skips in groups,\nbut remember respawns do not\nundo bans. Wear gold in the\nNether, respect bastions, and\nnever fight when lagging."
+        - "&cBandits & Heroes\n\n&7Unfairly killing weaker players\ngives \"unfair kills\". At &c3&7, you\nbecome a &4Bandit&7 with a red tag.\nKill &c3 bandits&7 to redeem. While\nclean, defeating &c3 bandits&7 turns\nyou into a &6Hero&7. Heroes who prey\non weak players fall back to Bandit."
 
   help:
     title: "Hardcore Help"
