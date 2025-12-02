@@ -31,7 +31,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> BASE_SUBCOMMANDS = Arrays.asList(
             "help", "add", "remove", "list", "ban", "unban", "kick", "mute", "unmute", "status",
-            "info", "invsee", "endersee", "tp", "tphere", "heal", "feed");
+            "info", "invsee", "endersee", "tp", "tphere", "heal", "feed", "log");
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -101,6 +101,10 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             case "status":
                 AdminLogManager.log(sender, fullCommand, true);
                 handleStatus(sender, args);
+                break;
+            case "log":
+                AdminLogManager.log(sender, fullCommand, true);
+                handleLog(sender, args);
                 break;
             case "info":
                 AdminLogManager.log(sender, fullCommand, true);
@@ -514,6 +518,32 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Util.color("&aFed &e" + target.getName() + "&a."));
     }
 
+    private void handleLog(CommandSender sender, String[] args) {
+        String actorFilter = null;
+        int limit = 10;
+
+        if (args.length >= 2) {
+            actorFilter = args[1].equalsIgnoreCase("console") ? "Console" : args[1];
+        }
+
+        if (args.length >= 3) {
+            try {
+                limit = Math.max(1, Math.min(50, Integer.parseInt(args[2])));
+            } catch (NumberFormatException ignored) {
+                sender.sendMessage(Util.color("&cInvalid limit. Using default of 10."));
+            }
+        }
+
+        List<String> entries = AdminLogManager.getRecentLogs(limit, actorFilter);
+        if (entries.isEmpty()) {
+            sender.sendMessage(Util.color("&eNo matching admin log entries found."));
+            return;
+        }
+
+        String title = actorFilter == null ? "Recent Admin Activity" : "Admin Activity: " + actorFilter;
+        MessageStyler.sendPanel(sender, title, entries.toArray(new String[0]));
+    }
+
     private void sendAdminHelp(CommandSender sender, String label) {
         MessageStyler.sendPanel(sender, "Hardcore Admin Help",
                 "&e/" + label + " add <player> &7- Make a player a Hardcore admin.",
@@ -525,6 +555,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 "&e/" + label + " mute <player> [duration] [reason] &7- Mute chat for a player.",
                 "&e/" + label + " unmute <player> &7- Lift a mute.",
                 "&e/" + label + " status <player> &7- See admin/mute/ban status.",
+                "&e/" + label + " log [admin] [limit] &7- Review recent admin command usage.",
                 "&e/" + label + " info <player> &7- Inspect live connection and session details.",
                 "&e/" + label + " invsee <player> &7- Inspect a player's inventory.",
                 "&e/" + label + " endersee <player> &7- Inspect a player's ender chest.",
@@ -586,6 +617,11 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                     return filterStartingWith(MuteManager.getMutedNames(), args[1]);
                 case "unban":
                     return filterStartingWith(BanManager.getBannedNames(), args[1]);
+                case "log": {
+                    List<String> suggestions = new ArrayList<>(AdminManager.getAdminNames());
+                    suggestions.add("Console");
+                    return filterStartingWith(suggestions, args[1]);
+                }
                 default:
                     return Collections.emptyList();
             }
@@ -593,6 +629,10 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 3 && (sub.equals("mute") || sub.equals("ban"))) {
             return filterStartingWith(suggestDurations(), args[2]);
+        }
+
+        if (args.length == 3 && sub.equals("log")) {
+            return filterStartingWith(Arrays.asList("5", "10", "20", "50"), args[2]);
         }
 
         return Collections.emptyList();

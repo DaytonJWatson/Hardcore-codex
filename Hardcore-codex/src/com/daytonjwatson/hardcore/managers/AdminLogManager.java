@@ -18,6 +18,8 @@ public final class AdminLogManager {
 
     private static final String LOG_NODE = "logs";
     private static final int MAX_LOG_ENTRIES = 500;
+    private static final DateTimeFormatter STORAGE_FORMAT = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    private static final DateTimeFormatter READABLE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private static FileConfiguration config;
     private static File file;
@@ -49,7 +51,7 @@ public final class AdminLogManager {
         List<String> logs = new ArrayList<>(config.getStringList(LOG_NODE));
         String status = allowed ? "ALLOWED" : "DENIED";
         String actor = sender instanceof ConsoleCommandSender ? "Console" : sender.getName();
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        String timestamp = LocalDateTime.now().format(STORAGE_FORMAT);
         logs.add(timestamp + " [" + status + "] " + actor + ": " + command.trim());
 
         if (logs.size() > MAX_LOG_ENTRIES) {
@@ -58,6 +60,63 @@ public final class AdminLogManager {
 
         config.set(LOG_NODE, logs);
         save();
+    }
+
+    public static synchronized List<String> getRecentLogs(int limit, String actorFilter) {
+        if (config == null) {
+            return List.of();
+        }
+
+        List<String> logs = config.getStringList(LOG_NODE);
+        List<String> results = new ArrayList<>();
+
+        for (int i = logs.size() - 1; i >= 0 && results.size() < limit; i--) {
+            String entry = logs.get(i);
+            ParsedLog parsed = parse(entry);
+            if (parsed == null) {
+                continue;
+            }
+
+            if (actorFilter != null && !parsed.actor.equalsIgnoreCase(actorFilter)) {
+                continue;
+            }
+
+            results.add(parsed.formatted());
+        }
+
+        return results;
+    }
+
+    private static ParsedLog parse(String raw) {
+        try {
+            int firstSpace = raw.indexOf(' ');
+            int statusStart = raw.indexOf('[');
+            int statusEnd = raw.indexOf(']');
+            int actorStart = statusEnd + 2;
+            int colonIndex = raw.indexOf(':', actorStart);
+
+            if (firstSpace <= 0 || statusStart <= 0 || statusEnd <= statusStart || colonIndex <= actorStart) {
+                return null;
+            }
+
+            LocalDateTime timestamp = LocalDateTime.parse(raw.substring(0, firstSpace), STORAGE_FORMAT);
+            String status = raw.substring(statusStart + 1, statusEnd).trim();
+            String actor = raw.substring(actorStart, colonIndex).trim();
+            String command = raw.substring(colonIndex + 1).trim();
+
+            return new ParsedLog(timestamp, status, actor, command);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private record ParsedLog(LocalDateTime timestamp, String status, String actor, String command) {
+        String formatted() {
+            String readableTime = timestamp.format(READABLE_FORMAT);
+            String statusColor = status.equalsIgnoreCase("ALLOWED") ? "&a" : "&c";
+            return "&7" + readableTime + " &8[ " + statusColor + status + "&8 ] &e" + actor + "&7: &f"
+                    + command;
+        }
     }
 
     public static void save() {
