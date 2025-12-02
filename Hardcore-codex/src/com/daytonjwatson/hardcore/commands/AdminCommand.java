@@ -1,6 +1,7 @@
 package com.daytonjwatson.hardcore.commands;
 
 import java.time.Duration;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -155,7 +156,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-        OfflinePlayer target = Bukkit.getOfflinePlayer(args[1]);
+        OfflinePlayer target = resolveOfflinePlayer(args[1]);
         String targetName = target.getName() == null ? args[1] : target.getName();
         boolean added = AdminManager.addAdmin(target);
         AdminLogManager.log(sender, "/admin add " + targetName, true);
@@ -172,7 +173,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-        OfflinePlayer target = Bukkit.getOfflinePlayer(args[1]);
+        OfflinePlayer target = resolveOfflinePlayer(args[1]);
         String targetName = target.getName() == null ? args[1] : target.getName();
         boolean removed = AdminManager.removeAdmin(target);
         if (removed) {
@@ -214,7 +215,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             reason = "Banned by Hardcore admin.";
         }
 
-        OfflinePlayer target = Bukkit.getOfflinePlayer(args[1]);
+        OfflinePlayer target = resolveOfflinePlayer(args[1]);
         String targetName = target.getName() == null ? args[1] : target.getName();
         boolean wasBanned = BanManager.isBanned(target.getUniqueId());
 
@@ -238,7 +239,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-        OfflinePlayer target = Bukkit.getOfflinePlayer(args[1]);
+        OfflinePlayer target = resolveOfflinePlayer(args[1]);
         String targetName = target.getName() == null ? args[1] : target.getName();
 
         boolean success = BanManager.unban(target.getUniqueId());
@@ -273,7 +274,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-        OfflinePlayer target = Bukkit.getOfflinePlayer(args[1]);
+        OfflinePlayer target = resolveOfflinePlayer(args[1]);
         String targetName = target.getName() == null ? args[1] : target.getName();
         Duration duration = null;
         String reason;
@@ -307,7 +308,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-        OfflinePlayer target = Bukkit.getOfflinePlayer(args[1]);
+        OfflinePlayer target = resolveOfflinePlayer(args[1]);
         String targetName = target.getName() == null ? args[1] : target.getName();
         boolean success = MuteManager.unmute(target.getUniqueId());
         if (success) {
@@ -323,7 +324,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-        OfflinePlayer target = Bukkit.getOfflinePlayer(args[1]);
+        OfflinePlayer target = resolveOfflinePlayer(args[1]);
         UUID uuid = target.getUniqueId();
         boolean isMuted = MuteManager.isMuted(uuid);
         boolean isBanned = BanManager.isBanned(uuid);
@@ -682,5 +683,21 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         }
 
         return "for " + Util.formatDuration(duration.toMillis());
+    }
+
+    private OfflinePlayer resolveOfflinePlayer(String name) {
+        Player online = Bukkit.getPlayerExact(name);
+        if (online != null) {
+            return online;
+        }
+
+        OfflinePlayer cached = Bukkit.getOfflinePlayerIfCached(name);
+        if (cached != null) {
+            return cached;
+        }
+
+        UUID offlineUuid = UUID
+                .nameUUIDFromBytes(("OfflinePlayer:" + name.toLowerCase(Locale.ROOT)).getBytes(StandardCharsets.UTF_8));
+        return Bukkit.getOfflinePlayer(offlineUuid);
     }
 }
