@@ -73,7 +73,7 @@ public final class ConfigValues {
     }
 
     public static boolean giveGuideBookOnFirstJoin() {
-        return config.getBoolean("server.first-join.guide-book.give-on-first-join", true);
+        return config.getBoolean("server.first-join.guide-book.give-on-first-join", false);
     }
 
     public static boolean randomSpawnEnabled() {
@@ -236,7 +236,7 @@ public final class ConfigValues {
     }
 
     public static String guideChatTitle() {
-        return config.getString("content.guide.chat-title", "Bandits & Heroes Guide");
+        return config.getString("content.guide.chat-title", "Hardcore Guide");
     }
 
     public static List<String> guideChatLines() {
@@ -244,11 +244,11 @@ public final class ConfigValues {
     }
 
     public static String guideBookTitle() {
-        return config.getString("content.guide.book.title", "&6Bandits & Heroes");
+        return config.getString("content.guide.book.title", "&cHardcore Guide");
     }
 
     public static String guideBookAuthor() {
-        return config.getString("content.guide.book.author", "HardcoreGuide");
+        return config.getString("content.guide.book.author", "Hardcore");
     }
 
     public static List<String> guideBookPages() {
