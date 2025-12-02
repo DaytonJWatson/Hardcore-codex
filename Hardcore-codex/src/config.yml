@@ -159,10 +159,11 @@ content:
       title: "&cHardcore Guide"
       author: "Hardcore"
       pages:
-        - "&cWelcome to Hardcore\n\n&7You only have one life here.\nIf you die, you're banned until\nthe next map reset.\n\nGet wood, food, and tools fast.\nNight is dangerous—dig in or\ngear up before sunset."
-        - "&cEarly Survival\n\n&7Leave spawn to avoid raided\nareas. Hunt animals for food,\ncraft shields and basic armor,\nand light caves to prevent mobs.\n\nAlways carry blocks, a water\nbucket, and spare food."
-        - "&cPlaying With Others\n\n&7PvP and raiding are allowed.\nBe cautious about alliances.\nHidden bases survive longer;\navoid obvious landmarks.\n\nLog out safely—never mid-fight."
-        - "&cStay Alive\n\n&7Keep Totems, golden apples,\nand potions handy. Scout before\nengaging fights. If things go bad,\nrun and regroup.\n\nGood luck—Hardcore waits for no one."
+        - "&cHardcore World\n\n&7One life. &cPermanent death—no\nrevives&7 and no map resets.\nPvP, griefing, and stealing are\nallowed but frowned upon. Work\ntogether when you can, because\nlosing a fight ends your run."
+        - "&cJoining In\n\n&7New players spawn randomly in\nthe wilderness—no spawn hub to\nbabysit you. Move fast: punch\ntrees, make tools, and grab food\nbefore night. Expect strangers\nto be dangerous but potential\nallies if you talk first."
+        - "&cHardcore Basics\n\n&7Hardcore means your world ends\non death. Log out safely, avoid\nhero jumps, and never dig down.\nCarry a shield, blocks, and a\nwater bucket. Cook extra food,\nkeep spare picks, and stash gear\ndeep underground."
+        - "&cSurvival Tips\n\n&7Secure iron before exploring.\nLight caves, bridge over lava,\nand block creepers. Travel with\na bed for night-skips in groups,\nbut remember respawns do not\nundo bans. Wear gold in the\nNether, respect bastions, and\nnever fight when lagging."
+        - "&cBandits & Heroes\n\n&7Unfairly killing weaker players\ngives \"unfair kills\". At &c3&7, you\nbecome a &4Bandit&7 with a red tag.\nKill &c3 bandits&7 to redeem. While\nclean, defeating &c3 bandits&7 turns\nyou into a &6Hero&7. Heroes who prey\non weak players fall back to Bandit."
 
   help:
     title: "Hardcore Help"
