@@ -1,6 +1,7 @@
 package com.daytonjwatson.hardcore.config;
 
 import java.util.List;
+import java.util.Locale;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -89,15 +90,35 @@ public final class ConfigValues {
 
     public static Sound deathSound() {
         String soundName = config.getString("server.sounds.death", "ENTITY_WITHER_DEATH");
-        Sound resolved = Registry.SOUNDS.get(NamespacedKey.minecraft(soundName.toLowerCase()));
-        if (resolved != null) {
-            return resolved;
+        Sound resolved = resolveSound(soundName);
+        return resolved == null ? Sound.ENTITY_WITHER_DEATH : resolved;
+    }
+
+    private static Sound resolveSound(String configuredName) {
+        NamespacedKey key = NamespacedKey.fromString(configuredName.toLowerCase());
+        if (key != null) {
+            Sound match = Registry.SOUNDS.get(key);
+            if (match != null) return match;
         }
 
+        key = NamespacedKey.fromString(configuredName);
+        if (key != null) {
+            Sound match = Registry.SOUNDS.get(key);
+            if (match != null) return match;
+        }
+
+        Sound legacy = resolveLegacySound(configuredName);
+        if (legacy != null) return legacy;
+
+        return null;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static Sound resolveLegacySound(String configuredName) {
         try {
-            return Sound.valueOf(soundName);
-        } catch (IllegalArgumentException ex) {
-            return Sound.ENTITY_WITHER_DEATH;
+            return Sound.valueOf(configuredName.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ignored) {
+            return null;
         }
     }
 

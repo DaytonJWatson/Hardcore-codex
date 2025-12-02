@@ -13,6 +13,7 @@ import org.bukkit.inventory.ItemStack;
 
 import com.daytonjwatson.hardcore.managers.BanditTrackerManager;
 import com.daytonjwatson.hardcore.utils.MessageStyler;
+import com.daytonjwatson.hardcore.config.ConfigValues;
 
 public class BanditTrackerListener implements Listener {
 
@@ -30,6 +31,14 @@ public class BanditTrackerListener implements Listener {
 
         ItemStack item = event.getItem();
         if (!BanditTrackerManager.isTracker(item)) {
+            return;
+        }
+
+        if (!ConfigValues.trackerEnabled()) {
+            event.setCancelled(true);
+            MessageStyler.sendPanel(event.getPlayer(), "Bandit Tracker",
+                    ChatColor.RED + "The tracker feature is disabled.",
+                    ChatColor.GRAY + "Contact an admin if this is unexpected.");
             return;
         }
 
