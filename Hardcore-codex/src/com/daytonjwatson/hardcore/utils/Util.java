@@ -14,7 +14,7 @@ public class Util {
 		return ChatColor.translateAlternateColorCodes('&', string);
 	}
 	
-	public static void giveHardcoreGuideBook(Player player) {
+        public static void giveHardcoreGuideBook(Player player) {
         ItemStack book = new ItemStack(Material.WRITTEN_BOOK);
         BookMeta meta = (BookMeta) book.getItemMeta();
 
@@ -34,5 +34,28 @@ public class Util {
         if (!leftover.isEmpty()) {
             player.getWorld().dropItemNaturally(player.getLocation(), book);
         }
+    }
+
+    public static String formatDuration(long millis) {
+        if (millis < 0) {
+            return "permanently";
+        }
+
+        long seconds = millis / 1000;
+        long minutes = seconds / 60;
+        long hours = minutes / 60;
+        long days = hours / 24;
+
+        seconds %= 60;
+        minutes %= 60;
+        hours %= 24;
+
+        StringBuilder sb = new StringBuilder();
+        if (days > 0) sb.append(days).append("d ");
+        if (hours > 0) sb.append(hours).append("h ");
+        if (minutes > 0) sb.append(minutes).append("m ");
+        if (days == 0 && hours == 0 && minutes == 0) sb.append(seconds).append("s");
+
+        return sb.toString().trim();
     }
 }
