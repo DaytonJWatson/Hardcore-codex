@@ -1,12 +1,14 @@
 package com.daytonjwatson.hardcore;
 
 import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.daytonjwatson.hardcore.commands.BanditTrackerCommand;
 import com.daytonjwatson.hardcore.commands.GuideCommand;
 import com.daytonjwatson.hardcore.commands.HelpCommand;
+import com.daytonjwatson.hardcore.commands.AdminCommand;
 import com.daytonjwatson.hardcore.commands.RulesCommand;
 import com.daytonjwatson.hardcore.commands.StatsCommand;
 import com.daytonjwatson.hardcore.config.Config;
@@ -17,6 +19,8 @@ import com.daytonjwatson.hardcore.listeners.PlayerJoinListener;
 import com.daytonjwatson.hardcore.listeners.PlayerQuitListener;
 import com.daytonjwatson.hardcore.listeners.BanditTrackerListener;
 import com.daytonjwatson.hardcore.managers.BanditTrackerManager;
+import com.daytonjwatson.hardcore.managers.AdminManager;
+import com.daytonjwatson.hardcore.managers.MuteManager;
 import com.daytonjwatson.hardcore.managers.StatsManager;
 
 public class HardcorePlugin extends JavaPlugin {
@@ -32,6 +36,9 @@ public class HardcorePlugin extends JavaPlugin {
         instance = this;
 
         Config.setup();
+
+        AdminManager.init(this);
+        MuteManager.init(this);
 
         // Initialize stats system (loads stats.yml, etc.)
         StatsManager.init(this);
@@ -50,6 +57,9 @@ public class HardcorePlugin extends JavaPlugin {
             StatsManager.get().saveData(); // force save on shutdown
         }
 
+        AdminManager.save();
+        MuteManager.save();
+
         instance = null;
     }
 
@@ -57,6 +67,9 @@ public class HardcorePlugin extends JavaPlugin {
         registerCommand("guide", new GuideCommand());
         registerCommand("help", new HelpCommand());
         registerCommand("rules", new RulesCommand());
+        AdminCommand adminCommand = new AdminCommand();
+        registerCommand("admin", adminCommand);
+        registerTabCompleter("admin", adminCommand);
         // Bandit tracker is now crafted instead of granted via command; keep the
         // executor available in case legacy configs still register it.
         registerCommand("bandittracker", new BanditTrackerCommand());
@@ -75,6 +88,15 @@ public class HardcorePlugin extends JavaPlugin {
         }
 
         getCommand(name).setExecutor(executor);
+    }
+
+    private void registerTabCompleter(String name, TabCompleter completer) {
+        if (getCommand(name) == null) {
+            getLogger().warning("Command '" + name + "' is not defined in plugin.yml");
+            return;
+        }
+
+        getCommand(name).setTabCompleter(completer);
     }
 
     private void registerListeners() {
