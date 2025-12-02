@@ -10,6 +10,7 @@ import com.daytonjwatson.hardcore.commands.HelpCommand;
 import com.daytonjwatson.hardcore.commands.RulesCommand;
 import com.daytonjwatson.hardcore.commands.StatsCommand;
 import com.daytonjwatson.hardcore.config.Config;
+import com.daytonjwatson.hardcore.config.ConfigValues;
 import com.daytonjwatson.hardcore.listeners.PlayerChatListener;
 import com.daytonjwatson.hardcore.listeners.PlayerDeathListener;
 import com.daytonjwatson.hardcore.listeners.PlayerJoinListener;
@@ -30,15 +31,17 @@ public class HardcorePlugin extends JavaPlugin {
     public void onEnable() {
         instance = this;
 
+        Config.setup();
+
         // Initialize stats system (loads stats.yml, etc.)
         StatsManager.init(this);
-
-        Config.setup();
 
         registerCommands();
         registerListeners();
 
-        BanditTrackerManager.registerRecipe(this);
+        if (ConfigValues.trackerEnabled()) {
+            BanditTrackerManager.registerRecipe(this);
+        }
     }
 
     @Override

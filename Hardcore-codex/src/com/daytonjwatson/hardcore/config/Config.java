@@ -1,16 +1,19 @@
 package com.daytonjwatson.hardcore.config;
 
 import com.daytonjwatson.hardcore.HardcorePlugin;
+import org.bukkit.configuration.file.FileConfiguration;
 
 public class Config {
-	
-	public static void setup() {
-		create();
-	}
-	
-	private static void create() {
-		HardcorePlugin.instance.getConfig().options().copyDefaults(true);
-		HardcorePlugin.instance.saveDefaultConfig();
+
+        public static void setup() {
+                create();
+                FileConfiguration configuration = HardcorePlugin.instance.getConfig();
+                ConfigValues.load(configuration);
+        }
+
+        private static void create() {
+                HardcorePlugin.instance.getConfig().options().copyDefaults(true);
+                HardcorePlugin.instance.saveDefaultConfig();
 	}
 	
 	public static void save() {
