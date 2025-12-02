@@ -33,7 +33,7 @@ server:
 
   # Global sounds that accompany important events.
   sounds:
-    death: "ENTITY_WITHER_DEATH"
+    death: "ENTITY_LIGHTNING_BOLT_THUNDER"
 
 ###############################
 # Chat & tab formatting       #

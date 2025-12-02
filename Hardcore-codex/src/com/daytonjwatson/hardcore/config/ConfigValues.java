@@ -89,9 +89,9 @@ public final class ConfigValues {
     }
 
     public static Sound deathSound() {
-        String soundName = config.getString("server.sounds.death", "ENTITY_WITHER_DEATH");
+        String soundName = config.getString("server.sounds.death", "ENTITY_LIGHTNING_BOLT_THUNDER");
         Sound resolved = resolveSound(soundName);
-        return resolved == null ? Sound.ENTITY_WITHER_DEATH : resolved;
+        return resolved == null ? Sound.ENTITY_LIGHTNING_BOLT_THUNDER : resolved;
     }
 
     private static Sound resolveSound(String configuredName) {
@@ -120,8 +120,6 @@ public final class ConfigValues {
         } catch (IllegalArgumentException ignored) {
             return null;
         }
-
-        return null;
     }
 
     public static int banditKillThreshold() {
