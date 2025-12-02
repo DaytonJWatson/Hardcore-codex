@@ -5,6 +5,8 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import com.daytonjwatson.hardcore.config.ConfigValues;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -49,10 +51,11 @@ public class StatsManager {
     private final Set<UUID> everBandits = ConcurrentHashMap.newKeySet();
 
     private boolean saveScheduled = false;
-    private static final long SAVE_DELAY_TICKS = 100L;
+    private final long saveDelayTicks;
 
     private StatsManager(JavaPlugin plugin) {
         this.plugin = plugin;
+        this.saveDelayTicks = ConfigValues.statsAutosaveDelayTicks();
         createFile();
         loadData();
     }
@@ -68,7 +71,7 @@ public class StatsManager {
     }
 
     private void createFile() {
-        statsFile = new File(plugin.getDataFolder(), "stats.yml");
+        statsFile = new File(plugin.getDataFolder(), ConfigValues.statsFileName());
 
         if (!statsFile.exists()) {
             try {
@@ -205,12 +208,12 @@ public class StatsManager {
 
     /**
      * Called when an unfair kill is detected.
-     * Requires 3+ unfair kills to become a bandit.
+     * Requires the configured number of unfair kills to become a bandit.
      */
     public void handleUnfairKill(UUID killerUuid) {
         int current = banditKills.merge(killerUuid, 1, Integer::sum);
 
-        if (current >= 3) {
+        if (current >= ConfigValues.banditKillThreshold()) {
             // Mark as bandit
             bandits.add(killerUuid);
             everBandits.add(killerUuid); // mark as ever-bandit
@@ -226,7 +229,7 @@ public class StatsManager {
 
     /**
      * Called when a BANDIT kills a BANDIT (for redemption).
-     * If the killer is a bandit and reaches 3 bandit kills,
+     * If the killer is a bandit and reaches the configured redemption count,
      * they lose their bandit status.
      *
      * @return true if this call caused the killer to lose bandit status
@@ -241,7 +244,7 @@ public class StatsManager {
 
         boolean lostBandit = false;
 
-        if (current >= 3) {
+        if (current >= ConfigValues.redemptionKills()) {
             bandits.remove(killerUuid);
             banditKills.put(killerUuid, 0);
             banditHunterKills.put(killerUuid, 0);
@@ -255,7 +258,7 @@ public class StatsManager {
 
     /**
      * Called when a NON-BANDIT kills a BANDIT.
-     * If the killer is NOT currently a bandit and reaches 3 bandit kills,
+     * If the killer is NOT currently a bandit and reaches the configured hero threshold,
      * they become a Hero.
      *
      * Players who have been bandits in the past can still become Heroes,
@@ -273,7 +276,7 @@ public class StatsManager {
 
         boolean becameHero = false;
 
-        if (current >= 3 && !isHero(killerUuid)) {
+        if (current >= ConfigValues.heroKills() && !isHero(killerUuid)) {
             heroes.add(killerUuid);
             becameHero = true;
         }
@@ -358,8 +361,8 @@ public class StatsManager {
 
         saveScheduled = true;
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            saveScheduled = false;
             saveData();
-        }, SAVE_DELAY_TICKS);
+            saveScheduled = false;
+        }, saveDelayTicks);
     }
 }

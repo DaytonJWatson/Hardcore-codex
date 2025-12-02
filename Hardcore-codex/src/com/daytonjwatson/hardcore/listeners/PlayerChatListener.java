@@ -1,12 +1,13 @@
 package com.daytonjwatson.hardcore.listeners;
 
-import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 
+import com.daytonjwatson.hardcore.config.ConfigValues;
 import com.daytonjwatson.hardcore.managers.StatsManager;
+import com.daytonjwatson.hardcore.utils.Util;
 
 public class PlayerChatListener implements Listener {
 
@@ -15,29 +16,27 @@ public class PlayerChatListener implements Listener {
         Player player = event.getPlayer();
         StatsManager stats = StatsManager.get();
 
-        if (stats == null) {
+        if (stats == null || !ConfigValues.chatEnabled()) {
             return;
         }
 
         boolean isBandit = stats.isBandit(player.getUniqueId());
         boolean isHero = stats.isHero(player.getUniqueId());
 
-        String nameColor = ChatColor.GRAY.toString();
         String prefix = "";
 
         // Bandit takes priority if somehow both are true
         if (isBandit) {
-            prefix = ChatColor.DARK_RED + "" + ChatColor.BOLD + "[B] " + ChatColor.RESET;
-        } 
+            prefix = ConfigValues.chatBanditPrefix();
+        }
         else if (isHero) {
-            prefix = ChatColor.GOLD + "" + ChatColor.BOLD + "[H] " + ChatColor.RESET;
+            prefix = ConfigValues.chatHeroPrefix();
         }
 
-        String format = prefix 
-                + ChatColor.GRAY + " <" 
-                + nameColor + "%s" 
-                + ChatColor.RESET + ChatColor.GRAY + "> %s";
+        String format = ConfigValues.chatFormat()
+                .replace("%prefix%", prefix)
+                .replace("%name_color%", ConfigValues.chatNameColor());
 
-        event.setFormat(format);
+        event.setFormat(Util.color(format));
     }
 }

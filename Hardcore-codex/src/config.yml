@@ -1,0 +1,270 @@
+# Hardcore Plugin comprehensive configuration
+# This file is intended to cover all current mechanics and act as a landing
+# place for future tuning. Every feature can be toggled or customized here.
+
+###############################
+# General server experience   #
+###############################
+server:
+  # Whether to show the Hardcore onboarding panel on join.
+  join-panel:
+    enabled: true
+    title: "Hardcore Mode"
+    lines:
+      - "&cOne-life only. Death = Permanent Ban."
+      - "PvP & Griefing allowed but frowned upon."
+      - "Stealing is allowed."
+      - "No protection or land claiming."
+      - "Trust nobody — alliances are not enforced."
+      - "&4Play smart. You only get one life."
+
+  # How new players are welcomed.
+  first-join:
+    random-spawn:
+      enabled: true
+      radius: 5000   # matches TeleportUtil.RADIUS
+      max-attempts: 40
+    guide-book:
+      give-on-first-join: true
+      command-fallback: true  # whether /guide still grants the book
+    join-message: "&7%player% has &ajoined &7for the first time!"
+  returning:
+    join-message: "&7%player% has &ajoined"
+
+  # Global sounds that accompany important events.
+  sounds:
+    death: "ENTITY_WITHER_DEATH"
+
+###############################
+# Chat & tab formatting       #
+###############################
+chat:
+  enabled: true
+  # Prefixes for special roles when they speak in chat.
+  prefixes:
+    bandit: "&4&l[B] &r"
+    hero: "&6&l[H] &r"
+  name-color: "&7"
+  format: "%prefix%&7 <%name_color%%player%&7> %message%"
+
+# Header/footer shown in the in-game player list.
+tablist:
+  enabled: true
+  header:
+    title: "&4&l☠ HARDCORE ☠"
+    show-online: true
+    show-unique: true
+    show-total-deaths: true
+  footer:
+    show-status: true
+    show-role: true
+    show-life: true
+    show-kd: true
+    commands-line: "&8◆ &6Commands&8: &7/guide &8· &7/rules &8· &7/stats &8· &7/bandittracker"
+    bar-style: default  # kept for future styling options
+
+###############################
+# Bandits & Heroes system     #
+###############################
+bandits:
+  enabled: true
+
+  unfair-kill-requirements:
+    min-killer-gear-power: 6        # matches BanditManager/DeathMessageHelper MIN_KILLER_GEAR_POWER
+    min-base-gear-gap: 4            # matches MIN_BASE_GEAR_GAP
+    min-effective-total-gap: 3.0    # matches MIN_EFFECTIVE_TOTAL_GAP
+
+  thresholds:
+    # Number of unfair kills to become a bandit.
+    bandit-kills-to-flag: 3
+    # Bandit-on-bandit kills to clear bandit status.
+    redemption-kills: 3
+    # Non-bandit kills on bandits to become a hero.
+    hero-kills: 3
+
+  # Broadcast templates when status changes. Color codes supported.
+  broadcasts:
+    became-bandit: "&8[&4&lBANDIT&8] &c%player% &7has become a &4&lBANDIT&7 after preying on weaker players."
+    bandit-from-hero: "&8[&4&lDEMOTION&8] &6%player% &7has fallen from &6&lHERO &7to &4&lBANDIT&7 after attacking weaker players."
+    redeemed: "&8[&a&lREDEEMED&8] &a%player% &7has redeemed themselves by slaying 3 bandits and is no longer a &4Bandit&7."
+    became-hero: "&8[&6&lHERO&8] &6%player% &7has become a &6&lHERO &7by defeating 3 bandits!"
+
+  # Messages sent directly to the killer on progress.
+  messages:
+    warning: "&7You are gaining a reputation as a bandit. Unfair kills: &c%current%&7/&c3"
+    became-bandit: "&4&lYou are now a BANDIT. Your violent reputation precedes you..."
+    demoted-from-hero: "&4&lYou have fallen from HERO to BANDIT &cfor repeatedly preying on weaker players."
+    redemption-progress: "&eBandit redemption progress: &6%current%/3"
+    redemption-needed: "&7You need &c%remaining% &7more bandit kills to lose your bandit status."
+    hero-progress: "&eHero progress: &6%current%/3"
+    hero-needed: "&7You need &6%remaining% &7more bandit kills to become a Hero."
+
+###############################
+# Bandit tracker              #
+###############################
+bandit-tracker:
+  enabled: true
+  display-name: "&4&lBandit Tracker"
+  cooldown-seconds: 30           # matches TRACKER_COOLDOWN_MILLIS
+  drift:
+    scale: 0.025                 # percentage of distance used for drift
+    min-blocks: 4.0
+  lore:
+    base:
+      - "&7• Sneak-right-click to lock onto"
+      - "&7• the nearest &4Bandit&7."
+      - "&7• Signal drifts with range; recalibrate often."
+      - "&7• Cooldown: &f30s&7."
+    tracking-prefix: "&8• &4Tracking: &cUnidentified bandit"
+    distance: "&8• &7Distance: &f%meters%m"
+    signal: "&8• &7Signal: %quality%"
+    world: "&8• &7World: &f%world%"
+    no-target: "&8• &cNo bandits online."
+  signals:
+    tight: "&aTight&7 (low drift)"
+    moderate: "&eModerate&7 (watch for drift)"
+    loose: "&cLoose&7 (hunt carefully)"
+  recipe:
+    enabled: true
+    title: "&4&lTracker Recipe"
+    shape:
+      - "RGR"
+      - "ECE"
+      - "RIR"
+    ingredients:
+      R: REDSTONE
+      G: GOLD_INGOT
+      E: ENDER_PEARL
+      C: COMPASS
+      I: IRON_INGOT
+    preview:
+      slot-highlights: true
+      tracker-lore:
+        - "&7Craft your own tracker."
+        - "&8Sneak-right-click to calibrate."
+
+###############################
+# Guides, rules, and help     #
+###############################
+content:
+  guide:
+    chat-title: "Bandits & Heroes Guide"
+    chat-lines:
+      - "&6Bandits"
+      - "Unfair kills on weaker players give &4Bandit Points&7."
+      - "At &c3 unfair kills&7 you become a &4&lBandit&7."
+      - "Bandits are announced and marked &4[B]&7."
+      - "&6Redemption"
+      - "Bandits who slay bandits gain &aRedemption Points&7."
+      - "At &a3 bandits slain as a bandit&7, you lose Bandit status."
+      - "&6Heroes"
+      - "Non-bandits who kill bandits gain &6Hero progress&7."
+      - "At &63 bandits slain as a non-bandit&7, you become a &6&lHero&7."
+      - "Heroes are marked &6[H]&7 and announced."
+      - "Use &c/bandittracker &7for a compass that locks onto bandits."
+    book:
+      title: "&6Bandits & Heroes"
+      author: "HardcoreGuide"
+      pages:
+        - "&4&lBANDITS\n\n&8Killing much\nweaker players in\nunfair fights gives\nyou &4Bandit&8 Points.\n\n&8At &c3 unfair kills\n&8you become a\n&4Bandit&8.\n\n&8Bandits are marked\nwith &4[B]&8 and are\nannounced to all."
+        - "&a&lREDEMPTION\n\n&8Bandits who kill\nother bandits gain\n&aRedemption Points.\n\n&8At 3 bandits slain\nwhile you are a\nBandit, you lose\nyour Bandit status\nand return to\nnormal.\n\n"
+        - "&6&lHEROES\n\n&8Players who are\nnot Bandits and\nkill Bandits gain\n&6Hero Points.\n\n&8At 3 bandits slain\nwhile you are not\na Bandit, you\nbecome a \n&6Hero&8.\n\n&8Heroes are marked\nwith &6[H]"
+        - "&6&lSTATUS FLOW\n\n&8Fair player:\n  kill 3 bandits\n  &a→ Hero\n\n&8Fair player:\n  3 unfair kills\n  &4→ Bandit\n\n&8Bandit:\n  kill 3 bandits\n  &a→ Redeemed\n\n&8Redeemed:\n  kill 3 bandits\n  as non-bandit\n  &6→ Hero\n\n&8Use &c/bandittracker\n&8to get a bandit\n&8tracking compass."
+
+  help:
+    title: "Hardcore Help"
+    lines:
+      - "One-Life Server: &cDeath = Permanent Ban"
+      - "PvP & Griefing allowed (but frowned upon)."
+      - "Stealing allowed. No land claiming or protection."
+      - "Useful Commands:"
+      - "&c/guide &7- Bandits & Heroes guide"
+      - "&c/help &7- Show this help menu"
+      - "&c/rules &7- Hardcore server rules"
+      - "&c/stats &7- View player stats"
+      - "&c/bandittracker &7- Track the nearest bandit"
+      - "&4Play cautiously. You only get one life."
+
+  rules:
+    title: "Server Rules"
+    lines:
+      - "&6Gameplay Rules"
+      - "PvP & Griefing allowed but &cstrongly frowned upon&7."
+      - "Stealing is allowed."
+      - "No land claiming or protection."
+      - "&6Behavior Rules"
+      - "No hacking, cheating, or unfair clients."
+      - "No exploiting glitches or dupes."
+      - "No spam or harassment in chat."
+      - "Respect other players—even if PvP is allowed."
+
+###############################
+# Death messaging             #
+###############################
+deaths:
+  enabled: true
+  # Flavor pools mirrored from DeathMessageHelper. Placeholders: %KILLER%, %VICTIM%
+  messages:
+    fair:
+      - "%KILLER% outplayed %VICTIM%"
+      - "%KILLER% defeated %VICTIM% in a fair fight"
+      - "%KILLER% bested %VICTIM%"
+      - "%KILLER% won a sweaty duel against %VICTIM%"
+      - "%KILLER% sent %VICTIM% back to the main menu"
+      - "%KILLER% proved to be the better fighter than %VICTIM%"
+      - "%KILLER% traded hits with %VICTIM% and came out on top"
+      - "%KILLER% narrowly clutched up against %VICTIM%"
+      - "%KILLER% showed solid mechanics against %VICTIM%"
+      - "%KILLER% outmaneuvered %VICTIM% in close combat"
+    unfair:
+      - "%KILLER% cowardly murdered %VICTIM%"
+      - "%KILLER% steamrolled %VICTIM% with overwhelming gear"
+      - "%KILLER% abused their gear advantage against %VICTIM%"
+      - "%KILLER% ambushed a helpless %VICTIM%"
+      - "%KILLER% turned %VICTIM% into target practice"
+      - "%KILLER% deleted %VICTIM% from the world"
+      - "%KILLER% treated %VICTIM% like a walking loot box"
+      - "%KILLER% farmed free stats off %VICTIM%"
+      - "%KILLER% crushed any hope %VICTIM% had of surviving"
+      - "%KILLER% reminded %VICTIM% that life isn’t fair"
+    hero-vs-bandit:
+      - "%KILLER% hunted down bandit %VICTIM%"
+      - "%KILLER% brought justice to bandit %VICTIM%"
+      - "%KILLER% purged the notorious bandit %VICTIM%"
+      - "%KILLER% ended the crime spree of bandit %VICTIM%"
+      - "%KILLER% proved that heroes win over bandit %VICTIM%"
+      - "%KILLER% put a bounty-style finish on bandit %VICTIM%"
+      - "%KILLER% finally caught up to bandit %VICTIM%"
+      - "%KILLER% sent bandit %VICTIM% to their final respawn"
+      - "%KILLER% made an example out of bandit %VICTIM%"
+      - "%KILLER% delivered righteous punishment to bandit %VICTIM%"
+    regular-vs-bandit:
+      - "%KILLER% took down bandit %VICTIM%"
+      - "%KILLER% got revenge on bandit %VICTIM%"
+      - "%KILLER% clapped bandit %VICTIM%"
+      - "%KILLER% refused to be another victim of bandit %VICTIM%"
+      - "%KILLER% shut down the plans of bandit %VICTIM%"
+      - "%KILLER% surprised bandit %VICTIM% with a clean kill"
+      - "%KILLER% turned the tables on bandit %VICTIM%"
+      - "%KILLER% reminded bandit %VICTIM% that prey can bite back"
+      - "%KILLER% outsmarted bandit %VICTIM%"
+      - "%KILLER% sent bandit %VICTIM% back to the lobby"
+    bandit-vs-bandit:
+      - "%KILLER% turned on fellow bandit %VICTIM%"
+      - "%KILLER% betrayed bandit %VICTIM%"
+      - "%KILLER% removed rival bandit %VICTIM% from the game"
+      - "%KILLER% proved to be the stronger bandit over %VICTIM%"
+      - "%KILLER% decided there was only room for one bandit, and it wasn’t %VICTIM%"
+      - "%KILLER% settled a bandit dispute by killing %VICTIM%"
+      - "%KILLER% out-cheesed bandit %VICTIM%"
+      - "%KILLER% ended the partnership with bandit %VICTIM% permanently"
+      - "%KILLER% showed no loyalty to bandit %VICTIM%"
+      - "%KILLER% used bandit %VICTIM% as a stepping stone"
+
+###############################
+# Stats storage               #
+###############################
+stats:
+  # Delay (in ticks) before saving stats after an update.
+  autosave-delay-ticks: 100
+  file: "stats.yml"
