@@ -4,17 +4,18 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import com.daytonjwatson.hardcore.commands.BanditTrackerCommand;
 import com.daytonjwatson.hardcore.commands.GuideCommand;
 import com.daytonjwatson.hardcore.commands.HelpCommand;
 import com.daytonjwatson.hardcore.commands.RulesCommand;
 import com.daytonjwatson.hardcore.commands.StatsCommand;
-import com.daytonjwatson.hardcore.commands.BanditTrackerCommand;
 import com.daytonjwatson.hardcore.config.Config;
 import com.daytonjwatson.hardcore.listeners.PlayerChatListener;
 import com.daytonjwatson.hardcore.listeners.PlayerDeathListener;
 import com.daytonjwatson.hardcore.listeners.PlayerJoinListener;
 import com.daytonjwatson.hardcore.listeners.PlayerQuitListener;
 import com.daytonjwatson.hardcore.listeners.BanditTrackerListener;
+import com.daytonjwatson.hardcore.managers.BanditTrackerManager;
 import com.daytonjwatson.hardcore.managers.StatsManager;
 
 public class HardcorePlugin extends JavaPlugin {
@@ -31,11 +32,13 @@ public class HardcorePlugin extends JavaPlugin {
 
         // Initialize stats system (loads stats.yml, etc.)
         StatsManager.init(this);
-        
+
         Config.setup();
 
         registerCommands();
         registerListeners();
+
+        BanditTrackerManager.registerRecipe(this);
     }
 
     @Override
@@ -51,6 +54,8 @@ public class HardcorePlugin extends JavaPlugin {
         registerCommand("guide", new GuideCommand());
         registerCommand("help", new HelpCommand());
         registerCommand("rules", new RulesCommand());
+        // Bandit tracker is now crafted instead of granted via command; keep the
+        // executor available in case legacy configs still register it.
         registerCommand("bandittracker", new BanditTrackerCommand());
 
         if (getCommand("stats") != null) {

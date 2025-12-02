@@ -33,6 +33,19 @@ public class BanditTrackerListener implements Listener {
 
         Player player = event.getPlayer();
 
+        if (!player.isSneaking()) {
+            MessageStyler.sendPanel(player, "Bandit Tracker",
+                    ChatColor.YELLOW + "Steady your hands.",
+                    ChatColor.GRAY + "Sneak while using the tracker to calibrate it.");
+            return;
+        }
+
+        if (player.getVelocity().lengthSquared() > 0.05) {
+            MessageStyler.sendPanel(player, "Bandit Tracker",
+                    ChatColor.YELLOW + "Hold still to get a clean reading.");
+            return;
+        }
+
         if (BanditTrackerManager.isOnCooldown(player)) {
             long remaining = BanditTrackerManager.getRemainingCooldownSeconds(player);
             MessageStyler.sendPanel(player, "Bandit Tracker", ChatColor.RED + "Tracker cooling down.",
