@@ -32,12 +32,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         boolean bootstrapAllowed = !AdminManager.hasAdmins() && sender.hasPermission("hardcore.admin");
         if (!bootstrapAllowed && !AdminManager.isAdmin(sender)) {
-            // Keep the command hidden from non-admins while hinting bootstrap path to permitted staff
-            if (sender.hasPermission("hardcore.admin")) {
-                sender.sendMessage(Util.color("&eAdd yourself first with &7/console> admin add <name>&e."));
-            } else {
-                sender.sendMessage("Unknown command. Type \"/help\" for help.");
-            }
+            sender.sendMessage(Util.color("&cYou must be a Hardcore admin to use this command."));
             return true;
         }
 
@@ -280,7 +275,8 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (!AdminManager.isAdmin(sender)) {
+        boolean bootstrapAllowed = !AdminManager.hasAdmins() && sender.hasPermission("hardcore.admin");
+        if (!bootstrapAllowed && !AdminManager.isAdmin(sender)) {
             return Collections.emptyList();
         }
 
