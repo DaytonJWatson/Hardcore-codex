@@ -9,6 +9,7 @@ import org.bukkit.inventory.ItemStack;
 
 import com.daytonjwatson.hardcore.managers.BanditTrackerManager;
 import com.daytonjwatson.hardcore.utils.MessageStyler;
+import com.daytonjwatson.hardcore.config.ConfigValues;
 
 public class BanditTrackerCommand implements CommandExecutor {
 
@@ -19,9 +20,19 @@ public class BanditTrackerCommand implements CommandExecutor {
             return true;
         }
 
+        if (!ConfigValues.trackerEnabled()) {
+            sender.sendMessage(ChatColor.RED + "The bandit tracker is disabled by the server configuration.");
+            return true;
+        }
+
         Player player = (Player) sender;
 
         if (args.length > 0 && args[0].equalsIgnoreCase("recipe")) {
+            if (!ConfigValues.trackerRecipeEnabled()) {
+                sender.sendMessage(ChatColor.RED + "The bandit tracker recipe is disabled by the server configuration.");
+                return true;
+            }
+
             BanditTrackerManager.openRecipePreview(player);
             MessageStyler.sendPanel(player, "Bandit Tracker",
                     ChatColor.GRAY + "This is the custom crafting recipe.",
