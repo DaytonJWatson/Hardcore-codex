@@ -1,7 +1,5 @@
 package com.daytonjwatson.hardcore.commands;
 
-import java.util.Map;
-
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -32,20 +30,13 @@ public class BanditTrackerCommand implements CommandExecutor {
         }
 
         ItemStack tracker = BanditTrackerManager.findTracker(player);
-        boolean createdNew = false;
 
         if (tracker == null) {
-            tracker = BanditTrackerManager.createTrackerItem();
-            Map<Integer, ItemStack> leftovers = player.getInventory().addItem(tracker);
-            if (!leftovers.isEmpty()) {
-                for (ItemStack drop : leftovers.values()) {
-                    player.getWorld().dropItemNaturally(player.getLocation(), drop);
-                }
-                MessageStyler.sendPanel(player, "Bandit Tracker", ChatColor.YELLOW + "Your inventory was full.",
-                        ChatColor.GRAY + "The tracker was dropped at your feet.");
-            } else {
-                createdNew = true;
-            }
+            MessageStyler.sendPanel(player, "Bandit Tracker",
+                    ChatColor.RED + "You don't have a tracker yet.",
+                    ChatColor.GRAY + "Craft one with the custom recipe (Compass core surrounded by redstone, gold, ender pearls, and iron).",
+                    ChatColor.GRAY + "Once crafted, sneak-right-click to calibrate it.");
+            return true;
         }
 
         boolean foundTarget = BanditTrackerManager.updateTracker(player, tracker);
@@ -54,16 +45,10 @@ public class BanditTrackerCommand implements CommandExecutor {
         if (foundTarget) {
             MessageStyler.sendPanel(player, "Bandit Tracker",
                     ChatColor.GRAY + "Compass tuned to the closest bandit's trail.",
-                    ChatColor.GRAY + "Follow the needle; it points to their last known heading.");
+                    ChatColor.GRAY + "Sneak while using it in-hand to keep the signal stable.");
         } else {
             MessageStyler.sendPanel(player, "Bandit Tracker",
                     ChatColor.RED + "No bandits are currently online to track.");
-        }
-
-        if (createdNew) {
-            MessageStyler.sendPanel(player, "Tracker Added",
-                    ChatColor.GOLD + "You received a " + ChatColor.DARK_RED + "Bandit Tracker" + ChatColor.GOLD + ".",
-                    ChatColor.GRAY + "Use it anytime to update the target.");
         }
 
         return true;
