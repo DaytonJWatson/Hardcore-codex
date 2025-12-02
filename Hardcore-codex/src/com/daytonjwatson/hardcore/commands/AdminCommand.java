@@ -477,7 +477,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         lines.add(MessageStyler.bulletLine("Coords", org.bukkit.ChatColor.GREEN,
                 String.format("%.1f, %.1f, %.1f", target.getLocation().getX(), target.getLocation().getY(),
                         target.getLocation().getZ())));
-        AttributeInstance maxHealthAttr = target.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+        AttributeInstance maxHealthAttr = target.getAttribute(Attribute.MAX_HEALTH);
         double maxHealth = maxHealthAttr != null ? maxHealthAttr.getValue() : target.getHealth();
         lines.add(MessageStyler.bulletLine("Health", org.bukkit.ChatColor.RED,
                 String.format("%.1f / %.1f", target.getHealth(), maxHealth)));
@@ -609,7 +609,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-        AttributeInstance maxHealth = target.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+        AttributeInstance maxHealth = target.getAttribute(Attribute.MAX_HEALTH);
         double amount = maxHealth != null ? maxHealth.getValue() : target.getHealth();
         target.setHealth(amount);
         target.setFireTicks(0);

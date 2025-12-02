@@ -8,7 +8,6 @@ import org.bukkit.entity.Player;
 
 import com.daytonjwatson.hardcore.config.ConfigValues;
 import com.daytonjwatson.hardcore.managers.StatsManager;
-import com.daytonjwatson.hardcore.utils.Util;
 
 public class TabUtil {
 

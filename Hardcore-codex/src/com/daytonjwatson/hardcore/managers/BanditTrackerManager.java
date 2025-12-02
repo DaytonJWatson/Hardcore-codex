@@ -16,10 +16,10 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryType;
-import org.bukkit.inventory.ItemFlag;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.ItemFlag;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.CompassMeta;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -29,7 +29,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import com.daytonjwatson.hardcore.HardcorePlugin;
 import com.daytonjwatson.hardcore.config.ConfigValues;
-import com.daytonjwatson.hardcore.managers.StatsManager;
 import com.daytonjwatson.hardcore.utils.MessageStyler;
 import com.daytonjwatson.hardcore.utils.Util;
 

@@ -17,13 +17,8 @@ commands:
   admin:
     description: Hardcore admin tooling.
     usage: /admin <action>
-    aliases: [hardcoreadmin, hcoreadmin]
-    permission: hardcore.admin
+    aliases: [a]
   bandittracker:
     description: Recalibrates your crafted bandit tracker and shows its recipe.
     aliases: [trackbandit, huntbandit]
     usage: /bandittracker [recipe]
-permissions:
-  hardcore.admin:
-    description: Allows access to Hardcore admin tooling (still requires listing in admins.yml).
-    default: false

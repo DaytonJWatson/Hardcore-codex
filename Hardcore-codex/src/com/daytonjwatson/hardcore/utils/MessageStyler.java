@@ -4,8 +4,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 
-import com.daytonjwatson.hardcore.utils.Util;
-
 public final class MessageStyler {
 
     private static final String BAR = ChatColor.DARK_GRAY + "" + ChatColor.STRIKETHROUGH + "------------------------------";
