@@ -73,7 +73,7 @@ public final class ConfigValues {
     }
 
     public static boolean giveGuideBookOnFirstJoin() {
-        return config.getBoolean("server.first-join.guide-book.give-on-first-join", true);
+        return config.getBoolean("server.first-join.guide-book.give-on-first-join", false);
     }
 
     public static boolean randomSpawnEnabled() {

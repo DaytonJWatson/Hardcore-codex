@@ -25,7 +25,7 @@ server:
       radius: 5000   # matches TeleportUtil.RADIUS
       max-attempts: 40
     guide-book:
-      give-on-first-join: true
+      give-on-first-join: false
       command-fallback: true  # whether /guide still grants the book
     join-message: "&7%player% has &ajoined &7for the first time!"
   returning:
@@ -166,17 +166,17 @@ content:
 
   help:
     title: "Hardcore Help"
-      lines:
-        - "One-Life Server: &cDeath = Permanent Ban"
-        - "PvP & Griefing allowed (but frowned upon)."
-        - "Stealing allowed. No land claiming or protection."
-        - "Useful Commands:"
-        - "&c/guide &7- Hardcore survival guide"
-        - "&c/help &7- Show this help menu"
-        - "&c/rules &7- Hardcore server rules"
-        - "&c/stats &7- View player stats"
-        - "&c/bandittracker &7- Track the nearest bandit"
-        - "&4Play cautiously. You only get one life."
+    lines:
+      - "One-Life Server: &cDeath = Permanent Ban"
+      - "PvP & Griefing allowed (but frowned upon)."
+      - "Stealing allowed. No land claiming or protection."
+      - "Useful Commands:"
+      - "&c/guide &7- Hardcore survival guide"
+      - "&c/help &7- Show this help menu"
+      - "&c/rules &7- Hardcore server rules"
+      - "&c/stats &7- View player stats"
+      - "&c/bandittracker &7- Track the nearest bandit"
+      - "&4Play cautiously. You only get one life."
 
   rules:
     title: "Server Rules"
