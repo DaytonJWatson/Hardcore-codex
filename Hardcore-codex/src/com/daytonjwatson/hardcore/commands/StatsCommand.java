@@ -58,14 +58,11 @@ public class StatsCommand implements CommandExecutor, TabCompleter {
         StatsManager stats = StatsManager.get();
 
         int kills = stats.getKills(targetUuid);
-        int deaths = stats.getDeaths(targetUuid);
         long lastDeath = stats.getLastDeath(targetUuid);
         boolean isAlive = (lastDeath == 0L);
         long lifeMillis = stats.getLifeLengthMillis(targetUuid, isAlive);
 
         String lifeFormatted = formatDuration(lifeMillis);
-
-        double kd = (deaths == 0 ? kills : (double) kills / deaths);
 
         boolean isBandit = stats.isBandit(targetUuid);
         boolean isHero   = stats.isHero(targetUuid);
@@ -74,23 +71,49 @@ public class StatsCommand implements CommandExecutor, TabCompleter {
         int banditHunterKills  = stats.getBanditHunterKills(targetUuid);    // bandits slain while you were a bandit (redemption)
         int heroBanditKills    = stats.getHeroBanditKills(targetUuid);      // bandits slain while NOT a bandit (hero progress)
 
-        sender.sendMessage(ChatColor.DARK_RED + "" + ChatColor.BOLD + "========== HARDCORE STATS ==========");
-        sender.sendMessage(ChatColor.GOLD + "Player: " + ChatColor.GRAY + targetName);
-        sender.sendMessage(ChatColor.GOLD + "Status: " +
-                (isAlive ? ChatColor.GREEN + "Alive" : ChatColor.RED + "Dead"));
-        sender.sendMessage(ChatColor.GOLD + "Life length: " + ChatColor.GRAY + lifeFormatted);
-        sender.sendMessage(ChatColor.GOLD + "Kills: " + ChatColor.GRAY + kills);
-        sender.sendMessage(ChatColor.GOLD + "Deaths: " + ChatColor.GRAY + deaths);
-        sender.sendMessage(ChatColor.GOLD + "K/D: " + ChatColor.GRAY + String.format("%.2f", kd));
+        String bar = ChatColor.DARK_GRAY.toString() + ChatColor.STRIKETHROUGH + "------------------------------";
 
-        sender.sendMessage(ChatColor.GOLD + "Bandit: " +
-                (isBandit ? ChatColor.DARK_RED + "Yes" : ChatColor.GREEN + "No"));
-        sender.sendMessage(ChatColor.GOLD + "Hero: " +
-                (isHero ? ChatColor.GREEN + "Yes" : ChatColor.DARK_RED + "No"));
+        String statusText = isAlive ? ChatColor.GREEN + "ALIVE" : ChatColor.RED + "DEAD";
+        String banditText = isBandit ? ChatColor.DARK_RED + "YES" : ChatColor.GREEN + "NO";
+        String heroText   = isHero ? ChatColor.GREEN + "YES" : ChatColor.DARK_RED + "NO";
 
-        sender.sendMessage(ChatColor.GOLD + "Bandit kills (unfair kills): " + ChatColor.GRAY + banditKills);
-        sender.sendMessage(ChatColor.GOLD + "Bandits slain as Bandit (redemption): " + ChatColor.GRAY + banditHunterKills);
-        sender.sendMessage(ChatColor.GOLD + "Bandits slain as Non-Bandit (Hero progress): " + ChatColor.GRAY + heroBanditKills);
+        // Same number of lines as previous version, just cleaner styling
+        sender.sendMessage(bar);
+        sender.sendMessage(
+                ChatColor.DARK_RED + "" + ChatColor.BOLD + "☠ HARDCORE STATS ☠ " +
+                ChatColor.DARK_GRAY + "» " +
+                ChatColor.GOLD + targetName
+        );
+        sender.sendMessage(
+                ChatColor.DARK_GRAY + "Status: " +
+                ChatColor.DARK_GRAY + "[" + statusText + ChatColor.DARK_GRAY + "]"
+        );
+        sender.sendMessage(
+                ChatColor.DARK_GRAY + "⟡ " + ChatColor.GOLD + "Life" + ChatColor.DARK_GRAY + ": " +
+                ChatColor.WHITE + lifeFormatted +
+                ChatColor.DARK_GRAY + "  |  " +
+                ChatColor.GOLD + "Kills" + ChatColor.DARK_GRAY + ": " +
+                ChatColor.WHITE + kills
+        );
+        sender.sendMessage(
+                ChatColor.DARK_GRAY + "⟡ " + ChatColor.GOLD + "Bandit" + ChatColor.DARK_GRAY + ": " +
+                banditText +
+                ChatColor.DARK_GRAY + "  |  " +
+                ChatColor.GOLD + "Hero" + ChatColor.DARK_GRAY + ": " +
+                heroText
+        );
+        sender.sendMessage(
+                ChatColor.DARK_GRAY + "⟡ " + ChatColor.GOLD + "Unfair Kills" + ChatColor.DARK_GRAY + ": " +
+                ChatColor.WHITE + banditKills +
+                ChatColor.DARK_GRAY + "  |  " +
+                ChatColor.GOLD + "Redeem Kills" + ChatColor.DARK_GRAY + ": " +
+                ChatColor.WHITE + banditHunterKills
+        );
+        sender.sendMessage(
+                ChatColor.DARK_GRAY + "⟡ " + ChatColor.GOLD + "Hero kills" + ChatColor.DARK_GRAY + ": " +
+                ChatColor.WHITE + heroBanditKills
+        );
+        sender.sendMessage(bar);
 
         return true;
     }
