@@ -3,15 +3,12 @@ package com.daytonjwatson.hardcore.managers;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 
+import com.daytonjwatson.hardcore.config.ConfigValues;
 import com.daytonjwatson.hardcore.utils.GearPowerUtil;
 import com.daytonjwatson.hardcore.utils.GearPowerUtil.CombatSnapshot;
 import com.daytonjwatson.hardcore.utils.MessageStyler;
 
 public class BanditManager {
-
-    private static final int MIN_KILLER_GEAR_POWER = 6;
-    private static final int MIN_BASE_GEAR_GAP = 4;
-    private static final double MIN_EFFECTIVE_TOTAL_GAP = 3.0;
 
     /**
      * @return true  → killer JUST became a bandit this kill
@@ -34,9 +31,9 @@ public class BanditManager {
         double effectiveDiff = killerTotal - victimTotal;
 
         // Basic requirements to count as unfair
-        if (killerGearPower < MIN_KILLER_GEAR_POWER) return false;
-        if (baseGearDiff < MIN_BASE_GEAR_GAP) return false;
-        if (effectiveDiff < MIN_EFFECTIVE_TOTAL_GAP) return false;
+        if (killerGearPower < ConfigValues.minKillerGearPower()) return false;
+        if (baseGearDiff < ConfigValues.minBaseGearGap()) return false;
+        if (effectiveDiff < ConfigValues.minEffectiveTotalGap()) return false;
 
         // Unfair kill confirmed
         StatsManager stats = StatsManager.get();
@@ -49,13 +46,13 @@ public class BanditManager {
         if (!nowBandit) {
             MessageStyler.sendPanel(killer, "Bandit Warning",
                     ChatColor.GRAY + "You are gaining a reputation as a bandit.",
-                    ChatColor.GRAY + "Unfair kills: " + ChatColor.RED + banditKills + ChatColor.GRAY + "/3");
+                    ChatColor.GRAY + "Unfair kills: " + ChatColor.RED + banditKills + ChatColor.GRAY + "/" + ConfigValues.banditKillThreshold());
             return false;
         }
 
         // IMPORTANT:
         // Only return TRUE when the killer *just became* a bandit.
-        return banditKills == 3;
+        return banditKills == ConfigValues.banditKillThreshold();
     }
 
     private BanditManager() {}

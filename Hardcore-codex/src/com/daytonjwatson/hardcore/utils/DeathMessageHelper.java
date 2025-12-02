@@ -1,5 +1,6 @@
 package com.daytonjwatson.hardcore.utils;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -7,18 +8,14 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 
+import com.daytonjwatson.hardcore.config.ConfigValues;
 import com.daytonjwatson.hardcore.managers.BanditManager;
 import com.daytonjwatson.hardcore.managers.StatsManager;
 import com.daytonjwatson.hardcore.utils.GearPowerUtil.CombatSnapshot;
 
 public final class DeathMessageHelper {
 
-    // Mirror BanditManager thresholds so "UNFAIR" matches bandit logic
-    private static final int MIN_KILLER_GEAR_POWER = 6;
-    private static final int MIN_BASE_GEAR_GAP    = 4;
-    private static final double MIN_EFFECTIVE_TOTAL_GAP = 3.0;
-
-    private static final String[] FAIR_MESSAGES = {
+    private static final List<String> DEFAULT_FAIR_MESSAGES = List.of(
             "%KILLER% outplayed %VICTIM%",
             "%KILLER% defeated %VICTIM% in a fair fight",
             "%KILLER% bested %VICTIM%",
@@ -29,9 +26,9 @@ public final class DeathMessageHelper {
             "%KILLER% narrowly clutched up against %VICTIM%",
             "%KILLER% showed solid mechanics against %VICTIM%",
             "%KILLER% outmaneuvered %VICTIM% in close combat"
-    };
+    );
 
-    private static final String[] UNFAIR_MESSAGES = {
+    private static final List<String> DEFAULT_UNFAIR_MESSAGES = List.of(
             "%KILLER% cowardly murdered %VICTIM%",
             "%KILLER% steamrolled %VICTIM% with overwhelming gear",
             "%KILLER% abused their gear advantage against %VICTIM%",
@@ -42,9 +39,9 @@ public final class DeathMessageHelper {
             "%KILLER% farmed free stats off %VICTIM%",
             "%KILLER% crushed any hope %VICTIM% had of surviving",
             "%KILLER% reminded %VICTIM% that life isn’t fair"
-    };
+    );
 
-    private static final String[] HERO_VS_BANDIT_MESSAGES = {
+    private static final List<String> DEFAULT_HERO_VS_BANDIT_MESSAGES = List.of(
             "%KILLER% hunted down bandit %VICTIM%",
             "%KILLER% brought justice to bandit %VICTIM%",
             "%KILLER% purged the notorious bandit %VICTIM%",
@@ -55,9 +52,9 @@ public final class DeathMessageHelper {
             "%KILLER% sent bandit %VICTIM% to their final respawn",
             "%KILLER% made an example out of bandit %VICTIM%",
             "%KILLER% delivered righteous punishment to bandit %VICTIM%"
-    };
+    );
 
-    private static final String[] REGULAR_VS_BANDIT_MESSAGES = {
+    private static final List<String> DEFAULT_REGULAR_VS_BANDIT_MESSAGES = List.of(
             "%KILLER% took down bandit %VICTIM%",
             "%KILLER% got revenge on bandit %VICTIM%",
             "%KILLER% clapped bandit %VICTIM%",
@@ -68,9 +65,9 @@ public final class DeathMessageHelper {
             "%KILLER% reminded bandit %VICTIM% that prey can bite back",
             "%KILLER% outsmarted bandit %VICTIM%",
             "%KILLER% sent bandit %VICTIM% back to the lobby"
-    };
+    );
 
-    private static final String[] BANDIT_VS_BANDIT_MESSAGES = {
+    private static final List<String> DEFAULT_BANDIT_VS_BANDIT_MESSAGES = List.of(
             "%KILLER% turned on fellow bandit %VICTIM%",
             "%KILLER% betrayed bandit %VICTIM%",
             "%KILLER% removed rival bandit %VICTIM% from the game",
@@ -81,7 +78,7 @@ public final class DeathMessageHelper {
             "%KILLER% ended the partnership with bandit %VICTIM% permanently",
             "%KILLER% showed no loyalty to bandit %VICTIM%",
             "%KILLER% used bandit %VICTIM% as a stepping stone"
-    };
+    );
 
     private DeathMessageHelper() {
     }
@@ -124,9 +121,9 @@ public final class DeathMessageHelper {
 
         boolean unfair =
                 !victimWasBandit &&
-                killerSnap.gearPower >= MIN_KILLER_GEAR_POWER &&
-                baseGearDiff         >= MIN_BASE_GEAR_GAP &&
-                effectiveDiff        >= MIN_EFFECTIVE_TOTAL_GAP;
+                killerSnap.gearPower >= ConfigValues.minKillerGearPower() &&
+                baseGearDiff         >= ConfigValues.minBaseGearGap() &&
+                effectiveDiff        >= ConfigValues.minEffectiveTotalGap();
 
         String killerDisplay = ChatColor.RED   + killerPrefix + killer.getName() + ChatColor.GRAY;
         String victimDisplay = ChatColor.WHITE + victimPrefix + victim.getName() + ChatColor.GRAY;
@@ -134,16 +131,16 @@ public final class DeathMessageHelper {
         String template;
         if (victimWasBandit) {
             if (killerIsBanditNow) {
-                template = pickRandom(BANDIT_VS_BANDIT_MESSAGES);
+                template = pickRandom(ConfigValues.deathMessages("bandit-vs-bandit", DEFAULT_BANDIT_VS_BANDIT_MESSAGES));
             } else if (killerIsHeroNow) {
-                template = pickRandom(HERO_VS_BANDIT_MESSAGES);
+                template = pickRandom(ConfigValues.deathMessages("hero-vs-bandit", DEFAULT_HERO_VS_BANDIT_MESSAGES));
             } else {
-                template = pickRandom(REGULAR_VS_BANDIT_MESSAGES);
+                template = pickRandom(ConfigValues.deathMessages("regular-vs-bandit", DEFAULT_REGULAR_VS_BANDIT_MESSAGES));
             }
         } else if (unfair) {
-            template = pickRandom(UNFAIR_MESSAGES);
+            template = pickRandom(ConfigValues.deathMessages("unfair", DEFAULT_UNFAIR_MESSAGES));
         } else {
-            template = pickRandom(FAIR_MESSAGES);
+            template = pickRandom(ConfigValues.deathMessages("fair", DEFAULT_FAIR_MESSAGES));
         }
 
         return template
@@ -165,23 +162,24 @@ public final class DeathMessageHelper {
         if (killerWasBandit) {
             boolean lostBandit = stats.handleBanditKill(killerId);
             int hunterKills = stats.getBanditHunterKills(killerId);
-            int needed = Math.max(0, 3 - hunterKills);
+            int redemptionNeeded = ConfigValues.redemptionKills();
+            int needed = Math.max(0, redemptionNeeded - hunterKills);
 
             if (lostBandit) {
                 killer.sendMessage(ChatColor.GREEN +
-                        "You have redeemed yourself by slaying 3 bandits. Your bandit status has been removed.");
+                        "You have redeemed yourself by slaying " + redemptionNeeded + " bandits. Your bandit status has been removed.");
 
                 Bukkit.broadcastMessage(
                         ChatColor.DARK_GRAY + "[" +
                                 ChatColor.GREEN + "" + ChatColor.BOLD + "REDEEMED" +
                                 ChatColor.DARK_GRAY + "] " +
                                 ChatColor.GREEN + killer.getName() +
-                                ChatColor.GRAY + " has redeemed themselves by slaying 3 bandits and is no longer a " +
+                                ChatColor.GRAY + " has redeemed themselves by slaying " + redemptionNeeded + " bandits and is no longer a " +
                                 ChatColor.DARK_RED + "Bandit" + ChatColor.GRAY + "."
                 );
             } else {
                 killer.sendMessage(ChatColor.YELLOW + "Bandit redemption progress: " +
-                        ChatColor.GOLD + hunterKills + "/3");
+                        ChatColor.GOLD + hunterKills + "/" + redemptionNeeded);
                 killer.sendMessage(ChatColor.GRAY + "You need " +
                         ChatColor.RED + needed +
                         ChatColor.GRAY + " more bandit kills to lose your bandit status.");
@@ -189,11 +187,12 @@ public final class DeathMessageHelper {
         } else {
             boolean becameHero = stats.handleHeroBanditKill(killerId);
             int heroKills = stats.getHeroBanditKills(killerId);
-            int needed = Math.max(0, 3 - heroKills);
+            int heroNeeded = ConfigValues.heroKills();
+            int needed = Math.max(0, heroNeeded - heroKills);
 
             if (becameHero) {
                 killer.sendMessage(ChatColor.GOLD + "" + ChatColor.BOLD +
-                        "You are now recognized as a HERO for slaying 3 bandits!");
+                        "You are now recognized as a HERO for slaying " + heroNeeded + " bandits!");
 
                 Bukkit.broadcastMessage(
                         ChatColor.DARK_GRAY + "[" +
@@ -202,11 +201,11 @@ public final class DeathMessageHelper {
                                 ChatColor.GOLD + killer.getName() +
                                 ChatColor.GRAY + " has become a " +
                                 ChatColor.GOLD + "" + ChatColor.BOLD + "HERO" +
-                                ChatColor.GRAY + " by defeating 3 bandits!"
+                                ChatColor.GRAY + " by defeating " + heroNeeded + " bandits!"
                 );
             } else if (!killerWasHero && !stats.isHero(killerId)) {
                 killer.sendMessage(ChatColor.YELLOW + "Hero progress: " +
-                        ChatColor.GOLD + heroKills + "/3");
+                        ChatColor.GOLD + heroKills + "/" + heroNeeded);
                 killer.sendMessage(ChatColor.GRAY + "You need " +
                         ChatColor.GOLD + needed +
                         ChatColor.GRAY + " more bandit kills to become a Hero.");
@@ -261,7 +260,7 @@ public final class DeathMessageHelper {
         }
     }
 
-    private static String pickRandom(String[] pool) {
-        return pool[ThreadLocalRandom.current().nextInt(pool.length)];
+    private static String pickRandom(List<String> pool) {
+        return pool.get(ThreadLocalRandom.current().nextInt(pool.size()));
     }
 }
