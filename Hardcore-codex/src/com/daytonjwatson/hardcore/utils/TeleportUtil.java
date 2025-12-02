@@ -11,6 +11,8 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Player;
 
+import com.daytonjwatson.hardcore.utils.MessageStyler;
+
 public class TeleportUtil {
 	private static final int RADIUS = 5000;
     private static final int MAX_ATTEMPTS = 40;
@@ -47,7 +49,8 @@ public class TeleportUtil {
             return;
         }
 
-        player.sendMessage(ChatColor.RED + "Could not find a safe random location. Try again.");
+        MessageStyler.sendPanel(player, "Teleport Failed",
+                ChatColor.RED + "Could not find a safe random location. Try again.");
     }
 
     private static boolean isSurfaceSafe(Block ground, Block feet, Block head) {
