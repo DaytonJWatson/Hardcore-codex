@@ -663,33 +663,11 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
     private void sendAdminHelp(CommandSender sender, String label) {
         MessageStyler.sendPanel(sender, "Hardcore Admin Help",
-                "&6Core",
-                "&e/" + label + " help &7- Show this menu.",
-                "&e/" + label + " list &7- View configured admins.",
-                "&e/" + label + " status <player> &7- Check admin, mute, ban, and freeze flags.",
-                "&e/" + label + " log [admin] [limit] &7- Review recent admin command usage.",
-                "",
-                "&6Moderation",
-                "&e/" + label + " ban <player> [duration] [reason] &7- Temp or perm ban a player.",
-                "&e/" + label + " unban <player> &7- Remove a ban if present.",
-                "&e/" + label + " mute <player> [duration] [reason] &7- Silence a player's chat.",
-                "&e/" + label + " unmute <player> &7- Lift a mute.",
-                "&e/" + label + " warn <player> [reason] &7- Deliver an on-screen warning.",
-                "&e/" + label + " freeze <player> [reason] &7- Halt a player while you review.",
-                "&e/" + label + " unfreeze <player> &7- Release a frozen player.",
-                "&e/" + label + " kick <player> [reason] &7- Kick a player from the server.",
-                "&e/" + label + " clearchat [reason] &7- Clear global chat with a short note.",
-                "",
-                "&6Player Insight",
-                "&e/" + label + " info <player> &7- View UUID, IP, position, and session stats.",
-                "&e/" + label + " invsee <player> &7- Inspect a player's inventory.",
-                "&e/" + label + " endersee <player> &7- Inspect a player's ender chest.",
-                "",
-                "&6Mobility & Support",
-                "&e/" + label + " tp <player> [target] &7- Teleport to or move a player to another.",
-                "&e/" + label + " tphere <player> &7- Teleport a player to you.",
-                "&e/" + label + " heal <player> &7- Fully heal a player.",
-                "&e/" + label + " feed <player> &7- Restore a player's hunger.");
+                "&6Core: &e/" + label + " list&7 (admins), &e/" + label + " status <p>&7 (flags), &e/" + label + " log [admin] [limit]&7 (recent), &e/" + label + " help",
+                "&6Moderation: &e/" + label + " ban <p> [dur] [reason]&7, &e/" + label + " unban <p>&7, &e/" + label + " mute <p> [dur] [reason]&7, &e/" + label + " unmute <p>&7, &e/" + label + " warn <p> [reason]",
+                "&6Moderation (cont.): &e/" + label + " freeze <p> [reason]&7, &e/" + label + " unfreeze <p>&7, &e/" + label + " kick <p> [reason]&7, &e/" + label + " clearchat [reason]",
+                "&6Insight: &e/" + label + " info <p>&7 (UUID/IP/pos), &e/" + label + " invsee <p>&7, &e/" + label + " endersee <p>",
+                "&6Support: &e/" + label + " tp <p> [target]&7, &e/" + label + " tphere <p>&7, &e/" + label + " heal <p>&7, &e/" + label + " feed <p>");
     }
 
     private Duration parseDuration(String raw) {
