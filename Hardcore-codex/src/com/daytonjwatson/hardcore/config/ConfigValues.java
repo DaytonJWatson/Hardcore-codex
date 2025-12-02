@@ -2,7 +2,10 @@ package com.daytonjwatson.hardcore.config;
 
 import java.util.List;
 
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.Registry;
 import org.bukkit.Sound;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -86,6 +89,11 @@ public final class ConfigValues {
 
     public static Sound deathSound() {
         String soundName = config.getString("server.sounds.death", "ENTITY_WITHER_DEATH");
+        Sound resolved = Registry.SOUNDS.get(NamespacedKey.minecraft(soundName.toLowerCase()));
+        if (resolved != null) {
+            return resolved;
+        }
+
         try {
             return Sound.valueOf(soundName);
         } catch (IllegalArgumentException ex) {
@@ -207,7 +215,7 @@ public final class ConfigValues {
     }
 
     public static String translateColor(String value) {
-        return HardcorePlugin.getInstance() == null ? value : HardcorePlugin.getInstance().getServer().getUnsafe().legacyColorsToHex(value);
+        return HardcorePlugin.getInstance() == null ? value : ChatColor.translateAlternateColorCodes('&', value);
     }
 
     public static Material materialOrNull(String name) {
