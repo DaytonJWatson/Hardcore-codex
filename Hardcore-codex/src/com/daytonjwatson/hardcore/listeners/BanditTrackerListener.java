@@ -32,11 +32,20 @@ public class BanditTrackerListener implements Listener {
         }
 
         Player player = event.getPlayer();
+
+        if (BanditTrackerManager.isOnCooldown(player)) {
+            long remaining = BanditTrackerManager.getRemainingCooldownSeconds(player);
+            MessageStyler.sendPanel(player, "Bandit Tracker", ChatColor.RED + "Tracker cooling down.",
+                    ChatColor.GRAY + "Try again in " + ChatColor.WHITE + remaining + "s" + ChatColor.GRAY + ".");
+            return;
+        }
+
         boolean found = BanditTrackerManager.updateTracker(player, item);
+        BanditTrackerManager.markTrackerUsed(player);
 
         if (found) {
-            MessageStyler.sendPanel(player, "Bandit Tracker", ChatColor.GRAY + "Target refreshed.",
-                    ChatColor.GRAY + "Follow the compass to reach the bandit.");
+            MessageStyler.sendPanel(player, "Bandit Tracker", ChatColor.GRAY + "Compass locked onto a nearby bandit.",
+                    ChatColor.GRAY + "Needle points to their last known location; stay alert.");
         } else {
             MessageStyler.sendPanel(player, "Bandit Tracker", ChatColor.RED + "No bandits online to track.");
         }

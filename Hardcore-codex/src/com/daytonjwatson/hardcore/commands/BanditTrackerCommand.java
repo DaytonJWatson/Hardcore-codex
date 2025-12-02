@@ -23,6 +23,14 @@ public class BanditTrackerCommand implements CommandExecutor {
 
         Player player = (Player) sender;
 
+        if (BanditTrackerManager.isOnCooldown(player)) {
+            long remaining = BanditTrackerManager.getRemainingCooldownSeconds(player);
+            MessageStyler.sendPanel(player, "Bandit Tracker",
+                    ChatColor.RED + "Tracker recalibrating...",
+                    ChatColor.GRAY + "Try again in " + ChatColor.WHITE + remaining + "s" + ChatColor.GRAY + ".");
+            return true;
+        }
+
         ItemStack tracker = BanditTrackerManager.findTracker(player);
         boolean createdNew = false;
 
@@ -41,11 +49,12 @@ public class BanditTrackerCommand implements CommandExecutor {
         }
 
         boolean foundTarget = BanditTrackerManager.updateTracker(player, tracker);
+        BanditTrackerManager.markTrackerUsed(player);
 
         if (foundTarget) {
             MessageStyler.sendPanel(player, "Bandit Tracker",
-                    ChatColor.GRAY + "Tracking the nearest " + ChatColor.DARK_RED + "Bandit" + ChatColor.GRAY + ".",
-                    ChatColor.GRAY + "Follow your compass needle to hunt them down.");
+                    ChatColor.GRAY + "Compass tuned to the closest bandit's trail.",
+                    ChatColor.GRAY + "Follow the needle; it points to their last known heading.");
         } else {
             MessageStyler.sendPanel(player, "Bandit Tracker",
                     ChatColor.RED + "No bandits are currently online to track.");
