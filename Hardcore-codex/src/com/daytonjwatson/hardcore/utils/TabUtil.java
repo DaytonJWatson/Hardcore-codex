@@ -1,13 +1,12 @@
 package com.daytonjwatson.hardcore.utils;
 
+import java.util.UUID;
+
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 
 import com.daytonjwatson.hardcore.managers.StatsManager;
-import com.daytonjwatson.hardcore.utils.MessageStyler;
-
-import java.util.UUID;
 
 public class TabUtil {
 
@@ -64,7 +63,7 @@ public class TabUtil {
 
         String header = String.join("\n",
                 MessageStyler.bar(),
-                ChatColor.DARK_RED + "" + ChatColor.BOLD + "☠ HARDCORE CODEX ☠" + ChatColor.DARK_GRAY + " » " + ChatColor.GOLD + "Survive and conquer",
+                ChatColor.DARK_RED + "" + ChatColor.BOLD + "☠ HARDCORE ☠" ,
                 ChatColor.DARK_GRAY + "⟡ " + ChatColor.GOLD + "Online" + ChatColor.DARK_GRAY + ": " + ChatColor.WHITE + online + ChatColor.DARK_GRAY + " / " + ChatColor.WHITE + max,
                 ChatColor.DARK_GRAY + "⟡ " + ChatColor.GOLD + "Unique" + ChatColor.DARK_GRAY + ": " + ChatColor.WHITE + uniquePlayers + ChatColor.DARK_GRAY + "  |  " + ChatColor.GOLD + "Total deaths" + ChatColor.DARK_GRAY + ": " + ChatColor.WHITE + totalDeaths
         );
