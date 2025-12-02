@@ -15,6 +15,10 @@ public class PlayerChatListener implements Listener {
         Player player = event.getPlayer();
         StatsManager stats = StatsManager.get();
 
+        if (stats == null) {
+            return;
+        }
+
         boolean isBandit = stats.isBandit(player.getUniqueId());
         boolean isHero = stats.isHero(player.getUniqueId());
 

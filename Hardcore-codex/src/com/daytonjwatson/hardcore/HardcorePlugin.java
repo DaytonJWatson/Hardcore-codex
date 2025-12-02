@@ -1,5 +1,6 @@
 package com.daytonjwatson.hardcore;
 
+import org.bukkit.command.CommandExecutor;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -40,18 +41,29 @@ public class HardcorePlugin extends JavaPlugin {
         if (StatsManager.get() != null) {
             StatsManager.get().saveData(); // force save on shutdown
         }
+
+        instance = null;
     }
 
     private void registerCommands() {
-    	getCommand("guide").setExecutor(new GuideCommand());
-    	getCommand("help").setExecutor(new HelpCommand());
-    	getCommand("rules").setExecutor(new RulesCommand());
-    	
+        registerCommand("guide", new GuideCommand());
+        registerCommand("help", new HelpCommand());
+        registerCommand("rules", new RulesCommand());
+
         if (getCommand("stats") != null) {
             StatsCommand statsCommand = new StatsCommand();
             getCommand("stats").setExecutor(statsCommand);
             getCommand("stats").setTabCompleter(statsCommand);
         }
+    }
+
+    private void registerCommand(String name, CommandExecutor executor) {
+        if (getCommand(name) == null) {
+            getLogger().warning("Command '" + name + "' is not defined in plugin.yml");
+            return;
+        }
+
+        getCommand(name).setExecutor(executor);
     }
 
     private void registerListeners() {
