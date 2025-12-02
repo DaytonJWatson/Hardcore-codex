@@ -15,6 +15,6 @@ commands:
     description: Shows player stats.
     usage: /stats [player]
   bandittracker:
-    description: Gives a compass that locks onto the nearest bandit.
+    description: Recalibrates your crafted bandit tracker and shows its recipe.
     aliases: [trackbandit, huntbandit]
-    usage: /bandittracker
+    usage: /bandittracker [recipe]
