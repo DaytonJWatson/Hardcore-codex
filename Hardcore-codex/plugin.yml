@@ -1,0 +1,11 @@
+name: Hardcore
+author: DaytonJWatson
+description: 'custom hardcore plugin'
+version: 0.0.1
+api-version: '1.21'
+main: com.daytonjwatson.hardcore.HardcorePlugin
+commands:
+  guide:
+  help:
+  rules:
+  stats:
