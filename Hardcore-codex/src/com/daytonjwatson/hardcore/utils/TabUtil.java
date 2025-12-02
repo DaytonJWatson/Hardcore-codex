@@ -71,7 +71,7 @@ public class TabUtil {
         String footer = String.join("\n",
                 ChatColor.DARK_GRAY + "⟡ " + ChatColor.GOLD + "Status" + ChatColor.DARK_GRAY + ": " + statusText + ChatColor.DARK_GRAY + "  |  " + ChatColor.GOLD + "Role" + ChatColor.DARK_GRAY + ": " + roleText,
                 ChatColor.DARK_GRAY + "⟡ " + ChatColor.GOLD + "Life" + ChatColor.DARK_GRAY + ": " + ChatColor.WHITE + lifeFormatted + ChatColor.DARK_GRAY + "  |  " + ChatColor.GOLD + "K/D" + ChatColor.DARK_GRAY + ": " + ChatColor.WHITE + kills + ChatColor.DARK_GRAY + "/" + ChatColor.WHITE + deaths,
-                ChatColor.DARK_GRAY + "⟡ " + ChatColor.GOLD + "Commands" + ChatColor.DARK_GRAY + ": " + ChatColor.GRAY + "/guide" + ChatColor.DARK_GRAY + " · " + ChatColor.GRAY + "/rules" + ChatColor.DARK_GRAY + " · " + ChatColor.GRAY + "/stats",
+                ChatColor.DARK_GRAY + "⟡ " + ChatColor.GOLD + "Commands" + ChatColor.DARK_GRAY + ": " + ChatColor.GRAY + "/guide" + ChatColor.DARK_GRAY + " · " + ChatColor.GRAY + "/rules" + ChatColor.DARK_GRAY + " · " + ChatColor.GRAY + "/stats" + ChatColor.DARK_GRAY + " · " + ChatColor.GRAY + "/bandittracker",
                 MessageStyler.bar()
         );
 

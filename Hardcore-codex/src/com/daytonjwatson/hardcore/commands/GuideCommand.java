@@ -44,7 +44,8 @@ public class GuideCommand implements CommandExecutor {
                 "Non-bandits who kill bandits gain " + ChatColor.GOLD + "Hero progress" + ChatColor.GRAY + ".",
                 "At " + ChatColor.GOLD + "3 bandits slain as a non-bandit" + ChatColor.GRAY + ", you become a " + ChatColor.GOLD + ChatColor.BOLD + "Hero" + ChatColor.GRAY + ".",
                 "Heroes are marked " + ChatColor.GOLD + "[H]" + ChatColor.GRAY + " and announced.",
-                "You can become a Hero after redeeming from Bandit.");
+                "You can become a Hero after redeeming from Bandit.",
+                "Use " + ChatColor.RED + "/bandittracker" + ChatColor.GRAY + " for a compass that locks onto bandits.");
     }
 
     private void giveGuideBook(Player player) {
@@ -123,7 +124,10 @@ public class GuideCommand implements CommandExecutor {
                 "Redeemed:\n" +
                 "  kill 3 bandits\n" +
                 "  as non-bandit\n" +
-                "  " + ChatColor.GOLD + "→ Hero";
+                "  " + ChatColor.GOLD + "→ Hero\n\n" +
+                ChatColor.DARK_GRAY + "Use " + ChatColor.RED + "/bandittracker\n" +
+                ChatColor.DARK_GRAY + "to get a bandit\n" +
+                ChatColor.DARK_GRAY + "tracking compass.";
 
         meta.addPage(page1, page2, page3, page4);
         book.setItemMeta(meta);
