@@ -35,7 +35,9 @@ public class PlayerChatListener implements Listener {
 
         String format = ConfigValues.chatFormat()
                 .replace("%prefix%", prefix)
-                .replace("%name_color%", ConfigValues.chatNameColor());
+                .replace("%name_color%", ConfigValues.chatNameColor())
+                .replace("%player%", "%1$s")
+                .replace("%message%", "%2$s");
 
         event.setFormat(Util.color(format));
     }
