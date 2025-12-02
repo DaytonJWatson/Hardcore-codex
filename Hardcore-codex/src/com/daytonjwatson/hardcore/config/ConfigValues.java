@@ -235,6 +235,42 @@ public final class ConfigValues {
         return config.getStringList("bandit-tracker.recipe.preview.tracker-lore");
     }
 
+    public static String guideChatTitle() {
+        return config.getString("content.guide.chat-title", "Bandits & Heroes Guide");
+    }
+
+    public static List<String> guideChatLines() {
+        return colorizedList("content.guide.chat-lines");
+    }
+
+    public static String guideBookTitle() {
+        return config.getString("content.guide.book.title", "&6Bandits & Heroes");
+    }
+
+    public static String guideBookAuthor() {
+        return config.getString("content.guide.book.author", "HardcoreGuide");
+    }
+
+    public static List<String> guideBookPages() {
+        return colorizedList("content.guide.book.pages");
+    }
+
+    public static String helpTitle() {
+        return config.getString("content.help.title", "Hardcore Help");
+    }
+
+    public static List<String> helpLines() {
+        return colorizedList("content.help.lines");
+    }
+
+    public static String rulesTitle() {
+        return config.getString("content.rules.title", "Server Rules");
+    }
+
+    public static List<String> rulesLines() {
+        return colorizedList("content.rules.lines");
+    }
+
     public static String translateColor(String value) {
         return HardcorePlugin.getInstance() == null ? value : ChatColor.translateAlternateColorCodes('&', value);
     }
@@ -245,5 +281,13 @@ public final class ConfigValues {
         } catch (Exception ex) {
             return null;
         }
+    }
+
+    private static List<String> colorizedList(String path) {
+        List<String> raw = config.getStringList(path);
+        for (int i = 0; i < raw.size(); i++) {
+            raw.set(i, translateColor(raw.get(i)));
+        }
+        return raw;
     }
 }
