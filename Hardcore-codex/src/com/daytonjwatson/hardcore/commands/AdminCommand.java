@@ -30,7 +30,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> BASE_SUBCOMMANDS = Arrays.asList(
             "help", "add", "remove", "list", "ban", "unban", "kick", "mute", "unmute", "status",
-            "invsee", "endersee", "tp", "tphere", "heal", "feed");
+            "info", "invsee", "endersee", "tp", "tphere", "heal", "feed");
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -87,6 +87,9 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 break;
             case "status":
                 handleStatus(sender, args);
+                break;
+            case "info":
+                handleInfo(sender, args);
                 break;
             case "invsee":
                 handleInvSee(sender, args);
@@ -321,6 +324,49 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         MessageStyler.sendPanel(sender, target.getName() + " status", lines.toArray(new String[0]));
     }
 
+    private void handleInfo(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(Util.color("&cUsage: /admin info <player>"));
+            return;
+        }
+
+        Player target = Bukkit.getPlayer(args[1]);
+        if (target == null) {
+            sender.sendMessage(Util.color("&cPlayer must be online to view connection info."));
+            return;
+        }
+
+        String ip = target.getAddress() != null && target.getAddress().getAddress() != null
+                ? target.getAddress().getAddress().getHostAddress()
+                : "Unknown";
+
+        List<String> lines = new ArrayList<>();
+        lines.add(MessageStyler.bulletLine("Name", org.bukkit.ChatColor.GOLD, target.getName()));
+        lines.add(MessageStyler.bulletLine("UUID", org.bukkit.ChatColor.AQUA, target.getUniqueId().toString()));
+        lines.add(MessageStyler.bulletLine("IP", org.bukkit.ChatColor.YELLOW, ip));
+        lines.add(MessageStyler.bulletLine("World", org.bukkit.ChatColor.GREEN, target.getWorld().getName()));
+        lines.add(MessageStyler.bulletLine("Coords", org.bukkit.ChatColor.GREEN,
+                String.format("%.1f, %.1f, %.1f", target.getLocation().getX(), target.getLocation().getY(),
+                        target.getLocation().getZ())));
+        AttributeInstance maxHealthAttr = target.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+        double maxHealth = maxHealthAttr != null ? maxHealthAttr.getValue() : target.getHealth();
+        lines.add(MessageStyler.bulletLine("Health", org.bukkit.ChatColor.RED,
+                String.format("%.1f / %.1f", target.getHealth(), maxHealth)));
+        lines.add(MessageStyler.bulletLine("Food", org.bukkit.ChatColor.GOLD,
+                target.getFoodLevel() + " (sat: " + String.format("%.1f", target.getSaturation()) + ")"));
+        lines.add(MessageStyler.bulletLine("Gamemode", org.bukkit.ChatColor.AQUA, target.getGameMode().name()));
+        lines.add(MessageStyler.bulletLine("Flight", org.bukkit.ChatColor.LIGHT_PURPLE,
+                target.getAllowFlight() ? "Allowed" : "Not allowed"));
+        lines.add(MessageStyler.bulletLine("Admin", org.bukkit.ChatColor.YELLOW,
+                AdminManager.isAdmin(target) ? "Yes" : "No"));
+        lines.add(MessageStyler.bulletLine("Muted", org.bukkit.ChatColor.YELLOW,
+                MuteManager.isMuted(target.getUniqueId()) ? "Yes" : "No"));
+        lines.add(MessageStyler.bulletLine("Banned", org.bukkit.ChatColor.YELLOW,
+                BanManager.isBanned(target.getUniqueId()) ? "Yes" : "No"));
+
+        MessageStyler.sendPanel(sender, target.getName() + " info", lines.toArray(new String[0]));
+    }
+
     private void handleInvSee(CommandSender sender, String[] args) {
         if (!(sender instanceof Player viewer)) {
             sender.sendMessage(Util.color("&cOnly in-game admins can inspect inventories."));
@@ -455,6 +501,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 "&e/" + label + " mute <player> [duration] [reason] &7- Mute chat for a player.",
                 "&e/" + label + " unmute <player> &7- Lift a mute.",
                 "&e/" + label + " status <player> &7- See admin/mute/ban status.",
+                "&e/" + label + " info <player> &7- Inspect live connection and session details.",
                 "&e/" + label + " invsee <player> &7- Inspect a player's inventory.",
                 "&e/" + label + " endersee <player> &7- Inspect a player's ender chest.",
                 "&e/" + label + " tp <player> &7- Teleport to a player.",
@@ -501,6 +548,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 case "mute":
                 case "ban":
                 case "status":
+                case "info":
                 case "invsee":
                 case "endersee":
                 case "tp":
