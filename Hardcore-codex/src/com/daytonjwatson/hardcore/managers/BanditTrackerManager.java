@@ -286,15 +286,18 @@ public final class BanditTrackerManager {
             inv.setItem(i, filler);
         }
 
-        inv.setItem(10, new ItemStack(Material.REDSTONE));
-        inv.setItem(11, new ItemStack(Material.GOLD_INGOT));
-        inv.setItem(12, new ItemStack(Material.REDSTONE));
+        // Lay out the shaped recipe in a centered 3x3 grid
+        inv.setItem(2, new ItemStack(Material.REDSTONE));
+        inv.setItem(3, new ItemStack(Material.GOLD_INGOT));
+        inv.setItem(4, new ItemStack(Material.REDSTONE));
+
+        inv.setItem(11, new ItemStack(Material.ENDER_PEARL));
+        inv.setItem(12, new ItemStack(Material.COMPASS));
         inv.setItem(13, new ItemStack(Material.ENDER_PEARL));
-        inv.setItem(14, new ItemStack(Material.COMPASS));
-        inv.setItem(15, new ItemStack(Material.ENDER_PEARL));
-        inv.setItem(16, new ItemStack(Material.REDSTONE));
-        inv.setItem(17, new ItemStack(Material.IRON_INGOT));
-        inv.setItem(18, new ItemStack(Material.REDSTONE));
+
+        inv.setItem(20, new ItemStack(Material.REDSTONE));
+        inv.setItem(21, new ItemStack(Material.IRON_INGOT));
+        inv.setItem(22, new ItemStack(Material.REDSTONE));
 
         ItemStack tracker = createTrackerItem();
         ItemMeta trackerMeta = tracker.getItemMeta();
