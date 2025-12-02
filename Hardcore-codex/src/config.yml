@@ -159,10 +159,11 @@ content:
       title: "&cHardcore Guide"
       author: "Hardcore"
       pages:
-        - "&cWelcome to Hardcore\n\n&7You only have one life here.\nIf you die, you're banned until\nthe next map reset.\n\nGet wood, food, and tools fast.\nNight is dangerous—dig in or\ngear up before sunset."
-        - "&cEarly Survival\n\n&7Leave spawn to avoid raided\nareas. Hunt animals for food,\ncraft shields and basic armor,\nand light caves to prevent mobs.\n\nAlways carry blocks, a water\nbucket, and spare food."
-        - "&cPlaying With Others\n\n&7PvP and raiding are allowed.\nBe cautious about alliances.\nHidden bases survive longer;\navoid obvious landmarks.\n\nLog out safely—never mid-fight."
-        - "&cStay Alive\n\n&7Keep Totems, golden apples,\nand potions handy. Scout before\nengaging fights. If things go bad,\nrun and regroup.\n\nGood luck—Hardcore waits for no one."
+        - "&cHardcore Basics\n\n&7One life only—death bans you\nuntil the next map reset.\nPvP, raiding, and stealing are\nallowed, so hide your base and\nlog out safely.\n\nGather wood, food, and a shield\nwithin minutes of joining."
+        - "&cSurvival Flow\n\n&7Leave spawn to avoid stripped\nland. Hunt animals, craft armor,\nand light caves early. Carry\nblocks, a water bucket, and spare\nfood.\n\nUse /rules and /help if you need\na quick reminder of server norms."
+        - "&cBandits\n\n&7Targeting weaker players gives\n\"unfair kills\". After &c3 unfair\nkills&7, you become a &4Bandit&7 and\nget the [B] chat tag. Bandits are\nbroadcast server-wide.\n\nKill &c3 bandits&7 to redeem and\nlose the status."
+        - "&cHeroes\n\n&7While you are not a bandit, defeat\n&c3 bandits&7 to earn the &6Hero&7 role\nwith the [H] tag. Heroes who turn on\nweaker players lose their status and\ncan be demoted back to bandit."
+        - "&cTracking & Commands\n\n&7Craft the Bandit Tracker with the\ncustom recipe (/bandittracker recipe).\nUse the command to recalibrate it\ntoward the nearest bandit; signals\ndrift with distance, so retune often.\n\nUse /guide for this book anytime,\n/rules for conduct, /stats for your\nrecord, and /help for quick tips."
 
   help:
     title: "Hardcore Help"
