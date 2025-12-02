@@ -8,11 +8,13 @@ import com.daytonjwatson.hardcore.commands.GuideCommand;
 import com.daytonjwatson.hardcore.commands.HelpCommand;
 import com.daytonjwatson.hardcore.commands.RulesCommand;
 import com.daytonjwatson.hardcore.commands.StatsCommand;
+import com.daytonjwatson.hardcore.commands.BanditTrackerCommand;
 import com.daytonjwatson.hardcore.config.Config;
 import com.daytonjwatson.hardcore.listeners.PlayerChatListener;
 import com.daytonjwatson.hardcore.listeners.PlayerDeathListener;
 import com.daytonjwatson.hardcore.listeners.PlayerJoinListener;
 import com.daytonjwatson.hardcore.listeners.PlayerQuitListener;
+import com.daytonjwatson.hardcore.listeners.BanditTrackerListener;
 import com.daytonjwatson.hardcore.managers.StatsManager;
 
 public class HardcorePlugin extends JavaPlugin {
@@ -49,6 +51,7 @@ public class HardcorePlugin extends JavaPlugin {
         registerCommand("guide", new GuideCommand());
         registerCommand("help", new HelpCommand());
         registerCommand("rules", new RulesCommand());
+        registerCommand("bandittracker", new BanditTrackerCommand());
 
         if (getCommand("stats") != null) {
             StatsCommand statsCommand = new StatsCommand();
@@ -73,5 +76,6 @@ public class HardcorePlugin extends JavaPlugin {
         pm.registerEvents(new PlayerJoinListener(), this);
         pm.registerEvents(new PlayerDeathListener(), this);
         pm.registerEvents(new PlayerQuitListener(), this);
+        pm.registerEvents(new BanditTrackerListener(), this);
     }
 }
