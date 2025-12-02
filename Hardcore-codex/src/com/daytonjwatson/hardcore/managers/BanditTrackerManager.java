@@ -299,7 +299,7 @@ public final class BanditTrackerManager {
         ItemStack tracker = createTrackerItem();
         ItemMeta trackerMeta = tracker.getItemMeta();
         if (trackerMeta != null) {
-            trackerMeta.addEnchant(Enchantment.LUCK, 1, true);
+            trackerMeta.addEnchant(Enchantment.LUCK_OF_THE_SEA, 1, true);
             trackerMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
             trackerMeta.setLore(List.of(
                     ChatColor.GRAY + "Craft your own tracker.",
