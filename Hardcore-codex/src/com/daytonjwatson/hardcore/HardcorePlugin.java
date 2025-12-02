@@ -20,8 +20,10 @@ import com.daytonjwatson.hardcore.listeners.PlayerQuitListener;
 import com.daytonjwatson.hardcore.listeners.BanditTrackerListener;
 import com.daytonjwatson.hardcore.managers.BanditTrackerManager;
 import com.daytonjwatson.hardcore.managers.AdminManager;
+import com.daytonjwatson.hardcore.managers.BanManager;
 import com.daytonjwatson.hardcore.managers.MuteManager;
 import com.daytonjwatson.hardcore.managers.StatsManager;
+import com.daytonjwatson.hardcore.listeners.PlayerLoginListener;
 
 public class HardcorePlugin extends JavaPlugin {
 
@@ -38,6 +40,7 @@ public class HardcorePlugin extends JavaPlugin {
         Config.setup();
 
         AdminManager.init(this);
+        BanManager.init(this);
         MuteManager.init(this);
 
         // Initialize stats system (loads stats.yml, etc.)
@@ -58,6 +61,7 @@ public class HardcorePlugin extends JavaPlugin {
         }
 
         AdminManager.save();
+        BanManager.save();
         MuteManager.save();
 
         instance = null;
@@ -103,6 +107,7 @@ public class HardcorePlugin extends JavaPlugin {
         PluginManager pm = getServer().getPluginManager();
 
         pm.registerEvents(new PlayerChatListener(), this);
+        pm.registerEvents(new PlayerLoginListener(), this);
         pm.registerEvents(new PlayerJoinListener(), this);
         pm.registerEvents(new PlayerDeathListener(), this);
         pm.registerEvents(new PlayerQuitListener(), this);

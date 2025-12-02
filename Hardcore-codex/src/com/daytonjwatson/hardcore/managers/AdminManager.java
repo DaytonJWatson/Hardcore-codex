@@ -110,6 +110,22 @@ public final class AdminManager {
         return admins;
     }
 
+    public static List<String> getAdminNames() {
+        List<String> admins = new ArrayList<>();
+        ConfigurationSection section = config.getConfigurationSection(ADMINS_NODE);
+        if (section == null) {
+            return admins;
+        }
+
+        Set<String> keys = section.getKeys(false);
+        for (String key : keys) {
+            String name = section.getString(key, "Unknown");
+            admins.add(name);
+        }
+
+        return admins;
+    }
+
     public static void save() {
         if (config == null || file == null) {
             return;

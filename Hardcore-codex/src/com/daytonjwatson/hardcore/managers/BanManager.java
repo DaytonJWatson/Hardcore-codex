@@ -15,26 +15,33 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 import com.daytonjwatson.hardcore.HardcorePlugin;
 
-public final class MuteManager {
+public final class BanManager {
+
+    private static final String BANS_NODE = "bans";
 
     private static FileConfiguration config;
     private static File file;
 
-    private MuteManager() {}
+    private BanManager() {}
 
     public static void init(HardcorePlugin plugin) {
-        file = new File(plugin.getDataFolder(), "mutes.yml");
+        file = new File(plugin.getDataFolder(), "bans.yml");
 
         if (!file.exists()) {
             file.getParentFile().mkdirs();
             config = new YamlConfiguration();
+            config.createSection(BANS_NODE);
             save();
         }
 
         config = YamlConfiguration.loadConfiguration(file);
+        if (!config.isConfigurationSection(BANS_NODE)) {
+            config.createSection(BANS_NODE);
+            save();
+        }
     }
 
-    public static boolean isMuted(UUID uuid) {
+    public static boolean isBanned(UUID uuid) {
         if (!config.contains(path(uuid))) {
             return false;
         }
@@ -63,10 +70,14 @@ public final class MuteManager {
     }
 
     public static String getReason(UUID uuid) {
-        return config.getString(path(uuid, "reason"), "Muted by an administrator.");
+        return config.getString(path(uuid, "reason"), "Banned by an administrator.");
     }
 
-    public static void mute(OfflinePlayer target, String reason, Duration duration, String moderator) {
+    public static String getBanner(UUID uuid) {
+        return config.getString(path(uuid, "by"), "Unknown");
+    }
+
+    public static void ban(OfflinePlayer target, String reason, Duration duration, String moderator) {
         long until = duration == null ? -1L : System.currentTimeMillis() + duration.toMillis();
 
         config.set(path(target.getUniqueId(), "name"), target.getName());
@@ -76,7 +87,7 @@ public final class MuteManager {
         save();
     }
 
-    public static boolean unmute(UUID uuid) {
+    public static boolean unban(UUID uuid) {
         if (!config.contains(path(uuid))) {
             return false;
         }
@@ -86,11 +97,11 @@ public final class MuteManager {
         return true;
     }
 
-    public static List<String> getMutedNames() {
-        List<String> muted = new ArrayList<>();
-        ConfigurationSection section = config.getConfigurationSection("mutes");
+    public static List<String> getBannedNames() {
+        List<String> banned = new ArrayList<>();
+        ConfigurationSection section = config.getConfigurationSection(BANS_NODE);
         if (section == null) {
-            return muted;
+            return banned;
         }
 
         boolean changed = false;
@@ -103,14 +114,14 @@ public final class MuteManager {
             }
 
             String name = section.getString(key + ".name", "Unknown");
-            muted.add(name);
+            banned.add(name);
         }
 
         if (changed) {
             save();
         }
 
-        return muted;
+        return banned;
     }
 
     public static void save() {
@@ -121,12 +132,12 @@ public final class MuteManager {
         try {
             config.save(file);
         } catch (IOException e) {
-            Bukkit.getLogger().warning("Failed to save mutes.yml: " + e.getMessage());
+            Bukkit.getLogger().warning("Failed to save bans.yml: " + e.getMessage());
         }
     }
 
     private static String path(UUID uuid) {
-        return "mutes." + uuid;
+        return BANS_NODE + "." + uuid;
     }
 
     private static String path(UUID uuid, String child) {

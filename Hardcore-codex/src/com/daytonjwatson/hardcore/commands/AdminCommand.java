@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
-import org.bukkit.BanList;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Sound;
@@ -22,6 +21,7 @@ import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
 
 import com.daytonjwatson.hardcore.managers.AdminManager;
+import com.daytonjwatson.hardcore.managers.BanManager;
 import com.daytonjwatson.hardcore.managers.MuteManager;
 import com.daytonjwatson.hardcore.utils.MessageStyler;
 import com.daytonjwatson.hardcore.utils.Util;
@@ -163,23 +163,42 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
     private void handleBan(CommandSender sender, String[] args) {
         if (args.length < 2) {
-            sender.sendMessage(Util.color("&cUsage: /admin ban <player> [reason]"));
+            sender.sendMessage(Util.color("&cUsage: /admin ban <player> [duration] [reason]"));
             return;
         }
 
-        String reason = args.length > 2 ? String.join(" ", Arrays.copyOfRange(args, 2, args.length))
-                : "Banned by Hardcore admin.";
+        Duration duration = null;
+        String reason;
+
+        if (args.length >= 3) {
+            Duration parsed = parseDuration(args[2]);
+            if (parsed != null) {
+                duration = parsed;
+                reason = args.length > 3 ? String.join(" ", Arrays.copyOfRange(args, 3, args.length))
+                        : "Banned for " + Util.formatDuration(duration.toMillis());
+            } else {
+                reason = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
+            }
+        } else {
+            reason = "Banned by Hardcore admin.";
+        }
 
         OfflinePlayer target = Bukkit.getOfflinePlayer(args[1]);
         String targetName = target.getName() == null ? args[1] : target.getName();
-        Bukkit.getBanList(BanList.Type.NAME).addBan(targetName, reason, null, sender.getName());
+        boolean wasBanned = BanManager.isBanned(target.getUniqueId());
+
+        BanManager.ban(target, reason, duration, sender.getName());
 
         if (target.isOnline()) {
-            ((Player) target).kickPlayer(Util.color("&cYou have been banned. Reason: &7" + reason));
+            ((Player) target).kickPlayer(Util.color("&cYou have been banned "
+                    + formatDurationText(duration) + ". Reason: &7" + reason));
         }
 
-        Bukkit.broadcast(Util.color("&4&l[ADMIN]&c " + targetName + " was banned: &7" + reason), "hardcore.admin");
-        sender.sendMessage(Util.color("&aBanned &e" + targetName + "&a."));
+        String durationText = formatDurationText(duration);
+        Bukkit.broadcast(Util.color("&4&l[ADMIN]&c " + targetName + " was banned " + durationText + ": &7" + reason),
+                "hardcore.admin");
+        sender.sendMessage(Util.color("&a" + (wasBanned ? "Updated ban for " : "Banned ") + "&e" + targetName
+                + " &a" + durationText + "."));
     }
 
     private void handleUnban(CommandSender sender, String[] args) {
@@ -188,9 +207,15 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-        String targetName = args[1];
-        Bukkit.getBanList(BanList.Type.NAME).pardon(targetName);
-        sender.sendMessage(Util.color("&aUnbanned &e" + targetName + "&a."));
+        OfflinePlayer target = Bukkit.getOfflinePlayer(args[1]);
+        String targetName = target.getName() == null ? args[1] : target.getName();
+
+        boolean success = BanManager.unban(target.getUniqueId());
+        if (success) {
+            sender.sendMessage(Util.color("&aUnbanned &e" + targetName + "&a."));
+        } else {
+            sender.sendMessage(Util.color("&e" + targetName + " &cis not currently banned."));
+        }
     }
 
     private void handleKick(CommandSender sender, String[] args) {
@@ -270,6 +295,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         OfflinePlayer target = Bukkit.getOfflinePlayer(args[1]);
         UUID uuid = target.getUniqueId();
         boolean isMuted = MuteManager.isMuted(uuid);
+        boolean isBanned = BanManager.isBanned(uuid);
         boolean isAdmin = AdminManager.isAdmin(uuid);
 
         List<String> lines = new ArrayList<>();
@@ -281,6 +307,15 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                     "Muted for " + duration + " - " + MuteManager.getReason(uuid)));
         } else {
             lines.add(MessageStyler.bulletLine("Mute", org.bukkit.ChatColor.GREEN, "Not muted"));
+        }
+
+        if (isBanned) {
+            long remaining = BanManager.getRemainingMillis(uuid);
+            String duration = remaining == -1L ? "Permanent" : Util.formatDuration(remaining);
+            lines.add(MessageStyler.bulletLine("Ban", org.bukkit.ChatColor.RED,
+                    "Banned for " + duration + " - " + BanManager.getReason(uuid)));
+        } else {
+            lines.add(MessageStyler.bulletLine("Ban", org.bukkit.ChatColor.GREEN, "Not banned"));
         }
 
         MessageStyler.sendPanel(sender, target.getName() + " status", lines.toArray(new String[0]));
@@ -414,12 +449,12 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 "&e/" + label + " add <player> &7- Make a player a Hardcore admin.",
                 "&e/" + label + " remove <player> &7- Remove admin access.",
                 "&e/" + label + " list &7- View configured admins.",
-                "&e/" + label + " ban <player> [reason] &7- Permanently ban a player.",
-                "&e/" + label + " unban <player> &7- Remove a ban.",
+                "&e/" + label + " ban <player> [duration] [reason] &7- Temp or perm ban a player.",
+                "&e/" + label + " unban <player> &7- Remove a ban if present.",
                 "&e/" + label + " kick <player> [reason] &7- Kick a player from the server.",
                 "&e/" + label + " mute <player> [duration] [reason] &7- Mute chat for a player.",
                 "&e/" + label + " unmute <player> &7- Lift a mute.",
-                "&e/" + label + " status <player> &7- See admin/mute status.",
+                "&e/" + label + " status <player> &7- See admin/mute/ban status.",
                 "&e/" + label + " invsee <player> &7- Inspect a player's inventory.",
                 "&e/" + label + " endersee <player> &7- Inspect a player's ender chest.",
                 "&e/" + label + " tp <player> &7- Teleport to a player.",
@@ -457,14 +492,35 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             return filterStartingWith(BASE_SUBCOMMANDS, args[0]);
         }
 
-        if (args.length == 2 && Arrays.asList("add", "remove", "ban", "unban", "kick", "mute", "unmute", "status",
-                "invsee", "endersee", "tp", "tphere", "heal", "feed")
-                .contains(args[0].toLowerCase(Locale.ROOT))) {
-            return filterStartingWith(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList(), args[1]);
+        String sub = args[0].toLowerCase(Locale.ROOT);
+
+        if (args.length == 2) {
+            switch (sub) {
+                case "add":
+                case "kick":
+                case "mute":
+                case "ban":
+                case "status":
+                case "invsee":
+                case "endersee":
+                case "tp":
+                case "tphere":
+                case "heal":
+                case "feed":
+                    return filterStartingWith(onlinePlayerNames(), args[1]);
+                case "remove":
+                    return filterStartingWith(AdminManager.getAdminNames(), args[1]);
+                case "unmute":
+                    return filterStartingWith(MuteManager.getMutedNames(), args[1]);
+                case "unban":
+                    return filterStartingWith(BanManager.getBannedNames(), args[1]);
+                default:
+                    return Collections.emptyList();
+            }
         }
 
-        if (args.length == 3 && args[0].equalsIgnoreCase("mute")) {
-            return filterStartingWith(Arrays.asList("10m", "1h", "1d"), args[2]);
+        if (args.length == 3 && (sub.equals("mute") || sub.equals("ban"))) {
+            return filterStartingWith(suggestDurations(), args[2]);
         }
 
         return Collections.emptyList();
@@ -478,5 +534,21 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             }
         }
         return result;
+    }
+
+    private List<String> onlinePlayerNames() {
+        return Bukkit.getOnlinePlayers().stream().map(Player::getName).toList();
+    }
+
+    private List<String> suggestDurations() {
+        return Arrays.asList("10m", "30m", "1h", "12h", "1d", "7d", "30d");
+    }
+
+    private String formatDurationText(Duration duration) {
+        if (duration == null) {
+            return "permanently";
+        }
+
+        return "for " + Util.formatDuration(duration.toMillis());
     }
 }
