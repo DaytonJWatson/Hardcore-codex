@@ -13,9 +13,13 @@ import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.enchantments.Enchantment;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.CompassMeta;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -42,6 +46,8 @@ public final class BanditTrackerManager {
     private static final double MIN_DRIFT = 4.0; // blocks
     private static final Map<UUID, Long> TRACKER_COOLDOWNS = new HashMap<>();
     private static final Random RANDOM = new Random();
+    private static final String RECIPE_TITLE = ChatColor.DARK_RED + "" + ChatColor.BOLD + "Tracker Recipe";
+    private static Inventory recipePreview;
 
     private BanditTrackerManager() {}
 
@@ -62,6 +68,14 @@ public final class BanditTrackerManager {
 
         compass.setItemMeta(baseMeta);
         return compass;
+    }
+
+    public static void openRecipePreview(Player player) {
+        if (recipePreview == null) {
+            recipePreview = buildRecipePreview();
+        }
+
+        player.openInventory(recipePreview);
     }
 
     public static ItemStack findTracker(Player player) {
@@ -254,5 +268,57 @@ public final class BanditTrackerManager {
         lore.add(MessageStyler.bulletText(ChatColor.GRAY + "Signal drifts with range; recalibrate often."));
         lore.add(MessageStyler.bulletText(ChatColor.GRAY + "Cooldown: " + ChatColor.WHITE + "30s" + ChatColor.GRAY + "."));
         return lore;
+    }
+
+    private static Inventory buildRecipePreview() {
+        InventoryHolder holder = new RecipeInventoryHolder();
+        Inventory inv = Bukkit.createInventory(holder, InventoryType.CHEST, RECIPE_TITLE);
+
+        ItemStack filler = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+        ItemMeta fillerMeta = filler.getItemMeta();
+        if (fillerMeta != null) {
+            fillerMeta.setDisplayName(ChatColor.DARK_GRAY + "");
+            fillerMeta.addItemFlags(ItemFlag.values());
+            filler.setItemMeta(fillerMeta);
+        }
+
+        for (int i = 0; i < inv.getSize(); i++) {
+            inv.setItem(i, filler);
+        }
+
+        inv.setItem(10, new ItemStack(Material.REDSTONE));
+        inv.setItem(11, new ItemStack(Material.GOLD_INGOT));
+        inv.setItem(12, new ItemStack(Material.REDSTONE));
+        inv.setItem(13, new ItemStack(Material.ENDER_PEARL));
+        inv.setItem(14, new ItemStack(Material.COMPASS));
+        inv.setItem(15, new ItemStack(Material.ENDER_PEARL));
+        inv.setItem(16, new ItemStack(Material.REDSTONE));
+        inv.setItem(17, new ItemStack(Material.IRON_INGOT));
+        inv.setItem(18, new ItemStack(Material.REDSTONE));
+
+        ItemStack tracker = createTrackerItem();
+        ItemMeta trackerMeta = tracker.getItemMeta();
+        if (trackerMeta != null) {
+            trackerMeta.addEnchant(Enchantment.LUCK, 1, true);
+            trackerMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+            trackerMeta.setLore(List.of(
+                    ChatColor.GRAY + "Craft your own tracker.",
+                    ChatColor.DARK_GRAY + "Sneak-right-click to calibrate."));
+            tracker.setItemMeta(trackerMeta);
+        }
+
+        inv.setItem(24, tracker);
+        return inv;
+    }
+
+    public static boolean isRecipeInventory(Inventory inventory) {
+        return inventory != null && inventory.getHolder() instanceof RecipeInventoryHolder;
+    }
+
+    private static final class RecipeInventoryHolder implements InventoryHolder {
+        @Override
+        public Inventory getInventory() {
+            return recipePreview;
+        }
     }
 }

@@ -5,6 +5,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
@@ -62,5 +64,23 @@ public class BanditTrackerListener implements Listener {
         } else {
             MessageStyler.sendPanel(player, "Bandit Tracker", ChatColor.RED + "No bandits online to track.");
         }
+    }
+
+    @EventHandler
+    public void onRecipeClick(InventoryClickEvent event) {
+        if (!BanditTrackerManager.isRecipeInventory(event.getInventory())) {
+            return;
+        }
+
+        event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onRecipeDrag(InventoryDragEvent event) {
+        if (!BanditTrackerManager.isRecipeInventory(event.getInventory())) {
+            return;
+        }
+
+        event.setCancelled(true);
     }
 }
