@@ -1,6 +1,7 @@
 package com.daytonjwatson.hardcore.config;
 
 import java.util.List;
+import java.util.Locale;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -104,6 +105,20 @@ public final class ConfigValues {
         if (key != null) {
             Sound match = Registry.SOUNDS.get(key);
             if (match != null) return match;
+        }
+
+        Sound legacy = resolveLegacySound(configuredName);
+        if (legacy != null) return legacy;
+
+        return null;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static Sound resolveLegacySound(String configuredName) {
+        try {
+            return Sound.valueOf(configuredName.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ignored) {
+            return null;
         }
 
         return null;
