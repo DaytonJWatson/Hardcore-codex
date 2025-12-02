@@ -21,6 +21,7 @@ public class HelpCommand implements CommandExecutor {
                 ChatColor.RED + "/help " + ChatColor.GRAY + "- Show this help menu",
                 ChatColor.RED + "/rules " + ChatColor.GRAY + "- Hardcore server rules",
                 ChatColor.RED + "/stats " + ChatColor.GRAY + "- View player stats",
+                ChatColor.RED + "/bandittracker " + ChatColor.GRAY + "- Track the nearest bandit",
                 ChatColor.DARK_RED + "Play cautiously. You only get one life.");
 
         return true;
