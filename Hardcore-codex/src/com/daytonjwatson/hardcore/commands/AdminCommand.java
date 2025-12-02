@@ -691,7 +691,10 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             return online;
         }
 
-        OfflinePlayer cached = Bukkit.getOfflinePlayerIfCached(name);
+        OfflinePlayer cached = Arrays.stream(Bukkit.getOfflinePlayers())
+                .filter(player -> player.getName() != null && player.getName().equalsIgnoreCase(name))
+                .findFirst()
+                .orElse(null);
         if (cached != null) {
             return cached;
         }
