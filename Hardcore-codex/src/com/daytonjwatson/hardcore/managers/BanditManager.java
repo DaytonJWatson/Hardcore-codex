@@ -5,6 +5,7 @@ import org.bukkit.entity.Player;
 
 import com.daytonjwatson.hardcore.utils.GearPowerUtil;
 import com.daytonjwatson.hardcore.utils.GearPowerUtil.CombatSnapshot;
+import com.daytonjwatson.hardcore.utils.MessageStyler;
 
 public class BanditManager {
 
@@ -46,8 +47,9 @@ public class BanditManager {
 
         // Player gained an unfair kill but is NOT bandit yet
         if (!nowBandit) {
-            killer.sendMessage(ChatColor.DARK_RED +
-                    "You are gaining a reputation as a bandit (" + banditKills + "/3).");
+            MessageStyler.sendPanel(killer, "Bandit Warning",
+                    ChatColor.GRAY + "You are gaining a reputation as a bandit.",
+                    ChatColor.GRAY + "Unfair kills: " + ChatColor.RED + banditKills + ChatColor.GRAY + "/3");
             return false;
         }
 
