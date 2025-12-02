@@ -25,7 +25,10 @@ public class PlayerDeathListener implements Listener {
         if (killer != null) {
             event.setDeathMessage(null);
 
-            DeathMessageHelper.broadcastDeathMessage(victim, killer, stats);
+            String killMessage = DeathMessageHelper.buildDeathMessage(victim, killer, stats);
+            if (killMessage != null) {
+                killer.getServer().broadcastMessage(killMessage);
+            }
         }
 
         // Update tab prefixes / status (Bandit / Hero etc.)

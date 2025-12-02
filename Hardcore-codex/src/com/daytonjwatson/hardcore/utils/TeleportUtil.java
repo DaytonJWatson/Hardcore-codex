@@ -11,8 +11,6 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Player;
 
-import com.daytonjwatson.hardcore.utils.MessageStyler;
-
 public class TeleportUtil {
 	private static final int RADIUS = 5000;
     private static final int MAX_ATTEMPTS = 40;

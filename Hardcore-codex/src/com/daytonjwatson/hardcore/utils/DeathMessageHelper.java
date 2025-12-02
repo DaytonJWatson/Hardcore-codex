@@ -3,13 +3,13 @@ package com.daytonjwatson.hardcore.utils;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 
 import com.daytonjwatson.hardcore.managers.BanditManager;
 import com.daytonjwatson.hardcore.managers.StatsManager;
 import com.daytonjwatson.hardcore.utils.GearPowerUtil.CombatSnapshot;
-import com.daytonjwatson.hardcore.utils.MessageStyler;
 
 public final class DeathMessageHelper {
 
@@ -86,7 +86,7 @@ public final class DeathMessageHelper {
     private DeathMessageHelper() {
     }
 
-    public static void broadcastDeathMessage(Player victim, Player killer, StatsManager stats) {
+    public static String buildDeathMessage(Player victim, Player killer, StatsManager stats) {
         UUID victimId = victim.getUniqueId();
         UUID killerId = killer.getUniqueId();
 
@@ -146,19 +146,18 @@ public final class DeathMessageHelper {
             template = pickRandom(FAIR_MESSAGES);
         }
 
-        String killLine = template
+        return template
                 .replace("%KILLER%", killerDisplay)
-                .replace("%VICTIM%", victimDisplay);
-
-        String gearLine = ChatColor.RED + "Gear " + ChatColor.WHITE + killerSnap.gearPower
-                + ChatColor.DARK_GRAY + " vs "
-                + ChatColor.GRAY + "Gear " + ChatColor.WHITE + victimSnap.gearPower
-                + ChatColor.DARK_GRAY + ChatColor.BOLD + "  |  " + ChatColor.RESET
-                + ChatColor.RED + "Power " + ChatColor.WHITE + (int) Math.round(killerSnap.totalPower)
-                + ChatColor.DARK_GRAY + " vs "
-                + ChatColor.GRAY + "Power " + ChatColor.WHITE + (int) Math.round(victimSnap.totalPower);
-
-        MessageStyler.broadcastPanel("PvP Kill", killLine, gearLine);
+                .replace("%VICTIM%", victimDisplay)
+                + ChatColor.GRAY + " ("
+                + ChatColor.RED + "Gear " + killerSnap.gearPower
+                + ChatColor.GRAY + " vs "
+                + ChatColor.WHITE + "Gear " + victimSnap.gearPower
+                + ChatColor.GRAY + ", "
+                + ChatColor.RED + "Power " + (int) Math.round(killerSnap.totalPower)
+                + ChatColor.GRAY + " vs "
+                + ChatColor.WHITE + "Power " + (int) Math.round(victimSnap.totalPower)
+                + ChatColor.GRAY + ")";
     }
 
     private static void handleBanditVictim(Player killer, UUID killerId, boolean killerWasBandit,
@@ -169,17 +168,23 @@ public final class DeathMessageHelper {
             int needed = Math.max(0, 3 - hunterKills);
 
             if (lostBandit) {
-                MessageStyler.sendPanel(killer, "Bandit Redemption",
-                        ChatColor.GREEN + "You have redeemed yourself by slaying 3 bandits.",
-                        ChatColor.GRAY + "Your bandit status has been removed.");
+                killer.sendMessage(ChatColor.GREEN +
+                        "You have redeemed yourself by slaying 3 bandits. Your bandit status has been removed.");
 
-                MessageStyler.broadcastPanel("Bandit Redeemed",
-                        ChatColor.GREEN + killer.getName() + ChatColor.GRAY + " has slain 3 bandits and is no longer a " +
-                                ChatColor.DARK_RED + "Bandit" + ChatColor.GRAY + ".");
+                Bukkit.broadcastMessage(
+                        ChatColor.DARK_GRAY + "[" +
+                                ChatColor.GREEN + "" + ChatColor.BOLD + "REDEEMED" +
+                                ChatColor.DARK_GRAY + "] " +
+                                ChatColor.GREEN + killer.getName() +
+                                ChatColor.GRAY + " has redeemed themselves by slaying 3 bandits and is no longer a " +
+                                ChatColor.DARK_RED + "Bandit" + ChatColor.GRAY + "."
+                );
             } else {
-                MessageStyler.sendPanel(killer, "Bandit Redemption",
-                        ChatColor.YELLOW + "Progress: " + ChatColor.GOLD + hunterKills + ChatColor.GRAY + "/3",
-                        ChatColor.GRAY + "You need " + ChatColor.RED + needed + ChatColor.GRAY + " more bandit kills.");
+                killer.sendMessage(ChatColor.YELLOW + "Bandit redemption progress: " +
+                        ChatColor.GOLD + hunterKills + "/3");
+                killer.sendMessage(ChatColor.GRAY + "You need " +
+                        ChatColor.RED + needed +
+                        ChatColor.GRAY + " more bandit kills to lose your bandit status.");
             }
         } else {
             boolean becameHero = stats.handleHeroBanditKill(killerId);
@@ -187,17 +192,24 @@ public final class DeathMessageHelper {
             int needed = Math.max(0, 3 - heroKills);
 
             if (becameHero) {
-                MessageStyler.sendPanel(killer, "Hero Status Achieved",
-                        ChatColor.GOLD + "You are now recognized as a HERO for slaying 3 bandits!");
+                killer.sendMessage(ChatColor.GOLD + "" + ChatColor.BOLD +
+                        "You are now recognized as a HERO for slaying 3 bandits!");
 
-                MessageStyler.broadcastPanel("Hero Ascended",
-                        ChatColor.GOLD + killer.getName() + ChatColor.GRAY + " is now a " + ChatColor.GOLD + ChatColor.BOLD +
-                                "HERO " + ChatColor.GRAY + "after defeating 3 bandits!");
+                Bukkit.broadcastMessage(
+                        ChatColor.DARK_GRAY + "[" +
+                                ChatColor.GOLD + "" + ChatColor.BOLD + "HERO" +
+                                ChatColor.DARK_GRAY + "] " +
+                                ChatColor.GOLD + killer.getName() +
+                                ChatColor.GRAY + " has become a " +
+                                ChatColor.GOLD + "" + ChatColor.BOLD + "HERO" +
+                                ChatColor.GRAY + " by defeating 3 bandits!"
+                );
             } else if (!killerWasHero && !stats.isHero(killerId)) {
-                MessageStyler.sendPanel(killer, "Hero Progress",
-                        ChatColor.YELLOW + "Bandits slain: " + ChatColor.GOLD + heroKills + ChatColor.GRAY + "/3",
-                        ChatColor.GRAY + "You need " + ChatColor.GOLD + needed + ChatColor.GRAY +
-                                " more bandit kills to become a Hero.");
+                killer.sendMessage(ChatColor.YELLOW + "Hero progress: " +
+                        ChatColor.GOLD + heroKills + "/3");
+                killer.sendMessage(ChatColor.GRAY + "You need " +
+                        ChatColor.GOLD + needed +
+                        ChatColor.GRAY + " more bandit kills to become a Hero.");
             }
         }
     }
@@ -214,22 +226,38 @@ public final class DeathMessageHelper {
         boolean killerIsNowHero   = stats.isHero(killerId);
 
         if (killerWasHero && killerIsNowBandit && !killerIsNowHero) {
-            MessageStyler.sendPanel(killer, "Demoted to Bandit",
-                    ChatColor.RED + "You have fallen from HERO to BANDIT for attacking weaker players.");
+            killer.sendMessage(
+                    ChatColor.DARK_RED + "" + ChatColor.BOLD +
+                    "You have fallen from HERO to BANDIT " +
+                    ChatColor.RED + "for repeatedly preying on weaker players."
+            );
 
-            MessageStyler.broadcastPanel("Hero Demoted",
-                    ChatColor.GOLD + killer.getName() + ChatColor.GRAY + " has fallen from " +
-                            ChatColor.GOLD + ChatColor.BOLD + "HERO " + ChatColor.GRAY + "to " +
-                            ChatColor.DARK_RED + ChatColor.BOLD + "BANDIT " + ChatColor.GRAY +
-                            "after repeatedly attacking weaker players.");
+            Bukkit.broadcastMessage(
+                    ChatColor.DARK_GRAY + "[" +
+                            ChatColor.DARK_RED + "" + ChatColor.BOLD + "DEMOTION" +
+                            ChatColor.DARK_GRAY + "] " +
+                            ChatColor.GOLD + killer.getName() +
+                            ChatColor.GRAY + " has fallen from " +
+                            ChatColor.GOLD + "" + ChatColor.BOLD + "HERO " +
+                            ChatColor.GRAY + "to " +
+                            ChatColor.DARK_RED + "" + ChatColor.BOLD + "BANDIT " +
+                            ChatColor.GRAY + "after repeatedly attacking weaker players."
+            );
         } else {
-            MessageStyler.sendPanel(killer, "Bandit Status",
-                    ChatColor.RED + "You are now a BANDIT. Your violent reputation precedes you...");
+            killer.sendMessage(
+                    ChatColor.DARK_RED + "" + ChatColor.BOLD +
+                    "You are now a BANDIT. Your violent reputation precedes you..."
+            );
 
-            MessageStyler.broadcastPanel("New Bandit",
-                    ChatColor.RED + killer.getName() + ChatColor.GRAY + " has become a " +
-                            ChatColor.DARK_RED + ChatColor.BOLD + "BANDIT " + ChatColor.GRAY +
-                            "after repeatedly preying on weaker players.");
+            Bukkit.broadcastMessage(
+                    ChatColor.DARK_GRAY + "[" +
+                            ChatColor.DARK_RED + "" + ChatColor.BOLD + "BANDIT" +
+                            ChatColor.DARK_GRAY + "] " +
+                            ChatColor.RED + killer.getName() +
+                            ChatColor.GRAY + " has become a " +
+                            ChatColor.DARK_RED + "" + ChatColor.BOLD + "BANDIT" +
+                            ChatColor.GRAY + " after repeatedly preying on weaker players."
+            );
         }
     }
 
