@@ -2,9 +2,7 @@ package com.daytonjwatson.hardcore.managers;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
@@ -32,8 +30,6 @@ public final class BanditTrackerManager {
     private static final String TRACKER_TITLE = ChatColor.DARK_RED + "" + ChatColor.BOLD + "Bandit Tracker";
     private static final NamespacedKey TRACKER_KEY = new NamespacedKey(HardcorePlugin.getInstance(), "bandit-tracker");
     private static final DecimalFormat DISTANCE_FORMAT = new DecimalFormat("0.0");
-    private static final long TRACKER_COOLDOWN_MILLIS = 30_000L;
-    private static final Map<UUID, Long> LAST_USE = new HashMap<>();
 
     private BanditTrackerManager() {}
 
@@ -82,20 +78,20 @@ public final class BanditTrackerManager {
     /**
      * Updates the given tracker to point at the closest bandit to the seeker.
      *
-     * @return tracker result describing the chosen target (if any)
+     * @return true if a bandit target was found and applied
      */
-    public static TrackerResult updateTracker(Player seeker, ItemStack tracker) {
+    public static boolean updateTracker(Player seeker, ItemStack tracker) {
         Player target = findNearestBandit(seeker);
 
         if (target == null) {
             writeNoTargetLore(tracker);
-            return TrackerResult.noTarget();
+            return false;
         }
 
         Location targetLoc = target.getLocation();
         applyTargetToCompass(tracker, seeker, target, targetLoc);
         seeker.setCompassTarget(targetLoc);
-        return TrackerResult.targetFound(seeker, targetLoc);
+        return true;
     }
 
     public static Player findNearestBandit(Player seeker) {
@@ -179,71 +175,6 @@ public final class BanditTrackerManager {
         lore.add(MessageStyler.bulletText(ChatColor.GRAY + "Right-click to lock onto"));
         lore.add(MessageStyler.bulletText(ChatColor.GRAY + "the nearest " + ChatColor.DARK_RED + "Bandit" + ChatColor.GRAY + "."));
         lore.add(MessageStyler.bulletText(ChatColor.GRAY + "Compass auto-updates on use."));
-        lore.add(MessageStyler.bulletText(ChatColor.GRAY + "30s cooldown between pings."));
         return lore;
-    }
-
-    public static long getRemainingCooldownMillis(Player player) {
-        UUID uuid = player.getUniqueId();
-        Long lastUse = LAST_USE.get(uuid);
-        if (lastUse == null) {
-            return 0L;
-        }
-
-        long elapsed = System.currentTimeMillis() - lastUse;
-        long remaining = TRACKER_COOLDOWN_MILLIS - elapsed;
-        return Math.max(0L, remaining);
-    }
-
-    public static void markTrackerUsed(Player player) {
-        LAST_USE.put(player.getUniqueId(), System.currentTimeMillis());
-    }
-
-    public static final class TrackerResult {
-
-        private final boolean foundTarget;
-        private final boolean sameWorld;
-        private final double distanceMeters;
-        private final String worldName;
-
-        private TrackerResult(boolean foundTarget, boolean sameWorld, double distanceMeters, String worldName) {
-            this.foundTarget = foundTarget;
-            this.sameWorld = sameWorld;
-            this.distanceMeters = distanceMeters;
-            this.worldName = worldName;
-        }
-
-        public static TrackerResult noTarget() {
-            return new TrackerResult(false, false, -1.0, "");
-        }
-
-        public static TrackerResult targetFound(Player seeker, Location targetLoc) {
-            boolean sameWorld = seeker.getWorld().equals(targetLoc.getWorld());
-            double distance = sameWorld ? seeker.getLocation().distance(targetLoc) : -1.0;
-            return new TrackerResult(true, sameWorld, distance, targetLoc.getWorld().getName());
-        }
-
-        public boolean hasTarget() {
-            return foundTarget;
-        }
-
-        public boolean isSameWorld() {
-            return sameWorld;
-        }
-
-        public double getDistanceMeters() {
-            return distanceMeters;
-        }
-
-        public String getWorldName() {
-            return worldName;
-        }
-
-        public String formatDistance() {
-            if (!hasTarget() || !sameWorld || distanceMeters < 0) {
-                return "?";
-            }
-            return DISTANCE_FORMAT.format(distanceMeters);
-        }
     }
 }

@@ -10,7 +10,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 import com.daytonjwatson.hardcore.managers.BanditTrackerManager;
-import com.daytonjwatson.hardcore.managers.BanditTrackerManager.TrackerResult;
 import com.daytonjwatson.hardcore.utils.MessageStyler;
 
 public class BanditTrackerCommand implements CommandExecutor {
@@ -41,27 +40,12 @@ public class BanditTrackerCommand implements CommandExecutor {
             }
         }
 
-        long remainingCooldown = BanditTrackerManager.getRemainingCooldownMillis(player);
-        if (remainingCooldown > 0) {
-            double secondsLeft = remainingCooldown / 1000.0;
-            MessageStyler.sendPanel(player, "Bandit Tracker", ChatColor.RED + "Recalibrating...",
-                    ChatColor.GRAY + "Try again in " + ChatColor.WHITE
-                            + String.format("%.1f", secondsLeft) + ChatColor.GRAY + "s.");
-            return true;
-        }
+        boolean foundTarget = BanditTrackerManager.updateTracker(player, tracker);
 
-        BanditTrackerManager.markTrackerUsed(player);
-        TrackerResult result = BanditTrackerManager.updateTracker(player, tracker);
-
-        if (result.hasTarget()) {
-            String worldLine = result.isSameWorld()
-                    ? ChatColor.GRAY + "Approx distance: " + ChatColor.WHITE + result.formatDistance()
-                            + ChatColor.GRAY + "m."
-                    : ChatColor.GRAY + "Different world: " + ChatColor.WHITE + result.getWorldName();
-
+        if (foundTarget) {
             MessageStyler.sendPanel(player, "Bandit Tracker",
-                    ChatColor.GRAY + "Compass tuned to the closest " + ChatColor.DARK_RED + "Bandit" + ChatColor.GRAY + ".",
-                    worldLine);
+                    ChatColor.GRAY + "Tracking the nearest " + ChatColor.DARK_RED + "Bandit" + ChatColor.GRAY + ".",
+                    ChatColor.GRAY + "Follow your compass needle to hunt them down.");
         } else {
             MessageStyler.sendPanel(player, "Bandit Tracker",
                     ChatColor.RED + "No bandits are currently online to track.");

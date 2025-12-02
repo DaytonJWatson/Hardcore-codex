@@ -11,7 +11,6 @@ import org.bukkit.inventory.ItemStack;
 
 import com.daytonjwatson.hardcore.managers.BanditTrackerManager;
 import com.daytonjwatson.hardcore.utils.MessageStyler;
-import com.daytonjwatson.hardcore.managers.BanditTrackerManager.TrackerResult;
 
 public class BanditTrackerListener implements Listener {
 
@@ -33,26 +32,11 @@ public class BanditTrackerListener implements Listener {
         }
 
         Player player = event.getPlayer();
-        long remainingCooldown = BanditTrackerManager.getRemainingCooldownMillis(player);
-        if (remainingCooldown > 0) {
-            double secondsLeft = remainingCooldown / 1000.0;
-            MessageStyler.sendPanel(player, "Bandit Tracker", ChatColor.RED + "Recalibrating...",
-                    ChatColor.GRAY + "Try again in " + ChatColor.WHITE
-                            + String.format("%.1f", secondsLeft) + ChatColor.GRAY + "s.");
-            return;
-        }
+        boolean found = BanditTrackerManager.updateTracker(player, item);
 
-        BanditTrackerManager.markTrackerUsed(player);
-        TrackerResult result = BanditTrackerManager.updateTracker(player, item);
-
-        if (result.hasTarget()) {
-            String summary = result.isSameWorld()
-                    ? ChatColor.GRAY + "Signal locked ~" + ChatColor.WHITE + result.formatDistance()
-                            + ChatColor.GRAY + "m away."
-                    : ChatColor.GRAY + "Signal locked in " + ChatColor.WHITE + result.getWorldName() + ChatColor.GRAY + ".";
-
-            MessageStyler.sendPanel(player, "Bandit Tracker", summary,
-                    ChatColor.GRAY + "Follow the compass to close the gap.");
+        if (found) {
+            MessageStyler.sendPanel(player, "Bandit Tracker", ChatColor.GRAY + "Target refreshed.",
+                    ChatColor.GRAY + "Follow the compass to reach the bandit.");
         } else {
             MessageStyler.sendPanel(player, "Bandit Tracker", ChatColor.RED + "No bandits online to track.");
         }
