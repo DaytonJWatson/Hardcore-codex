@@ -14,7 +14,17 @@ commands:
   stats:
     description: Shows player stats.
     usage: /stats [player]
+  admin:
+    description: Hidden Hardcore admin tooling.
+    usage: /admin <action>
+    aliases: [hardcoreadmin, hcoreadmin]
+    permission: hardcore.admin
+    permission-message: Unknown command. Type "/help" for help.
   bandittracker:
     description: Recalibrates your crafted bandit tracker and shows its recipe.
     aliases: [trackbandit, huntbandit]
     usage: /bandittracker [recipe]
+permissions:
+  hardcore.admin:
+    description: Allows access to Hardcore admin tooling (still requires listing in admins.yml).
+    default: false
