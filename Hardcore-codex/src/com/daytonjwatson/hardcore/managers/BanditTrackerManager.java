@@ -2,7 +2,9 @@ package com.daytonjwatson.hardcore.managers;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
@@ -30,6 +32,8 @@ public final class BanditTrackerManager {
     private static final String TRACKER_TITLE = ChatColor.DARK_RED + "" + ChatColor.BOLD + "Bandit Tracker";
     private static final NamespacedKey TRACKER_KEY = new NamespacedKey(HardcorePlugin.getInstance(), "bandit-tracker");
     private static final DecimalFormat DISTANCE_FORMAT = new DecimalFormat("0.0");
+    private static final long TRACKER_COOLDOWN_MILLIS = 30_000L;
+    private static final Map<UUID, Long> TRACKER_COOLDOWNS = new HashMap<>();
 
     private BanditTrackerManager() {}
 
@@ -128,6 +132,30 @@ public final class BanditTrackerManager {
         return nearestSameWorld != null ? nearestSameWorld : nearestAnyWorld;
     }
 
+    public static boolean isOnCooldown(Player player) {
+        Long lastUse = TRACKER_COOLDOWNS.get(player.getUniqueId());
+        if (lastUse == null) {
+            return false;
+        }
+
+        return System.currentTimeMillis() - lastUse < TRACKER_COOLDOWN_MILLIS;
+    }
+
+    public static long getRemainingCooldownSeconds(Player player) {
+        Long lastUse = TRACKER_COOLDOWNS.get(player.getUniqueId());
+        if (lastUse == null) {
+            return 0L;
+        }
+
+        long elapsed = System.currentTimeMillis() - lastUse;
+        long remainingMillis = TRACKER_COOLDOWN_MILLIS - elapsed;
+        return Math.max(0L, Math.round(Math.ceil(remainingMillis / 1000.0)));
+    }
+
+    public static void markTrackerUsed(Player player) {
+        TRACKER_COOLDOWNS.put(player.getUniqueId(), System.currentTimeMillis());
+    }
+
     private static void applyTargetToCompass(ItemStack tracker, Player seeker, Player target, Location targetLoc) {
         ItemMeta meta = tracker.getItemMeta();
         if (meta == null) {
@@ -136,7 +164,7 @@ public final class BanditTrackerManager {
 
         List<String> lore = buildBaseLore();
 
-        lore.add(MessageStyler.bulletText(ChatColor.DARK_RED + "Tracking: " + ChatColor.RED + target.getName()));
+        lore.add(MessageStyler.bulletText(ChatColor.DARK_RED + "Tracking: " + ChatColor.RED + "Unidentified bandit"));
 
         if (seeker.getWorld().equals(targetLoc.getWorld())) {
             double distance = seeker.getLocation().distance(targetLoc);
@@ -175,6 +203,7 @@ public final class BanditTrackerManager {
         lore.add(MessageStyler.bulletText(ChatColor.GRAY + "Right-click to lock onto"));
         lore.add(MessageStyler.bulletText(ChatColor.GRAY + "the nearest " + ChatColor.DARK_RED + "Bandit" + ChatColor.GRAY + "."));
         lore.add(MessageStyler.bulletText(ChatColor.GRAY + "Compass auto-updates on use."));
+        lore.add(MessageStyler.bulletText(ChatColor.GRAY + "Cooldown: " + ChatColor.WHITE + "30s" + ChatColor.GRAY + "."));
         return lore;
     }
 }
