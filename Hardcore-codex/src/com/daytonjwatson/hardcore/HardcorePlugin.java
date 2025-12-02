@@ -18,6 +18,7 @@ import com.daytonjwatson.hardcore.listeners.PlayerDeathListener;
 import com.daytonjwatson.hardcore.listeners.PlayerJoinListener;
 import com.daytonjwatson.hardcore.listeners.PlayerQuitListener;
 import com.daytonjwatson.hardcore.listeners.BanditTrackerListener;
+import com.daytonjwatson.hardcore.listeners.FreezeListener;
 import com.daytonjwatson.hardcore.managers.BanditTrackerManager;
 import com.daytonjwatson.hardcore.managers.AdminManager;
 import com.daytonjwatson.hardcore.managers.AdminLogManager;
@@ -115,5 +116,6 @@ public class HardcorePlugin extends JavaPlugin {
         pm.registerEvents(new PlayerDeathListener(), this);
         pm.registerEvents(new PlayerQuitListener(), this);
         pm.registerEvents(new BanditTrackerListener(), this);
+        pm.registerEvents(new FreezeListener(), this);
     }
 }

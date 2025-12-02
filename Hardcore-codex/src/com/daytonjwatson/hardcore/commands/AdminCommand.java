@@ -24,6 +24,7 @@ import org.bukkit.entity.Player;
 import com.daytonjwatson.hardcore.managers.AdminManager;
 import com.daytonjwatson.hardcore.managers.AdminLogManager;
 import com.daytonjwatson.hardcore.managers.BanManager;
+import com.daytonjwatson.hardcore.managers.FreezeManager;
 import com.daytonjwatson.hardcore.managers.MuteManager;
 import com.daytonjwatson.hardcore.utils.MessageStyler;
 import com.daytonjwatson.hardcore.utils.Util;
@@ -31,8 +32,9 @@ import com.daytonjwatson.hardcore.utils.Util;
 public class AdminCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> BASE_SUBCOMMANDS = Arrays.asList(
-            "help", "add", "remove", "list", "ban", "unban", "kick", "mute", "unmute", "status",
-            "info", "invsee", "endersee", "tp", "tphere", "heal", "feed", "log");
+            "help", "add", "remove", "list", "ban", "unban", "kick", "mute", "unmute", "warn",
+            "freeze", "unfreeze", "clearchat", "status", "info", "invsee", "endersee", "tp",
+            "tphere", "heal", "feed", "log");
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -98,6 +100,22 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             case "unmute":
                 AdminLogManager.log(sender, fullCommand, true);
                 handleUnmute(sender, args);
+                break;
+            case "warn":
+                AdminLogManager.log(sender, fullCommand, true);
+                handleWarn(sender, args);
+                break;
+            case "freeze":
+                AdminLogManager.log(sender, fullCommand, true);
+                handleFreeze(sender, args);
+                break;
+            case "unfreeze":
+                AdminLogManager.log(sender, fullCommand, true);
+                handleUnfreeze(sender, args);
+                break;
+            case "clearchat":
+                AdminLogManager.log(sender, fullCommand, true);
+                handleClearChat(sender, args);
                 break;
             case "status":
                 AdminLogManager.log(sender, fullCommand, true);
@@ -318,6 +336,80 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    private void handleWarn(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(Util.color("&cUsage: /admin warn <player> [reason]"));
+            return;
+        }
+
+        Player target = Bukkit.getPlayer(args[1]);
+        if (target == null) {
+            sender.sendMessage(Util.color("&cPlayer must be online to warn."));
+            return;
+        }
+
+        String reason = args.length > 2 ? String.join(" ", Arrays.copyOfRange(args, 2, args.length))
+                : "Rule reminder from the admin team.";
+
+        target.sendTitle(Util.color("&c&lWarning"), Util.color("&e" + reason), 10, 70, 20);
+        target.sendMessage(Util.color("&cYou received a warning: &e" + reason));
+        sender.sendMessage(Util.color("&aWarned &e" + target.getName() + " &afor: &7" + reason));
+        Bukkit.broadcast(Util.color("&4&l[ADMIN]&c " + target.getName() + " was warned: &7" + reason), "hardcore.admin");
+    }
+
+    private void handleFreeze(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(Util.color("&cUsage: /admin freeze <player> [reason]"));
+            return;
+        }
+
+        Player target = Bukkit.getPlayer(args[1]);
+        if (target == null) {
+            sender.sendMessage(Util.color("&cPlayer must be online to freeze."));
+            return;
+        }
+
+        if (FreezeManager.isFrozen(target.getUniqueId())) {
+            sender.sendMessage(Util.color("&e" + target.getName() + " &cis already frozen."));
+            return;
+        }
+
+        String reason = args.length > 2 ? String.join(" ", Arrays.copyOfRange(args, 2, args.length))
+                : "Please wait for admin review.";
+
+        FreezeManager.freeze(target, reason);
+        target.sendMessage(Util.color("&cYou have been frozen by an admin. &7Reason: &e" + reason));
+        sender.sendMessage(Util.color("&aFrozen &e" + target.getName() + " &afor: &7" + reason));
+        Bukkit.broadcast(Util.color("&4&l[ADMIN]&c " + target.getName() + " was frozen: &7" + reason), "hardcore.admin");
+    }
+
+    private void handleUnfreeze(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(Util.color("&cUsage: /admin unfreeze <player>"));
+            return;
+        }
+
+        OfflinePlayer target = resolveOfflinePlayer(args[1]);
+        boolean unfrozen = FreezeManager.unfreeze(target.getUniqueId());
+        if (unfrozen) {
+            sender.sendMessage(Util.color("&aUnfroze &e" + (target.getName() == null ? args[1] : target.getName()) + "&a."));
+        } else {
+            sender.sendMessage(Util.color("&e" + (target.getName() == null ? args[1] : target.getName()) + " &cis not frozen."));
+        }
+    }
+
+    private void handleClearChat(CommandSender sender, String[] args) {
+        String reason = args.length > 1 ? String.join(" ", Arrays.copyOfRange(args, 1, args.length)) : "Chat moderation";
+        String filler = " ".repeat(2);
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            for (int i = 0; i < 80; i++) {
+                player.sendMessage(filler);
+            }
+            player.sendMessage(Util.color("&7Chat was cleared by an admin. &fReason: &e" + reason));
+        }
+        sender.sendMessage(Util.color("&aCleared chat for all players."));
+    }
+
     private void handleStatus(CommandSender sender, String[] args) {
         if (args.length < 2) {
             sender.sendMessage(Util.color("&cUsage: /admin status <player>"));
@@ -329,6 +421,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         boolean isMuted = MuteManager.isMuted(uuid);
         boolean isBanned = BanManager.isBanned(uuid);
         boolean isAdmin = AdminManager.isAdmin(uuid);
+        boolean isFrozen = FreezeManager.isFrozen(uuid);
 
         List<String> lines = new ArrayList<>();
         lines.add(MessageStyler.bulletLine("Role", org.bukkit.ChatColor.GOLD, isAdmin ? "Admin" : "Player"));
@@ -348,6 +441,13 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                     "Banned for " + duration + " - " + BanManager.getReason(uuid)));
         } else {
             lines.add(MessageStyler.bulletLine("Ban", org.bukkit.ChatColor.GREEN, "Not banned"));
+        }
+
+        if (isFrozen) {
+            lines.add(MessageStyler.bulletLine("Freeze", org.bukkit.ChatColor.RED,
+                    "Frozen - " + FreezeManager.getReason(uuid)));
+        } else {
+            lines.add(MessageStyler.bulletLine("Freeze", org.bukkit.ChatColor.GREEN, "Not frozen"));
         }
 
         MessageStyler.sendPanel(sender, target.getName() + " status", lines.toArray(new String[0]));
@@ -566,7 +666,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 "&6Core",
                 "&e/" + label + " help &7- Show this menu.",
                 "&e/" + label + " list &7- View configured admins.",
-                "&e/" + label + " status <player> &7- Check admin, mute, and ban flags.",
+                "&e/" + label + " status <player> &7- Check admin, mute, ban, and freeze flags.",
                 "&e/" + label + " log [admin] [limit] &7- Review recent admin command usage.",
                 "",
                 "&6Moderation",
@@ -574,7 +674,11 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 "&e/" + label + " unban <player> &7- Remove a ban if present.",
                 "&e/" + label + " mute <player> [duration] [reason] &7- Silence a player's chat.",
                 "&e/" + label + " unmute <player> &7- Lift a mute.",
+                "&e/" + label + " warn <player> [reason] &7- Deliver an on-screen warning.",
+                "&e/" + label + " freeze <player> [reason] &7- Halt a player while you review.",
+                "&e/" + label + " unfreeze <player> &7- Release a frozen player.",
                 "&e/" + label + " kick <player> [reason] &7- Kick a player from the server.",
+                "&e/" + label + " clearchat [reason] &7- Clear global chat with a short note.",
                 "",
                 "&6Player Insight",
                 "&e/" + label + " info <player> &7- View UUID, IP, position, and session stats.",
@@ -625,6 +729,8 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 case "kick":
                 case "mute":
                 case "ban":
+                case "warn":
+                case "freeze":
                 case "status":
                 case "info":
                 case "invsee":
@@ -640,6 +746,8 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                     return filterStartingWith(MuteManager.getMutedNames(), args[1]);
                 case "unban":
                     return filterStartingWith(BanManager.getBannedNames(), args[1]);
+                case "unfreeze":
+                    return filterStartingWith(FreezeManager.getFrozenNames(), args[1]);
                 case "log": {
                     List<String> suggestions = new ArrayList<>(AdminManager.getAdminNames());
                     suggestions.add("Console");
