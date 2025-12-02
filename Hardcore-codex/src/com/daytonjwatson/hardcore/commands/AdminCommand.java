@@ -16,6 +16,9 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
 
 import com.daytonjwatson.hardcore.managers.AdminManager;
@@ -26,24 +29,40 @@ import com.daytonjwatson.hardcore.utils.Util;
 public class AdminCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> BASE_SUBCOMMANDS = Arrays.asList(
-            "help", "add", "remove", "list", "ban", "unban", "kick", "mute", "unmute", "status");
+            "help", "add", "remove", "list", "ban", "unban", "kick", "mute", "unmute", "status",
+            "invsee", "endersee", "tp", "tphere", "heal", "feed");
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        boolean bootstrapAllowed = !AdminManager.hasAdmins() && sender.hasPermission("hardcore.admin");
-        if (!bootstrapAllowed && !AdminManager.isAdmin(sender)) {
-            sender.sendMessage(Util.color("&cYou must be a Hardcore admin to use this command."));
-            return true;
-        }
+        boolean bootstrapAllowed = !AdminManager.hasAdmins()
+                && (sender.hasPermission("hardcore.admin") || sender.isOp() || sender instanceof ConsoleCommandSender);
+        boolean isAdmin = AdminManager.isAdmin(sender);
+        boolean isOp = sender.isOp() || sender instanceof ConsoleCommandSender;
+        boolean canUseAdminTools = bootstrapAllowed || isAdmin;
 
         if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
+            if (!canUseAdminTools && !isOp) {
+                sender.sendMessage(Util.color("&cYou must be a Hardcore admin to use this command."));
+                return true;
+            }
             sendAdminHelp(sender, label);
             return true;
         }
 
-        switch (args[0].toLowerCase(Locale.ROOT)) {
+        String sub = args[0].toLowerCase(Locale.ROOT);
+        if (sub.equals("add")) {
+            handleAdd(sender, args, isOp);
+            return true;
+        }
+
+        if (!canUseAdminTools) {
+            sender.sendMessage(Util.color("&cYou must be a Hardcore admin to use this command."));
+            return true;
+        }
+
+        switch (sub) {
             case "add":
-                handleAdd(sender, args);
+                // handled earlier
                 break;
             case "remove":
                 handleRemove(sender, args);
@@ -69,6 +88,24 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             case "status":
                 handleStatus(sender, args);
                 break;
+            case "invsee":
+                handleInvSee(sender, args);
+                break;
+            case "endersee":
+                handleEnderSee(sender, args);
+                break;
+            case "tp":
+                handleTeleportTo(sender, args);
+                break;
+            case "tphere":
+                handleTeleportHere(sender, args);
+                break;
+            case "heal":
+                handleHeal(sender, args);
+                break;
+            case "feed":
+                handleFeed(sender, args);
+                break;
             default:
                 sendAdminHelp(sender, label);
                 break;
@@ -77,7 +114,12 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    private void handleAdd(CommandSender sender, String[] args) {
+    private void handleAdd(CommandSender sender, String[] args, boolean isOp) {
+        if (!isOp) {
+            sender.sendMessage(Util.color("&cOnly server operators or console can add Hardcore admins."));
+            return;
+        }
+
         if (args.length < 2) {
             sender.sendMessage(Util.color("&cUsage: /admin add <player>"));
             return;
@@ -244,6 +286,129 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         MessageStyler.sendPanel(sender, target.getName() + " status", lines.toArray(new String[0]));
     }
 
+    private void handleInvSee(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player viewer)) {
+            sender.sendMessage(Util.color("&cOnly in-game admins can inspect inventories."));
+            return;
+        }
+
+        if (args.length < 2) {
+            sender.sendMessage(Util.color("&cUsage: /admin invsee <player>"));
+            return;
+        }
+
+        Player target = Bukkit.getPlayer(args[1]);
+        if (target == null) {
+            sender.sendMessage(Util.color("&cPlayer not online."));
+            return;
+        }
+
+        viewer.openInventory(target.getInventory());
+        viewer.sendMessage(Util.color("&aInspecting &e" + target.getName() + "&a's inventory."));
+    }
+
+    private void handleEnderSee(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player viewer)) {
+            sender.sendMessage(Util.color("&cOnly in-game admins can inspect ender chests."));
+            return;
+        }
+
+        if (args.length < 2) {
+            sender.sendMessage(Util.color("&cUsage: /admin endersee <player>"));
+            return;
+        }
+
+        Player target = Bukkit.getPlayer(args[1]);
+        if (target == null) {
+            sender.sendMessage(Util.color("&cPlayer not online."));
+            return;
+        }
+
+        viewer.openInventory(target.getEnderChest());
+        viewer.sendMessage(Util.color("&aInspecting &e" + target.getName() + "&a's ender chest."));
+    }
+
+    private void handleTeleportTo(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(Util.color("&cOnly in-game admins can teleport."));
+            return;
+        }
+
+        if (args.length < 2) {
+            sender.sendMessage(Util.color("&cUsage: /admin tp <player>"));
+            return;
+        }
+
+        Player target = Bukkit.getPlayer(args[1]);
+        if (target == null) {
+            sender.sendMessage(Util.color("&cPlayer not online."));
+            return;
+        }
+
+        player.teleport(target.getLocation());
+        player.sendMessage(Util.color("&aTeleported to &e" + target.getName() + "&a."));
+    }
+
+    private void handleTeleportHere(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(Util.color("&cOnly in-game admins can teleport players."));
+            return;
+        }
+
+        if (args.length < 2) {
+            sender.sendMessage(Util.color("&cUsage: /admin tphere <player>"));
+            return;
+        }
+
+        Player target = Bukkit.getPlayer(args[1]);
+        if (target == null) {
+            sender.sendMessage(Util.color("&cPlayer not online."));
+            return;
+        }
+
+        target.teleport(player.getLocation());
+        player.sendMessage(Util.color("&aTeleported &e" + target.getName() + " &ato you."));
+        target.sendMessage(Util.color("&eYou were teleported to &a" + player.getName()));
+    }
+
+    private void handleHeal(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(Util.color("&cUsage: /admin heal <player>"));
+            return;
+        }
+
+        Player target = Bukkit.getPlayer(args[1]);
+        if (target == null) {
+            sender.sendMessage(Util.color("&cPlayer not online."));
+            return;
+        }
+
+        AttributeInstance maxHealth = target.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+        double amount = maxHealth != null ? maxHealth.getValue() : target.getHealth();
+        target.setHealth(amount);
+        target.setFireTicks(0);
+        target.sendMessage(Util.color("&aYou have been healed by an admin."));
+        sender.sendMessage(Util.color("&aHealed &e" + target.getName() + "&a."));
+    }
+
+    private void handleFeed(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(Util.color("&cUsage: /admin feed <player>"));
+            return;
+        }
+
+        Player target = Bukkit.getPlayer(args[1]);
+        if (target == null) {
+            sender.sendMessage(Util.color("&cPlayer not online."));
+            return;
+        }
+
+        target.setFoodLevel(20);
+        target.setSaturation(20f);
+        target.sendMessage(Util.color("&aYour hunger has been restored by an admin."));
+        sender.sendMessage(Util.color("&aFed &e" + target.getName() + "&a."));
+    }
+
     private void sendAdminHelp(CommandSender sender, String label) {
         MessageStyler.sendPanel(sender, "Hardcore Admin Help",
                 "&e/" + label + " add <player> &7- Make a player a Hardcore admin.",
@@ -254,7 +419,13 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 "&e/" + label + " kick <player> [reason] &7- Kick a player from the server.",
                 "&e/" + label + " mute <player> [duration] [reason] &7- Mute chat for a player.",
                 "&e/" + label + " unmute <player> &7- Lift a mute.",
-                "&e/" + label + " status <player> &7- See admin/mute status.");
+                "&e/" + label + " status <player> &7- See admin/mute status.",
+                "&e/" + label + " invsee <player> &7- Inspect a player's inventory.",
+                "&e/" + label + " endersee <player> &7- Inspect a player's ender chest.",
+                "&e/" + label + " tp <player> &7- Teleport to a player.",
+                "&e/" + label + " tphere <player> &7- Teleport a player to you.",
+                "&e/" + label + " heal <player> &7- Fully heal a player.",
+                "&e/" + label + " feed <player> &7- Restore a player's hunger.");
     }
 
     private Duration parseDuration(String raw) {
@@ -275,8 +446,10 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        boolean bootstrapAllowed = !AdminManager.hasAdmins() && sender.hasPermission("hardcore.admin");
-        if (!bootstrapAllowed && !AdminManager.isAdmin(sender)) {
+        boolean bootstrapAllowed = !AdminManager.hasAdmins()
+                && (sender.hasPermission("hardcore.admin") || sender.isOp() || sender instanceof ConsoleCommandSender);
+        boolean isOp = sender.isOp() || sender instanceof ConsoleCommandSender;
+        if (!bootstrapAllowed && !AdminManager.isAdmin(sender) && !isOp) {
             return Collections.emptyList();
         }
 
@@ -284,7 +457,8 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             return filterStartingWith(BASE_SUBCOMMANDS, args[0]);
         }
 
-        if (args.length == 2 && Arrays.asList("add", "remove", "ban", "unban", "kick", "mute", "unmute", "status")
+        if (args.length == 2 && Arrays.asList("add", "remove", "ban", "unban", "kick", "mute", "unmute", "status",
+                "invsee", "endersee", "tp", "tphere", "heal", "feed")
                 .contains(args[0].toLowerCase(Locale.ROOT))) {
             return filterStartingWith(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList(), args[1]);
         }
