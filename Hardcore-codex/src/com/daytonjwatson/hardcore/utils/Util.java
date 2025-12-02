@@ -18,70 +18,70 @@ public class Util {
 
         if (meta == null) return;
 
-        meta.setTitle("§4§lHardcore Survival Guide");
+        meta.setTitle(ChatColor.DARK_RED + "" + ChatColor.BOLD + "Hardcore Survival Guide");
         meta.setAuthor("HardcoreGuide");
 
         meta.addPage(
-                "§4§lHARDCORE MODE\n§0\n" +
-                "§c§lONE LIFE ONLY.\n" +
-                "§0If you die, you are\n§4§lPERMANENTLY BANNED.\n§0\n" +
-                "Read carefully. Survive smart."
+                ChatColor.DARK_RED + "" + ChatColor.BOLD + "HARDCORE MODE\n\n" +
+                        ChatColor.GRAY + "One life only.\n" +
+                        ChatColor.GRAY + "Death = " + ChatColor.DARK_RED + "PERMANENT BAN\n\n" +
+                        ChatColor.DARK_GRAY + "Read carefully. Survive smart."
         );
 
         meta.addPage(
-                "§6§lGENERAL RULES\n\n" +
-                "§c• Treat every heart as final.\n" +
-                "• Never log off in danger.\n" +
-                "• Avoid risky caves early.\n" +
-                "• §lRetreat early, not late.§r"
+                ChatColor.GOLD + "" + ChatColor.BOLD + "GENERAL RULES\n\n" +
+                        ChatColor.GRAY + "⟡ Treat every heart as final.\n" +
+                        ChatColor.GRAY + "⟡ Never log off in danger.\n" +
+                        ChatColor.GRAY + "⟡ Avoid risky caves early.\n" +
+                        ChatColor.GRAY + "⟡ Retreat early, not late."
         );
 
         meta.addPage(
-                "§2§lEARLY GAME PRIORITIES\n\n" +
-                "§a1) Craft a §lshield§r§a immediately.\n" +
-                "2) Get full §lIron Armor.\n" +
-                "3) Secure a food source.\n" +
-                "4) Build a safe lit base.\n"
+                ChatColor.GOLD + "" + ChatColor.BOLD + "EARLY GAME PRIORITIES\n\n" +
+                        ChatColor.GRAY + "⟡ Craft a shield immediately.\n" +
+                        ChatColor.GRAY + "⟡ Get full Iron Armor.\n" +
+                        ChatColor.GRAY + "⟡ Secure a food source.\n" +
+                        ChatColor.GRAY + "⟡ Build a safe lit base."
         );
 
         meta.addPage(
-                "§9§lCOMBAT TIPS\n\n" +
-                "§b• Always use a shield.\n" +
-                "• Avoid fighting at night.\n" +
-                "• Bow > melee for safety.\n" +
-                "• Don’t fight with lag.\n"
+                ChatColor.GOLD + "" + ChatColor.BOLD + "COMBAT TIPS\n\n" +
+                        ChatColor.GRAY + "⟡ Always use a shield.\n" +
+                        ChatColor.GRAY + "⟡ Avoid fighting at night.\n" +
+                        ChatColor.GRAY + "⟡ Bow > melee for safety.\n" +
+                        ChatColor.GRAY + "⟡ Don’t fight with lag."
         );
 
         meta.addPage(
-                "§5§lNETHER SAFETY\n\n" +
-                "§d• Bring extra blocks, food.\n" +
-                "• Cauldron + water for fire.\n" +
-                "• Build a safe portal room.\n" +
-                "• Watch for fall damage.\n"
+                ChatColor.GOLD + "" + ChatColor.BOLD + "NETHER SAFETY\n\n" +
+                        ChatColor.GRAY + "⟡ Bring extra blocks & food.\n" +
+                        ChatColor.GRAY + "⟡ Cauldron + water for fire.\n" +
+                        ChatColor.GRAY + "⟡ Build a safe portal room.\n" +
+                        ChatColor.GRAY + "⟡ Watch for fall damage."
         );
 
         meta.addPage(
-                "§3§lFALL & VOID SAFETY\n\n" +
-                "§b• Never bridge without sneaking.\n" +
-                "• Use rails or guard blocks.\n" +
-                "• Feather Falling helps.\n" +
-                "• Water bucket = lifesaver.\n"
+                ChatColor.GOLD + "" + ChatColor.BOLD + "FALL & VOID SAFETY\n\n" +
+                        ChatColor.GRAY + "⟡ Never bridge without sneaking.\n" +
+                        ChatColor.GRAY + "⟡ Use rails or guard blocks.\n" +
+                        ChatColor.GRAY + "⟡ Feather Falling helps.\n" +
+                        ChatColor.GRAY + "⟡ Water bucket = lifesaver."
         );
 
         meta.addPage(
-                "§e§lHARDCORE MINDSET\n\n" +
-                "§6• If it feels dangerous,\n  don't do it.\n" +
-                "• Overprepare always.\n" +
-                "• Take no unnecessary risks.\n" +
-                "• One mistake = game over.\n"
+                ChatColor.GOLD + "" + ChatColor.BOLD + "HARDCORE MINDSET\n\n" +
+                        ChatColor.GRAY + "⟡ If it feels dangerous, don’t do it.\n" +
+                        ChatColor.GRAY + "⟡ Overprepare always.\n" +
+                        ChatColor.GRAY + "⟡ Take no unnecessary risks.\n" +
+                        ChatColor.GRAY + "⟡ One mistake = game over."
         );
 
         meta.addPage(
-                "§4§lSERVER RULE\n\n" +
-                "§cThis world is Hardcore-only.\n" +
-                "§cOne life. No exceptions.\n\n" +
-                "§4If you die:\n§4§lPERM BAN FOREVER.\n\n" +
-                "§0Good luck, survivor."
+                ChatColor.DARK_RED + "" + ChatColor.BOLD + "SERVER RULE\n\n" +
+                        ChatColor.RED + "This world is Hardcore-only.\n" +
+                        ChatColor.RED + "One life. No exceptions.\n\n" +
+                        ChatColor.DARK_RED + "If you die: PERM BAN FOREVER.\n\n" +
+                        ChatColor.GRAY + "Good luck, survivor."
         );
 
         book.setItemMeta(meta);

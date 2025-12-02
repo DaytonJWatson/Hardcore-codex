@@ -9,14 +9,28 @@ import com.daytonjwatson.hardcore.managers.StatsManager;
 public class TabUtil {
 
     public static void updateTabForAll() {
+        StatsManager stats = StatsManager.get();
+        if (stats == null) {
+            return;
+        }
+
         for (Player player : Bukkit.getOnlinePlayers()) {
-            updateTabForPlayer(player);
+            updateTabForPlayer(player, stats);
         }
     }
 
     public static void updateTabForPlayer(Player player) {
-        int uniquePlayers = StatsManager.get().getUniquePlayerCount();
-        int totalDeaths = StatsManager.get().getTotalDeaths();
+        StatsManager stats = StatsManager.get();
+        if (stats == null) {
+            return;
+        }
+
+        updateTabForPlayer(player, stats);
+    }
+
+    private static void updateTabForPlayer(Player player, StatsManager stats) {
+        int uniquePlayers = stats.getUniquePlayerCount();
+        int totalDeaths = stats.getTotalDeaths();
         int online = Bukkit.getOnlinePlayers().size();
         int max = Bukkit.getMaxPlayers();
 

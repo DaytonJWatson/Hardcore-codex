@@ -1,6 +1,5 @@
 package com.daytonjwatson.hardcore.commands;
 
-import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -8,6 +7,10 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BookMeta;
+
+import org.bukkit.ChatColor;
+
+import com.daytonjwatson.hardcore.utils.MessageStyler;
 
 public class GuideCommand implements CommandExecutor {
 
@@ -29,39 +32,19 @@ public class GuideCommand implements CommandExecutor {
 
     private void sendGuideChat(Player p) {
 
-        p.sendMessage(ChatColor.DARK_RED + "" + ChatColor.BOLD + "========= BANDITS & HEROES =========");
-
-        p.sendMessage(ChatColor.GOLD + "" + ChatColor.BOLD + "Bandits");
-        p.sendMessage(ChatColor.GRAY + "- Killing much weaker players in unfair fights gives "
-                + ChatColor.DARK_RED + "Bandit Points" + ChatColor.GRAY + ".");
-        p.sendMessage(ChatColor.GRAY + "- At " + ChatColor.RED + "3 unfair kills" + ChatColor.GRAY + " you become a "
-                + ChatColor.DARK_RED + "" + ChatColor.BOLD + "Bandit" + ChatColor.GRAY + ".");
-        p.sendMessage(ChatColor.GRAY + "- Bandits are publicly announced and marked with "
-                + ChatColor.DARK_RED + "[B]" + ChatColor.GRAY + ".");
-
-        p.sendMessage("");
-
-        p.sendMessage(ChatColor.GOLD + "" + ChatColor.BOLD + "Redemption");
-        p.sendMessage(ChatColor.GRAY + "- Bandits who kill other bandits gain "
-                + ChatColor.GREEN + "Redemption Points" + ChatColor.GRAY + ".");
-        p.sendMessage(ChatColor.GRAY + "- At " + ChatColor.GREEN + "3 bandits slain as a bandit"
-                + ChatColor.GRAY + ", you lose your Bandit status and return to normal.");
-
-        p.sendMessage("");
-
-        p.sendMessage(ChatColor.GOLD + "" + ChatColor.BOLD + "Heroes");
-        p.sendMessage(ChatColor.GRAY + "- Non-bandits who kill bandits gain "
-                + ChatColor.GOLD + "Hero progress" + ChatColor.GRAY + ".");
-        p.sendMessage(ChatColor.GRAY + "- At " + ChatColor.GOLD + "3 bandits slain as a non-bandit"
-                + ChatColor.GRAY + ", you become a "
-                + ChatColor.GOLD + "" + ChatColor.BOLD + "Hero" + ChatColor.GRAY + ".");
-        p.sendMessage(ChatColor.GRAY + "- Heroes are marked with "
-                + ChatColor.GOLD + "[H]" + ChatColor.GRAY + " and announced.");
-        p.sendMessage(ChatColor.GRAY + "- You can still become a Hero after being a Bandit, but only after you redeem first.");
-
-        p.sendMessage("");
-
-        p.sendMessage(ChatColor.DARK_RED + "" + ChatColor.BOLD + "====================================");
+        MessageStyler.sendPanel(p, "Bandits & Heroes Guide",
+                ChatColor.GOLD + "Bandits",
+                "Unfair kills on weaker players give " + ChatColor.DARK_RED + "Bandit Points" + ChatColor.GRAY + ".",
+                "At " + ChatColor.RED + "3 unfair kills" + ChatColor.GRAY + " you become a " + ChatColor.DARK_RED + ChatColor.BOLD + "Bandit" + ChatColor.GRAY + ".",
+                "Bandits are announced and marked " + ChatColor.DARK_RED + "[B]" + ChatColor.GRAY + ".",
+                ChatColor.GOLD + "Redemption",
+                "Bandits who slay bandits gain " + ChatColor.GREEN + "Redemption Points" + ChatColor.GRAY + ".",
+                "At " + ChatColor.GREEN + "3 bandits slain as a bandit" + ChatColor.GRAY + ", you lose Bandit status.",
+                ChatColor.GOLD + "Heroes",
+                "Non-bandits who kill bandits gain " + ChatColor.GOLD + "Hero progress" + ChatColor.GRAY + ".",
+                "At " + ChatColor.GOLD + "3 bandits slain as a non-bandit" + ChatColor.GRAY + ", you become a " + ChatColor.GOLD + ChatColor.BOLD + "Hero" + ChatColor.GRAY + ".",
+                "Heroes are marked " + ChatColor.GOLD + "[H]" + ChatColor.GRAY + " and announced.",
+                "You can become a Hero after redeeming from Bandit.");
     }
 
     private void giveGuideBook(Player player) {
@@ -147,12 +130,13 @@ public class GuideCommand implements CommandExecutor {
 
         if (player.getInventory().firstEmpty() == -1) {
             player.getWorld().dropItemNaturally(player.getLocation(), book);
-            player.sendMessage(ChatColor.YELLOW + "Your inventory was full, so the Bandits & Heroes guide was dropped at your feet.");
+            MessageStyler.sendPanel(player, "Guide Delivered",
+                    ChatColor.YELLOW + "Your inventory was full.",
+                    "The Bandits & Heroes guide was dropped at your feet.");
         } else {
             player.getInventory().addItem(book);
-            player.sendMessage(ChatColor.GOLD + "You have received the "
-                    + ChatColor.DARK_RED + "Bandits & Heroes"
-                    + ChatColor.GOLD + " guide book.");
+            MessageStyler.sendPanel(player, "Guide Delivered",
+                    ChatColor.GOLD + "You received the " + ChatColor.DARK_RED + "Bandits & Heroes" + ChatColor.GOLD + " guide book.");
         }
     }
 }
