@@ -438,24 +438,40 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleTeleportTo(CommandSender sender, String[] args) {
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage(Util.color("&cOnly in-game admins can teleport."));
-            return;
-        }
-
         if (args.length < 2) {
-            sender.sendMessage(Util.color("&cUsage: /admin tp <player>"));
+            sender.sendMessage(Util.color("&cUsage: /admin tp <player> [target]"));
             return;
         }
 
-        Player target = Bukkit.getPlayer(args[1]);
-        if (target == null) {
-            sender.sendMessage(Util.color("&cPlayer not online."));
+        if (args.length == 2) {
+            if (!(sender instanceof Player player)) {
+                sender.sendMessage(Util.color("&cOnly in-game admins can teleport themselves."));
+                return;
+            }
+
+            Player target = Bukkit.getPlayer(args[1]);
+            if (target == null) {
+                sender.sendMessage(Util.color("&cPlayer not online."));
+                return;
+            }
+
+            player.teleport(target.getLocation());
+            player.sendMessage(Util.color("&aTeleported to &e" + target.getName() + "&a."));
             return;
         }
 
-        player.teleport(target.getLocation());
-        player.sendMessage(Util.color("&aTeleported to &e" + target.getName() + "&a."));
+        Player mover = Bukkit.getPlayer(args[1]);
+        Player destination = Bukkit.getPlayer(args[2]);
+
+        if (mover == null || destination == null) {
+            sender.sendMessage(Util.color("&cBoth players must be online to teleport."));
+            return;
+        }
+
+        mover.teleport(destination.getLocation());
+        sender.sendMessage(
+                Util.color("&aTeleported &e" + mover.getName() + " &ato &e" + destination.getName() + "&a."));
+        mover.sendMessage(Util.color("&eYou were teleported to &a" + destination.getName() + "&e."));
     }
 
     private void handleTeleportHere(CommandSender sender, String[] args) {
@@ -559,7 +575,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 "&e/" + label + " info <player> &7- Inspect live connection and session details.",
                 "&e/" + label + " invsee <player> &7- Inspect a player's inventory.",
                 "&e/" + label + " endersee <player> &7- Inspect a player's ender chest.",
-                "&e/" + label + " tp <player> &7- Teleport to a player.",
+                "&e/" + label + " tp <player> [target] &7- Teleport to a player or move players.",
                 "&e/" + label + " tphere <player> &7- Teleport a player to you.",
                 "&e/" + label + " heal <player> &7- Fully heal a player.",
                 "&e/" + label + " feed <player> &7- Restore a player's hunger.");
@@ -629,6 +645,10 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 3 && (sub.equals("mute") || sub.equals("ban"))) {
             return filterStartingWith(suggestDurations(), args[2]);
+        }
+
+        if (args.length == 3 && sub.equals("tp")) {
+            return filterStartingWith(onlinePlayerNames(), args[2]);
         }
 
         if (args.length == 3 && sub.equals("log")) {
