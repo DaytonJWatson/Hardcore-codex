@@ -120,6 +120,8 @@ public final class ConfigValues {
         } catch (IllegalArgumentException ignored) {
             return null;
         }
+
+        return null;
     }
 
     public static int banditKillThreshold() {
