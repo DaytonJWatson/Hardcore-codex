@@ -6,6 +6,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 
 import com.daytonjwatson.hardcore.config.ConfigValues;
+import com.daytonjwatson.hardcore.managers.MuteManager;
 import com.daytonjwatson.hardcore.managers.StatsManager;
 import com.daytonjwatson.hardcore.utils.Util;
 
@@ -14,6 +15,20 @@ public class PlayerChatListener implements Listener {
     @EventHandler
     public void onPlayerChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
+        
+        if (MuteManager.isMuted(player.getUniqueId())) {
+            event.setCancelled(true);
+            long remaining = MuteManager.getRemainingMillis(player.getUniqueId());
+            String reason = MuteManager.getReason(player.getUniqueId());
+            if (remaining > 0) {
+                player.sendMessage(Util.color("&cYou are muted for another &e" + Util.formatDuration(remaining) + "&c. Reason: &7" + reason));
+            } else if (remaining == -1L) {
+                player.sendMessage(Util.color("&cYou are permanently muted. Reason: &7" + reason));
+            } else {
+                player.sendMessage(Util.color("&cYou are currently muted. Reason: &7" + reason));
+            }
+            return;
+        }
         StatsManager stats = StatsManager.get();
 
         if (stats == null || !ConfigValues.chatEnabled()) {
