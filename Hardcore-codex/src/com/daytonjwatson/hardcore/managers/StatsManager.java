@@ -7,7 +7,13 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class StatsManager {
@@ -19,28 +25,31 @@ public class StatsManager {
     private FileConfiguration statsConfig;
 
     // Global stats
-    private final Set<UUID> uniquePlayers = new HashSet<>();
-    private int totalDeaths = 0;
+    private final Set<UUID> uniquePlayers = ConcurrentHashMap.newKeySet();
+    private final AtomicInteger totalDeaths = new AtomicInteger(0);
 
     // Per-player stats
-    private final Map<UUID, Integer> deaths = new HashMap<>();
-    private final Map<UUID, Integer> kills = new HashMap<>();
-    private final Map<UUID, Long> firstJoin = new HashMap<>();
-    private final Map<UUID, Long> lastDeath = new HashMap<>();
+    private final Map<UUID, Integer> deaths = new ConcurrentHashMap<>();
+    private final Map<UUID, Integer> kills = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> firstJoin = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> lastDeath = new ConcurrentHashMap<>();
 
     // Bandit tracking
-    private final Set<UUID> bandits = new HashSet<>();
-    private final Map<UUID, Integer> banditKills = new HashMap<>();
+    private final Set<UUID> bandits = ConcurrentHashMap.newKeySet();
+    private final Map<UUID, Integer> banditKills = new ConcurrentHashMap<>();
 
     // Redemption: bandits killing bandits
-    private final Map<UUID, Integer> banditHunterKills = new HashMap<>();
+    private final Map<UUID, Integer> banditHunterKills = new ConcurrentHashMap<>();
 
     // Hero tracking: non-bandits killing bandits
-    private final Set<UUID> heroes = new HashSet<>();
-    private final Map<UUID, Integer> heroBanditKills = new HashMap<>();
+    private final Set<UUID> heroes = ConcurrentHashMap.newKeySet();
+    private final Map<UUID, Integer> heroBanditKills = new ConcurrentHashMap<>();
 
     // Players who have ever been bandits (cannot become heroes)
-    private final Set<UUID> everBandits = new HashSet<>();
+    private final Set<UUID> everBandits = ConcurrentHashMap.newKeySet();
+
+    private boolean saveScheduled = false;
+    private static final long SAVE_DELAY_TICKS = 100L;
 
     private StatsManager(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -81,7 +90,7 @@ public class StatsManager {
             } catch (IllegalArgumentException ignored) {}
         }
 
-        totalDeaths = statsConfig.getInt("total-deaths", 0);
+        totalDeaths.set(statsConfig.getInt("total-deaths", 0));
 
         if (statsConfig.isConfigurationSection("players")) {
             for (String uuidStr : statsConfig.getConfigurationSection("players").getKeys(false)) {
@@ -126,12 +135,12 @@ public class StatsManager {
     }
 
     public void saveData() {
-        List<String> uuidStrings = uniquePlayers.stream()
+        List<String> uuidStrings = new ArrayList<>(uniquePlayers).stream()
                 .map(UUID::toString)
                 .collect(Collectors.toList());
 
         statsConfig.set("unique-players", uuidStrings);
-        statsConfig.set("total-deaths", totalDeaths);
+        statsConfig.set("total-deaths", totalDeaths.get());
 
         for (UUID uuid : uniquePlayers) {
             String base = "players." + uuid.toString() + ".";
@@ -172,26 +181,26 @@ public class StatsManager {
             firstJoin.putIfAbsent(uuid, now);
         }
 
-        saveData();
+        scheduleSave();
     }
 
     public void handleDeath(Player victim, Player killer) {
         UUID vUuid = victim.getUniqueId();
         long now = System.currentTimeMillis();
 
-        totalDeaths++;
+        totalDeaths.incrementAndGet();
 
-        deaths.put(vUuid, deaths.getOrDefault(vUuid, 0) + 1);
+        deaths.merge(vUuid, 1, Integer::sum);
         lastDeath.put(vUuid, now);
 
         if (killer != null) {
             UUID kUuid = killer.getUniqueId();
-            kills.put(kUuid, kills.getOrDefault(kUuid, 0) + 1);
+            kills.merge(kUuid, 1, Integer::sum);
             uniquePlayers.add(kUuid);
             firstJoin.putIfAbsent(kUuid, now);
         }
 
-        saveData();
+        scheduleSave();
     }
 
     /**
@@ -199,8 +208,7 @@ public class StatsManager {
      * Requires 3+ unfair kills to become a bandit.
      */
     public void handleUnfairKill(UUID killerUuid) {
-        int current = banditKills.getOrDefault(killerUuid, 0) + 1;
-        banditKills.put(killerUuid, current);
+        int current = banditKills.merge(killerUuid, 1, Integer::sum);
 
         if (current >= 3) {
             // Mark as bandit
@@ -213,7 +221,7 @@ public class StatsManager {
             }
         }
 
-        saveData();
+        scheduleSave();
     }
 
     /**
@@ -229,8 +237,7 @@ public class StatsManager {
             return false;
         }
 
-        int current = banditHunterKills.getOrDefault(killerUuid, 0) + 1;
-        banditHunterKills.put(killerUuid, current);
+        int current = banditHunterKills.merge(killerUuid, 1, Integer::sum);
 
         boolean lostBandit = false;
 
@@ -242,7 +249,7 @@ public class StatsManager {
             lostBandit = true;
         }
 
-        saveData();
+        scheduleSave();
         return lostBandit;
     }
 
@@ -262,8 +269,7 @@ public class StatsManager {
             return false;
         }
 
-        int current = heroBanditKills.getOrDefault(killerUuid, 0) + 1;
-        heroBanditKills.put(killerUuid, current);
+        int current = heroBanditKills.merge(killerUuid, 1, Integer::sum);
 
         boolean becameHero = false;
 
@@ -272,7 +278,7 @@ public class StatsManager {
             becameHero = true;
         }
 
-        saveData();
+        scheduleSave();
         return becameHero;
     }
 
@@ -284,7 +290,7 @@ public class StatsManager {
     }
 
     public int getTotalDeaths() {
-        return totalDeaths;
+        return totalDeaths.get();
     }
 
     public int getDeaths(UUID uuid) {
@@ -343,5 +349,17 @@ public class StatsManager {
 
     public boolean hasEverBeenBandit(UUID uuid) {
         return everBandits.contains(uuid) || bandits.contains(uuid);
+    }
+
+    private void scheduleSave() {
+        if (saveScheduled) {
+            return;
+        }
+
+        saveScheduled = true;
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            saveScheduled = false;
+            saveData();
+        }, SAVE_DELAY_TICKS);
     }
 }
