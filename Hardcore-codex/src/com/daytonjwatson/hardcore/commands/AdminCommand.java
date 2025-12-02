@@ -21,6 +21,7 @@ import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
 
 import com.daytonjwatson.hardcore.managers.AdminManager;
+import com.daytonjwatson.hardcore.managers.AdminLogManager;
 import com.daytonjwatson.hardcore.managers.BanManager;
 import com.daytonjwatson.hardcore.managers.MuteManager;
 import com.daytonjwatson.hardcore.utils.MessageStyler;
@@ -40,11 +41,15 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         boolean isOp = sender.isOp() || sender instanceof ConsoleCommandSender;
         boolean canUseAdminTools = bootstrapAllowed || isAdmin;
 
+        String fullCommand = "/" + label + (args.length > 0 ? " " + String.join(" ", args) : "");
+
         if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
             if (!canUseAdminTools && !isOp) {
+                AdminLogManager.log(sender, fullCommand, false);
                 sender.sendMessage(Util.color("&cYou must be a Hardcore admin to use this command."));
                 return true;
             }
+            AdminLogManager.log(sender, fullCommand, true);
             sendAdminHelp(sender, label);
             return true;
         }
@@ -56,6 +61,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         }
 
         if (!canUseAdminTools) {
+            AdminLogManager.log(sender, fullCommand, false);
             sender.sendMessage(Util.color("&cYou must be a Hardcore admin to use this command."));
             return true;
         }
@@ -65,51 +71,67 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 // handled earlier
                 break;
             case "remove":
+                AdminLogManager.log(sender, fullCommand, true);
                 handleRemove(sender, args);
                 break;
             case "list":
+                AdminLogManager.log(sender, fullCommand, true);
                 handleList(sender);
                 break;
             case "ban":
+                AdminLogManager.log(sender, fullCommand, true);
                 handleBan(sender, args);
                 break;
             case "unban":
+                AdminLogManager.log(sender, fullCommand, true);
                 handleUnban(sender, args);
                 break;
             case "kick":
+                AdminLogManager.log(sender, fullCommand, true);
                 handleKick(sender, args);
                 break;
             case "mute":
+                AdminLogManager.log(sender, fullCommand, true);
                 handleMute(sender, args);
                 break;
             case "unmute":
+                AdminLogManager.log(sender, fullCommand, true);
                 handleUnmute(sender, args);
                 break;
             case "status":
+                AdminLogManager.log(sender, fullCommand, true);
                 handleStatus(sender, args);
                 break;
             case "info":
+                AdminLogManager.log(sender, fullCommand, true);
                 handleInfo(sender, args);
                 break;
             case "invsee":
+                AdminLogManager.log(sender, fullCommand, true);
                 handleInvSee(sender, args);
                 break;
             case "endersee":
+                AdminLogManager.log(sender, fullCommand, true);
                 handleEnderSee(sender, args);
                 break;
             case "tp":
+                AdminLogManager.log(sender, fullCommand, true);
                 handleTeleportTo(sender, args);
                 break;
             case "tphere":
+                AdminLogManager.log(sender, fullCommand, true);
                 handleTeleportHere(sender, args);
                 break;
             case "heal":
+                AdminLogManager.log(sender, fullCommand, true);
                 handleHeal(sender, args);
                 break;
             case "feed":
+                AdminLogManager.log(sender, fullCommand, true);
                 handleFeed(sender, args);
                 break;
             default:
+                AdminLogManager.log(sender, fullCommand, false);
                 sendAdminHelp(sender, label);
                 break;
         }
@@ -119,6 +141,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
     private void handleAdd(CommandSender sender, String[] args, boolean isOp) {
         if (!isOp) {
+            AdminLogManager.log(sender, "/admin add" + (args.length > 1 ? " " + args[1] : ""), false);
             sender.sendMessage(Util.color("&cOnly server operators or console can add Hardcore admins."));
             return;
         }
@@ -131,6 +154,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         OfflinePlayer target = Bukkit.getOfflinePlayer(args[1]);
         String targetName = target.getName() == null ? args[1] : target.getName();
         boolean added = AdminManager.addAdmin(target);
+        AdminLogManager.log(sender, "/admin add " + targetName, true);
         if (added) {
             sender.sendMessage(Util.color("&aAdded &e" + targetName + " &ato Hardcore admin list."));
         } else {
