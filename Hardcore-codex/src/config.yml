@@ -148,42 +148,35 @@ bandit-tracker:
 ###############################
 content:
   guide:
-    chat-title: "Bandits & Heroes Guide"
+    chat-title: "Hardcore Guide"
     chat-lines:
-      - "&6Bandits"
-      - "Unfair kills on weaker players give &4Bandit Points&7."
-      - "At &c3 unfair kills&7 you become a &4&lBandit&7."
-      - "Bandits are announced and marked &4[B]&7."
-      - "&6Redemption"
-      - "Bandits who slay bandits gain &aRedemption Points&7."
-      - "At &a3 bandits slain as a bandit&7, you lose Bandit status."
-      - "&6Heroes"
-      - "Non-bandits who kill bandits gain &6Hero progress&7."
-      - "At &63 bandits slain as a non-bandit&7, you become a &6&lHero&7."
-      - "Heroes are marked &6[H]&7 and announced."
-      - "Use &c/bandittracker &7for a compass that locks onto bandits."
+      - "&cWelcome to Hardcore."
+      - "&7One life only. Death bans you from the world."
+      - "&7Leave spawn to find trees, animals, and caves quickly."
+      - "&7Trust carefully — PvP and raiding are allowed."
+      - "&7Use /guide for your one-time Hardcore Guide book."
     book:
-      title: "&6Bandits & Heroes"
-      author: "HardcoreGuide"
+      title: "&cHardcore Guide"
+      author: "Hardcore"
       pages:
-        - "&4&lBANDITS\n\n&8Killing much\nweaker players in\nunfair fights gives\nyou &4Bandit&8 Points.\n\n&8At &c3 unfair kills\n&8you become a\n&4Bandit&8.\n\n&8Bandits are marked\nwith &4[B]&8 and are\nannounced to all."
-        - "&a&lREDEMPTION\n\n&8Bandits who kill\nother bandits gain\n&aRedemption Points.\n\n&8At 3 bandits slain\nwhile you are a\nBandit, you lose\nyour Bandit status\nand return to\nnormal.\n\n"
-        - "&6&lHEROES\n\n&8Players who are\nnot Bandits and\nkill Bandits gain\n&6Hero Points.\n\n&8At 3 bandits slain\nwhile you are not\na Bandit, you\nbecome a \n&6Hero&8.\n\n&8Heroes are marked\nwith &6[H]"
-        - "&6&lSTATUS FLOW\n\n&8Fair player:\n  kill 3 bandits\n  &a→ Hero\n\n&8Fair player:\n  3 unfair kills\n  &4→ Bandit\n\n&8Bandit:\n  kill 3 bandits\n  &a→ Redeemed\n\n&8Redeemed:\n  kill 3 bandits\n  as non-bandit\n  &6→ Hero\n\n&8Use &c/bandittracker\n&8to get a bandit\n&8tracking compass."
+        - "&cWelcome to Hardcore\n\n&7You only have one life here.\nIf you die, you're banned until\nthe next map reset.\n\nGet wood, food, and tools fast.\nNight is dangerous—dig in or\ngear up before sunset."
+        - "&cEarly Survival\n\n&7Leave spawn to avoid raided\nareas. Hunt animals for food,\ncraft shields and basic armor,\nand light caves to prevent mobs.\n\nAlways carry blocks, a water\nbucket, and spare food."
+        - "&cPlaying With Others\n\n&7PvP and raiding are allowed.\nBe cautious about alliances.\nHidden bases survive longer;\navoid obvious landmarks.\n\nLog out safely—never mid-fight."
+        - "&cStay Alive\n\n&7Keep Totems, golden apples,\nand potions handy. Scout before\nengaging fights. If things go bad,\nrun and regroup.\n\nGood luck—Hardcore waits for no one."
 
   help:
     title: "Hardcore Help"
-    lines:
-      - "One-Life Server: &cDeath = Permanent Ban"
-      - "PvP & Griefing allowed (but frowned upon)."
-      - "Stealing allowed. No land claiming or protection."
-      - "Useful Commands:"
-      - "&c/guide &7- Bandits & Heroes guide"
-      - "&c/help &7- Show this help menu"
-      - "&c/rules &7- Hardcore server rules"
-      - "&c/stats &7- View player stats"
-      - "&c/bandittracker &7- Track the nearest bandit"
-      - "&4Play cautiously. You only get one life."
+      lines:
+        - "One-Life Server: &cDeath = Permanent Ban"
+        - "PvP & Griefing allowed (but frowned upon)."
+        - "Stealing allowed. No land claiming or protection."
+        - "Useful Commands:"
+        - "&c/guide &7- Hardcore survival guide"
+        - "&c/help &7- Show this help menu"
+        - "&c/rules &7- Hardcore server rules"
+        - "&c/stats &7- View player stats"
+        - "&c/bandittracker &7- Track the nearest bandit"
+        - "&4Play cautiously. You only get one life."
 
   rules:
     title: "Server Rules"
