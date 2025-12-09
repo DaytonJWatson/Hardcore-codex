@@ -131,29 +131,32 @@ public class BankTradeManager {
         cleanupExpired();
         pruneInvalidForTarget(target);
 
-        List<UUID> senders = incomingByTarget.get(target);
-        if (senders == null) {
-            return List.of();
-        }
-
         List<TradeSession> active = new ArrayList<>();
-        List<UUID> copy = new ArrayList<>(senders);
-        for (UUID sender : copy) {
-            TradeSession session = pendingTrades.get(sender);
-            if (session == null || isExpired(session)) {
-                removeBySender(sender);
+        List<UUID> senders = new ArrayList<>();
+
+        for (Map.Entry<UUID, TradeSession> entry : pendingTrades.entrySet()) {
+            TradeSession session = entry.getValue();
+            if (session == null || !session.target().equals(target) || isExpired(session)) {
+                continue;
+            }
+            if (session.state() != TradeState.AWAITING_ACCEPT) {
                 continue;
             }
             active.add(session);
+            senders.add(entry.getKey());
         }
+
+        if (senders.isEmpty()) {
+            incomingByTarget.remove(target);
+        } else {
+            incomingByTarget.put(target, senders);
+        }
+
         return active;
     }
 
     public int getPendingCount(UUID target) {
-        cleanupExpired();
-        pruneInvalidForTarget(target);
-        List<UUID> senders = incomingByTarget.get(target);
-        return senders == null ? 0 : senders.size();
+        return getPendingOffers(target).size();
     }
 
     public boolean acceptTrade(Player target) {
