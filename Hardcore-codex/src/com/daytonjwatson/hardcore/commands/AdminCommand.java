@@ -23,9 +23,12 @@ import org.bukkit.entity.Player;
 
 import com.daytonjwatson.hardcore.managers.AdminManager;
 import com.daytonjwatson.hardcore.managers.AdminLogManager;
+import com.daytonjwatson.hardcore.managers.AuctionHouseManager;
 import com.daytonjwatson.hardcore.managers.BanManager;
+import com.daytonjwatson.hardcore.managers.BankManager;
 import com.daytonjwatson.hardcore.managers.FreezeManager;
 import com.daytonjwatson.hardcore.managers.MuteManager;
+import com.daytonjwatson.hardcore.auction.AuctionListing;
 import com.daytonjwatson.hardcore.utils.MessageStyler;
 import com.daytonjwatson.hardcore.utils.Util;
 
@@ -34,7 +37,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     private static final List<String> BASE_SUBCOMMANDS = Arrays.asList(
             "help", "add", "remove", "list", "ban", "unban", "kick", "mute", "unmute", "warn",
             "freeze", "unfreeze", "clearchat", "status", "info", "invsee", "endersee", "tp",
-            "tphere", "heal", "feed", "log");
+            "tphere", "heal", "feed", "log", "auction", "bank");
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -152,6 +155,14 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             case "feed":
                 AdminLogManager.log(sender, fullCommand, true);
                 handleFeed(sender, args);
+                break;
+            case "auction":
+                AdminLogManager.log(sender, fullCommand, true);
+                handleAuctionAdmin(sender, args);
+                break;
+            case "bank":
+                AdminLogManager.log(sender, fullCommand, true);
+                handleBankAdmin(sender, args);
                 break;
             default:
                 AdminLogManager.log(sender, fullCommand, false);
@@ -635,6 +646,166 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Util.color("&aFed &e" + target.getName() + "&a."));
     }
 
+    private void handleAuctionAdmin(CommandSender sender, String[] args) {
+        AuctionHouseManager manager = AuctionHouseManager.get();
+        if (manager == null) {
+            sender.sendMessage(Util.color("&cThe auction house is not initialized."));
+            return;
+        }
+
+        if (args.length < 2) {
+            sender.sendMessage(Util.color("&cUsage: /admin auction <list|cancel> [target]"));
+            return;
+        }
+
+        String action = args[1].toLowerCase(Locale.ROOT);
+        switch (action) {
+            case "list": {
+                OfflinePlayer filter = args.length >= 3 ? resolveOfflinePlayer(args[2]) : null;
+                List<AuctionListing> listings = manager.getListings();
+                if (filter != null) {
+                    listings = listings.stream()
+                            .filter(listing -> filter.getUniqueId().equals(listing.getSeller()))
+                            .toList();
+                }
+
+                if (listings.isEmpty()) {
+                    sender.sendMessage(Util.color("&eNo active auction listings found."));
+                    return;
+                }
+
+                sender.sendMessage(Util.color("&6Active listings (&f" + listings.size() + "&6):"));
+                for (AuctionListing listing : listings) {
+                    String sellerName = listing.getSeller() == null ? "Server"
+                            : Bukkit.getOfflinePlayer(listing.getSeller()).getName();
+                    sender.sendMessage(Util.color(" &8- &e" + listing.getId() + " &7| Seller: &f"
+                            + (sellerName == null ? "Unknown" : sellerName) + " &7| Qty: &f"
+                            + listing.getQuantity() + " &7| Price: &f"
+                            + BankManager.get().formatCurrency(listing.getPricePerItem())));
+                }
+                return;
+            }
+            case "cancel": {
+                if (args.length < 3) {
+                    sender.sendMessage(Util.color("&cUsage: /admin auction cancel <listing-id> [reason]"));
+                    return;
+                }
+
+                UUID id;
+                try {
+                    id = UUID.fromString(args[2]);
+                } catch (IllegalArgumentException ex) {
+                    sender.sendMessage(Util.color("&c'" + args[2] + "' is not a valid listing id."));
+                    return;
+                }
+
+                String reason = args.length > 3 ? String.join(" ", Arrays.copyOfRange(args, 3, args.length))
+                        : "Listing removed by an admin.";
+
+                boolean success = manager.cancelListing(id, sender.getName(), reason);
+                if (success) {
+                    sender.sendMessage(Util.color("&aCancelled auction listing &f" + id + "&a."));
+                } else {
+                    sender.sendMessage(Util.color("&cNo listing found with id &f" + id + "&c."));
+                }
+                return;
+            }
+            default:
+                sender.sendMessage(Util.color("&cUnknown auction admin action. Use /admin auction <list|cancel>."));
+        }
+    }
+
+    private void handleBankAdmin(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(Util.color("&cUsage: /admin bank <player> [balance|deposit|withdraw|set] [amount]"));
+            return;
+        }
+
+        OfflinePlayer target = resolveOfflinePlayer(args[1]);
+        if (target.getName() == null) {
+            sender.sendMessage(Util.color("&cCould not find player '&f" + args[1] + "&c'."));
+            return;
+        }
+
+        BankManager bank = BankManager.get();
+        UUID uuid = target.getUniqueId();
+        if (args.length == 2 || args[2].equalsIgnoreCase("balance")) {
+            double balance = bank.getBalance(uuid);
+            sender.sendMessage(Util.color("&6Bank &8» &e" + target.getName() + "&7 balance: &a"
+                    + bank.formatCurrency(balance)));
+            return;
+        }
+
+        if (args.length < 4) {
+            sender.sendMessage(Util.color("&cUsage: /admin bank <player> <deposit|withdraw|set> <amount>"));
+            return;
+        }
+
+        String action = args[2].toLowerCase(Locale.ROOT);
+        double amount;
+        try {
+            amount = Double.parseDouble(args[3]);
+        } catch (NumberFormatException ex) {
+            sender.sendMessage(Util.color("&c'" + args[3] + "' is not a valid amount."));
+            return;
+        }
+
+        if (amount < 0) {
+            sender.sendMessage(Util.color("&cAmount must not be negative."));
+            return;
+        }
+
+        switch (action) {
+            case "deposit":
+                if (amount == 0) {
+                    sender.sendMessage(Util.color("&cAmount must be greater than zero."));
+                    return;
+                }
+                bank.deposit(uuid, amount, "Admin deposit by " + sender.getName());
+                sender.sendMessage(Util.color("&aDeposited &f" + bank.formatCurrency(amount) + " &ainto &e"
+                        + target.getName() + "&a's account."));
+                break;
+            case "withdraw":
+                if (amount == 0) {
+                    sender.sendMessage(Util.color("&cAmount must be greater than zero."));
+                    return;
+                }
+                if (bank.withdraw(uuid, amount, "Admin withdrawal by " + sender.getName())) {
+                    sender.sendMessage(Util.color("&aWithdrew &f" + bank.formatCurrency(amount) + " &afrom &e"
+                            + target.getName() + "&a's account."));
+                } else {
+                    sender.sendMessage(Util.color("&c" + target.getName() + " does not have enough funds."));
+                }
+                break;
+            case "set": {
+                double current = bank.getBalance(uuid);
+                if (Math.abs(current - amount) < 0.0001) {
+                    sender.sendMessage(Util.color("&e" + target.getName() + " already has that balance."));
+                    return;
+                }
+
+                if (current < amount) {
+                    bank.deposit(uuid, amount - current,
+                            "Balance set to " + bank.formatCurrency(amount) + " by " + sender.getName());
+                } else {
+                    double delta = current - amount;
+                    if (!bank.withdraw(uuid, delta,
+                            "Balance set to " + bank.formatCurrency(amount) + " by " + sender.getName())) {
+                        sender.sendMessage(Util.color("&cFailed to adjust balance for &f" + target.getName() + "&c."));
+                        return;
+                    }
+                }
+
+                sender.sendMessage(Util.color("&aSet balance of &e" + target.getName() + " &ato &f"
+                        + bank.formatCurrency(amount) + "&a."));
+                break;
+            }
+            default:
+                sender.sendMessage(Util.color("&cUnknown bank admin action. Use deposit, withdraw, set, or balance."));
+                return;
+        }
+    }
+
     private void handleLog(CommandSender sender, String[] args) {
         String actorFilter = null;
         int limit = 10;
@@ -686,7 +857,9 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 " &e/" + label + " tp <player> [target] &7- to player or player->player",
                 " &e/" + label + " tphere <player> &7- pull to you",
                 " &e/" + label + " heal <player> &7- restore health",
-                " &e/" + label + " feed <player> &7- restore hunger");
+                " &e/" + label + " feed <player> &7- restore hunger",
+                " &e/" + label + " auction <list|cancel> &7- manage listings",
+                " &e/" + label + " bank <player> <action> &7- manage balances");
     }
 
     private Duration parseDuration(String raw) {
@@ -737,6 +910,10 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 case "heal":
                 case "feed":
                     return filterStartingWith(onlinePlayerNames(), args[1]);
+                case "auction":
+                    return filterStartingWith(Arrays.asList("list", "cancel"), args[1]);
+                case "bank":
+                    return filterStartingWith(allKnownPlayerNames(), args[1]);
                 case "remove":
                     return filterStartingWith(AdminManager.getAdminNames(), args[1]);
                 case "unmute":
@@ -757,6 +934,18 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 3 && (sub.equals("mute") || sub.equals("ban"))) {
             return filterStartingWith(suggestDurations(), args[2]);
+        }
+
+        if (args.length == 3 && sub.equals("bank")) {
+            return filterStartingWith(Arrays.asList("balance", "deposit", "withdraw", "set"), args[2]);
+        }
+
+        if (args.length == 3 && sub.equals("auction") && args[1].equalsIgnoreCase("cancel")) {
+            AuctionHouseManager manager = AuctionHouseManager.get();
+            if (manager != null) {
+                List<String> ids = manager.getListings().stream().map(l -> l.getId().toString()).toList();
+                return filterStartingWith(ids, args[2]);
+            }
         }
 
         if (args.length == 3 && sub.equals("tp")) {
@@ -782,6 +971,16 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
     private List<String> onlinePlayerNames() {
         return Bukkit.getOnlinePlayers().stream().map(Player::getName).toList();
+    }
+
+    private List<String> allKnownPlayerNames() {
+        List<String> names = new ArrayList<>(onlinePlayerNames());
+        for (OfflinePlayer player : Bukkit.getOfflinePlayers()) {
+            if (player.getName() != null && !names.contains(player.getName())) {
+                names.add(player.getName());
+            }
+        }
+        return names;
     }
 
     private List<String> suggestDurations() {
