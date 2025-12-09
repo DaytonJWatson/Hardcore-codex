@@ -82,7 +82,7 @@ public final class BankSellGui {
 
         Material type = stack.getType();
         int maxStack = Math.max(1, type.getMaxStackSize());
-        double base = 0.05 + (64.0 / maxStack) * 0.15;
+        double base = 0.02 + (64.0 / maxStack) * 0.05;
 
         String name = type.name();
         double rarityMultiplier = determineRarityMultiplier(name);
@@ -100,23 +100,27 @@ public final class BankSellGui {
         double enchantBonus = 1.0 + (stack.getEnchantments().size() * 0.05);
         double price = stack.getAmount() * base * rarityMultiplier * durabilityScale * enchantBonus;
 
-        double capped = Math.min(price, 5000.0);
+        double capped = Math.min(price, rarityMultiplier >= 20 ? 15000.0 : 7500.0);
         return roundCurrency(capped);
     }
 
     private static double determineRarityMultiplier(String name) {
         name = name.toUpperCase();
-        if (name.contains("NETHERITE") || name.contains("ANCIENT_DEBRIS")) return 18.0;
-        if (name.contains("DIAMOND")) return 12.0;
-        if (name.contains("EMERALD")) return 10.0;
-        if (name.contains("TOTEM")) return 14.0;
-        if (name.contains("ELYTRA") || name.contains("SHULKER") || name.contains("SPAWN_EGG")) return 9.0;
-        if (name.contains("GOLD")) return 6.0;
-        if (name.contains("IRON")) return 4.0;
-        if (name.contains("COPPER")) return 3.0;
-        if (name.contains("REDSTONE") || name.contains("LAPIS") || name.contains("QUARTZ") || name.contains("AMETHYST")) return 2.5;
-        if (name.contains("BOOK")) return 2.0;
-        if (name.contains("LEATHER") || name.contains("WOOL") || name.contains("GLASS")) return 1.5;
+        if (name.contains("NETHERITE_INGOT") || name.contains("NETHERITE_BLOCK")) return 90.0;
+        if (name.contains("ANCIENT_DEBRIS") || name.contains("NETHERITE_SCRAP")) return 70.0;
+        if (name.contains("DRAGON_EGG") || name.contains("DRAGON_HEAD") || name.contains("ELYTRA")) return 65.0;
+        if (name.contains("BEACON") || name.contains("NETHER_STAR") || name.contains("TOTEM")) return 60.0;
+        if (name.contains("SHULKER") || name.contains("SPAWN_EGG")) return 45.0;
+        if (name.contains("DIAMOND")) return 35.0;
+        if (name.contains("EMERALD")) return 28.0;
+        if (name.contains("GOLD")) return 16.0;
+        if (name.contains("IRON")) return 9.0;
+        if (name.contains("COPPER") || name.contains("AMETHYST")) return 5.0;
+        if (name.contains("REDSTONE") || name.contains("LAPIS") || name.contains("QUARTZ")) return 3.5;
+        if (name.contains("ENCHANTED_BOOK") || name.contains("BOOK")) return 3.0;
+        if (name.contains("OBSIDIAN") || name.contains("BLAZE_ROD") || name.contains("GLOWSTONE") || name.contains("SEA_LANTERN")) return 2.5;
+        if (name.contains("LEATHER") || name.contains("WOOL") || name.contains("GLASS") || name.contains("PRISMARINE")) return 1.75;
+        if (name.contains("STONE") || name.contains("COBBLE") || name.contains("DEEPSLATE") || name.contains("NETHERRACK") || name.contains("DIRT") || name.contains("SAND") || name.contains("GRAVEL")) return 0.35;
         return 1.0;
     }
 
