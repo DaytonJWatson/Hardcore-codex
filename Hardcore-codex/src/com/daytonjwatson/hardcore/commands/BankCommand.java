@@ -58,13 +58,11 @@ public class BankCommand implements CommandExecutor, TabCompleter {
 
     private void handleSend(Player sender, String targetName, String amountRaw) {
         BankManager bank = BankManager.get();
-        OfflinePlayer target = Bukkit.getOfflinePlayerIfCached(targetName);
-        if (target == null || target.getName() == null || !target.getName().equalsIgnoreCase(targetName)) {
-            target = Bukkit.getPlayerExact(targetName);
-            if (target == null) {
-                target = Bukkit.getOfflinePlayer(targetName);
-            }
+        OfflinePlayer target = Bukkit.getPlayerExact(targetName);
+        if (target == null) {
+            target = Bukkit.getOfflinePlayer(targetName);
         }
+
         if (target == null || target.getName() == null) {
             sender.sendMessage(Util.color("&cCould not find player '&f" + targetName + "&c'."));
             return;
