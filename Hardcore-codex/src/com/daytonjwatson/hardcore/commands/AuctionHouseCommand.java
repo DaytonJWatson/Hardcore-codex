@@ -50,11 +50,6 @@ public class AuctionHouseCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleAddListing(Player player, String[] args) {
-        if (!player.isOp()) {
-            player.sendMessage(Util.color("&cOnly administrators can create auction listings."));
-            return;
-        }
-
         if (args.length < 3) {
             player.sendMessage(Util.color("&cUsage: /auction add <price-per-item> <quantity> (uses item in hand)"));
             return;
@@ -107,9 +102,7 @@ public class AuctionHouseCommand implements CommandExecutor, TabCompleter {
             for (int i = 1; i <= Math.min(totalPages, 5); i++) {
                 suggestions.add(String.valueOf(i));
             }
-            if (sender.isOp()) {
-                suggestions.add("add");
-            }
+            suggestions.add("add");
         }
         return suggestions;
     }
