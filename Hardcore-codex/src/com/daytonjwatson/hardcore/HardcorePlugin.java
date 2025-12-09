@@ -12,6 +12,7 @@ import com.daytonjwatson.hardcore.commands.AdminCommand;
 import com.daytonjwatson.hardcore.commands.RulesCommand;
 import com.daytonjwatson.hardcore.commands.StatsCommand;
 import com.daytonjwatson.hardcore.commands.BankCommand;
+import com.daytonjwatson.hardcore.commands.AuctionHouseCommand;
 import com.daytonjwatson.hardcore.config.Config;
 import com.daytonjwatson.hardcore.config.ConfigValues;
 import com.daytonjwatson.hardcore.listeners.PlayerChatListener;
@@ -30,6 +31,8 @@ import com.daytonjwatson.hardcore.managers.MuteManager;
 import com.daytonjwatson.hardcore.managers.StatsManager;
 import com.daytonjwatson.hardcore.managers.BankManager;
 import com.daytonjwatson.hardcore.listeners.PlayerLoginListener;
+import com.daytonjwatson.hardcore.managers.AuctionHouseManager;
+import com.daytonjwatson.hardcore.listeners.AuctionHouseListener;
 
 public class HardcorePlugin extends JavaPlugin {
 
@@ -51,6 +54,7 @@ public class HardcorePlugin extends JavaPlugin {
         DeathBanManager.init(this);
         MuteManager.init(this);
         BankManager.init(this);
+        AuctionHouseManager.init(this);
 
         // Initialize stats system (loads stats.yml, etc.)
         StatsManager.init(this);
@@ -77,6 +81,9 @@ public class HardcorePlugin extends JavaPlugin {
         if (BankManager.get() != null) {
             BankManager.get().save();
         }
+        if (AuctionHouseManager.get() != null) {
+            AuctionHouseManager.get().save();
+        }
 
         instance = null;
     }
@@ -97,6 +104,10 @@ public class HardcorePlugin extends JavaPlugin {
         registerTabCompleter("bank", bankCommand);
         registerCommand("pay", bankCommand);
         registerTabCompleter("pay", bankCommand);
+
+        AuctionHouseCommand auctionCommand = new AuctionHouseCommand();
+        registerCommand("auction", auctionCommand);
+        registerTabCompleter("auction", auctionCommand);
 
         if (getCommand("stats") != null) {
             StatsCommand statsCommand = new StatsCommand();
@@ -134,5 +145,6 @@ public class HardcorePlugin extends JavaPlugin {
         pm.registerEvents(new BanditTrackerListener(), this);
         pm.registerEvents(new FreezeListener(), this);
         pm.registerEvents(new BankGuiListener(), this);
+        pm.registerEvents(new AuctionHouseListener(), this);
     }
 }
