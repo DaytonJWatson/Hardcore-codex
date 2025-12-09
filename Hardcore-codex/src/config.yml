@@ -170,11 +170,11 @@ content:
       title: "&cHardcore Guide"
       author: "Hardcore"
       pages:
-        - "&cHardcore World\n\n&7One life. &cPermanent death—no\nrevives&7 and no map resets.\nPvP, griefing, and stealing are\nallowed but frowned upon. Work\ntogether when you can, because\nlosing a fight ends your run."
-        - "&cJoining In\n\n&7New players spawn randomly in\nthe wilderness—no spawn hub to\nbabysit you. Move fast: punch\ntrees, make tools, and grab food\nbefore night. Expect strangers\nto be dangerous but potential\nallies if you talk first."
-        - "&cHardcore Basics\n\n&7Hardcore means your world ends\non death. Log out safely, avoid\nhero jumps, and never dig down.\nCarry a shield, blocks, and a\nwater bucket. Cook extra food,\nkeep spare picks, and stash gear\ndeep underground."
-        - "&cSurvival Tips\n\n&7Secure iron before exploring.\nLight caves, bridge over lava,\nand block creepers. Travel with\na bed for night-skips in groups,\nbut remember respawns do not\nundo bans. Wear gold in the\nNether, respect bastions, and\nnever fight when lagging."
-        - "&cBandits & Heroes\n\n&7Unfairly killing weaker players\ngives \"unfair kills\". At &c3&7, you\nbecome a &4Bandit&7 with a red tag.\nKill &c3 bandits&7 to redeem. While\nclean, defeating &c3 bandits&7 turns\nyou into a &6Hero&7. Heroes who prey\non weak players fall back to Bandit."
+        - "&cHardcore Basics\n\n&7One life. Death = ban from the\nworld with no respawns. PvP,\nraiding, and stealing are on, so\nstay cautious and expect fights."
+        - "&cGetting Started\n\n&7You spawn in the wild—no safe\nhub. Punch trees, craft tools,\nand grab food before night.\nTravel light and avoid crowds\nuntil you have gear."
+        - "&cSurvival Tips\n\n&7Use a shield, water bucket,\nand building blocks. Light caves,\nbridge safely, and block creepers.\nNever dig straight down or take\nlaggy fights."
+        - "&cServer Features\n\n&7Unfair kills mark you as a\n&4Bandit&7; hunt bandits to clear.\nTrack them with /bandittracker.\nCheck /stats, /rules, and /help\nfor milestones and basics."
+        - "&cEconomy & Trading\n\n&7Use /bank to check balance\nand send money. Track history.\nSell with /auction or buy gear.\nHunt mobs, trade, and team up\nto fund your next life."
 
   help:
     title: "Hardcore Help"
