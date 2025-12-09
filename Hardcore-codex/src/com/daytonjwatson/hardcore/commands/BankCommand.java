@@ -15,8 +15,10 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
 import com.daytonjwatson.hardcore.managers.BankManager;
+import com.daytonjwatson.hardcore.managers.BankTradeManager;
 import com.daytonjwatson.hardcore.utils.Util;
 import com.daytonjwatson.hardcore.views.BankGui;
+import com.daytonjwatson.hardcore.views.BankTradeGui;
 
 public class BankCommand implements CommandExecutor, TabCompleter {
 
@@ -44,6 +46,9 @@ public class BankCommand implements CommandExecutor, TabCompleter {
             case "history":
                 BankGui.openTransactions(player);
                 return true;
+            case "trade":
+                handleTrade(player, args, label);
+                return true;
             case "send":
                 if (args.length < 3) {
                     player.sendMessage(Util.color("&cUsage: /" + label + " send <player> <amount>"));
@@ -54,6 +59,47 @@ public class BankCommand implements CommandExecutor, TabCompleter {
             default:
                 player.sendMessage(Util.color("&cUnknown bank action. Try /bank, /bank balance, /bank transactions, or /bank send <player> <amount>."));
                 return true;
+        }
+    }
+
+    private void handleTrade(Player player, String[] args, String label) {
+        BankTradeManager trades = BankTradeManager.get();
+
+        if (args.length < 2) {
+            player.sendMessage(Util.color("&cUsage: /" + label + " trade <view|accept|decline>"));
+            return;
+        }
+
+        String action = args[1].toLowerCase(Locale.ROOT);
+        switch (action) {
+            case "view":
+            case "open": {
+                BankTradeManager.TradeSession session = trades.getPendingForTarget(player.getUniqueId());
+                if (session == null || session.state() != BankTradeManager.TradeState.AWAITING_ACCEPT) {
+                    player.sendMessage(Util.color("&cYou don't have any incoming trade offers."));
+                    return;
+                }
+
+                Player sender = Bukkit.getPlayer(session.sender());
+                if (sender == null || !sender.isOnline()) {
+                    player.sendMessage(Util.color("&cThe sender is no longer online."));
+                    trades.clear(player.getUniqueId());
+                    return;
+                }
+
+                BankTradeGui.openIncomingOffer(player, sender, session.item(), session.price() == null ? 0 : session.price());
+                return;
+            }
+            case "accept":
+                trades.acceptTrade(player);
+                return;
+            case "decline":
+            case "reject":
+                trades.declineTrade(player.getUniqueId());
+                player.sendMessage(Util.color("&aDeclined any pending trade offers."));
+                return;
+            default:
+                player.sendMessage(Util.color("&cUnknown trade action. Use /" + label + " trade <view|accept|decline>."));
         }
     }
 
@@ -117,10 +163,15 @@ public class BankCommand implements CommandExecutor, TabCompleter {
             suggestions.add("balance");
             suggestions.add("transactions");
             suggestions.add("send");
+            suggestions.add("trade");
         } else if (args.length == 2 && args[0].equalsIgnoreCase("send")) {
             for (Player online : Bukkit.getOnlinePlayers()) {
                 suggestions.add(online.getName());
             }
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("trade")) {
+            suggestions.add("view");
+            suggestions.add("accept");
+            suggestions.add("decline");
         }
         return suggestions;
     }
