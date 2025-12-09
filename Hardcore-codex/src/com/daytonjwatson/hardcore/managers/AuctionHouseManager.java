@@ -68,6 +68,20 @@ public class AuctionHouseManager {
         return listing;
     }
 
+    public int getListingCount(UUID seller) {
+        if (seller == null) {
+            return 0;
+        }
+
+        int count = 0;
+        for (AuctionListing listing : listings.values()) {
+            if (seller.equals(listing.getSeller())) {
+                count++;
+            }
+        }
+        return count;
+    }
+
     public void removeListing(UUID id) {
         listings.remove(id);
         saveListings();

@@ -12,6 +12,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 import com.daytonjwatson.hardcore.managers.AuctionHouseManager;
+import com.daytonjwatson.hardcore.managers.AdminManager;
 import com.daytonjwatson.hardcore.managers.BankManager;
 import com.daytonjwatson.hardcore.utils.Util;
 import com.daytonjwatson.hardcore.views.AuctionHouseView;
@@ -81,9 +82,15 @@ public class AuctionHouseCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
+        AuctionHouseManager manager = AuctionHouseManager.get();
+        if (!AdminManager.isAdmin(player) && manager.getListingCount(player.getUniqueId()) >= 5) {
+            player.sendMessage(Util.color("&cYou can only have 5 active auction listings at a time."));
+            return;
+        }
+
         ItemStack listingItem = inHand.clone();
         listingItem.setAmount(1);
-        AuctionHouseManager.get().addListing(player.getUniqueId(), listingItem, price, quantity);
+        manager.addListing(player.getUniqueId(), listingItem, price, quantity);
 
         inHand.setAmount(inHand.getAmount() - quantity);
         player.getInventory().setItemInMainHand(inHand.getAmount() <= 0 ? new ItemStack(Material.AIR) : inHand);
