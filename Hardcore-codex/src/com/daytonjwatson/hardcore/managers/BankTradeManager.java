@@ -18,7 +18,7 @@ public class BankTradeManager {
 
     private static BankTradeManager instance;
 
-    private static final int MAX_PENDING_OFFERS = 3;
+    private static final int MAX_PENDING_OFFERS = 1;
     private static final long EXPIRATION_MILLIS = 15 * 60 * 1000L;
 
     private final Map<UUID, TradeSession> pendingTrades = new HashMap<>();
@@ -103,7 +103,7 @@ public class BankTradeManager {
 
         int pendingCount = getPendingCount(target.getUniqueId());
         if (pendingCount >= MAX_PENDING_OFFERS) {
-            sender.sendMessage(Util.color("&cThat player already has too many pending trade offers. Try again later."));
+            sender.sendMessage(Util.color("&cThat player already has a pending trade offer. Try again later."));
             return false;
         }
 
