@@ -30,5 +30,5 @@ commands:
     usage: /pay <player> <amount>
   auction:
     description: Opens the Hardcore auction house.
-    usage: /auction [add]
+    usage: /auction [page|add]
     aliases: [ah]

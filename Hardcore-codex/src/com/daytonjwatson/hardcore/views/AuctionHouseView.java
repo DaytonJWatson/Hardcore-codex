@@ -23,24 +23,33 @@ public final class AuctionHouseView {
 
     public static final String TITLE = Util.color("&6&lAuction House");
     private static final NamespacedKey LISTING_KEY = new NamespacedKey(HardcorePlugin.getInstance(), "auction_listing_id");
+    private static final NamespacedKey NAV_KEY = new NamespacedKey(HardcorePlugin.getInstance(), "auction_nav_target");
+    private static final int PAGE_SIZE = 45;
 
     private AuctionHouseView() {}
 
     public static void open(Player player) {
+        open(player, 0);
+    }
+
+    public static void open(Player player, int page) {
         AuctionHouseManager manager = AuctionHouseManager.get();
         List<AuctionListing> listings = manager.getListings();
-        int size = Math.min(54, Math.max(27, ((listings.size() / 9) + 1) * 9));
-        Inventory menu = Bukkit.createInventory(null, size, TITLE);
+        int totalPages = Math.max(1, (int) Math.ceil(listings.size() / (double) PAGE_SIZE));
+        int currentPage = Math.max(0, Math.min(page, totalPages - 1));
+
+        Inventory menu = Bukkit.createInventory(null, 54, TITLE);
 
         ItemStack filler = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
-        for (int slot = 0; slot < size; slot++) {
+        for (int slot = 0; slot < menu.getSize(); slot++) {
             menu.setItem(slot, filler);
         }
 
         int slot = 0;
         BankManager bank = BankManager.get();
-        for (AuctionListing listing : listings) {
-            if (slot >= size) break;
+        int startIndex = currentPage * PAGE_SIZE;
+        for (int i = startIndex; i < Math.min(listings.size(), startIndex + PAGE_SIZE); i++) {
+            AuctionListing listing = listings.get(i);
             ItemStack display = listing.getItem();
             ItemMeta meta = display.getItemMeta();
             if (meta != null) {
@@ -59,8 +68,10 @@ public final class AuctionHouseView {
 
         if (listings.isEmpty()) {
             ItemStack empty = item(Material.BARRIER, "&cNo listings", List.of("&7No items are for sale right now."));
-            menu.setItem(size / 2, empty);
+            menu.setItem(22, empty);
         }
+
+        addNavigation(menu, currentPage, totalPages);
 
         player.openInventory(menu);
     }
@@ -71,6 +82,41 @@ public final class AuctionHouseView {
 
     public static NamespacedKey listingKey() {
         return LISTING_KEY;
+    }
+
+    public static NamespacedKey navigationKey() {
+        return NAV_KEY;
+    }
+
+    public static int pageSize() {
+        return PAGE_SIZE;
+    }
+
+    public static ItemStack navigationItem(String name, List<String> lore, int targetPage) {
+        ItemStack item = item(Material.ARROW, name, lore);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.getPersistentDataContainer().set(NAV_KEY, PersistentDataType.INTEGER, targetPage);
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    private static void addNavigation(Inventory menu, int currentPage, int totalPages) {
+        ItemStack close = item(Material.BARRIER, "&cClose", List.of("&7Click to close the auction house."));
+        menu.setItem(49, close);
+
+        ItemStack indicator = item(Material.NAME_TAG, "&ePage " + (currentPage + 1) + " of " + totalPages,
+                List.of("&7Browse all available listings."));
+        menu.setItem(50, indicator);
+
+        if (currentPage > 0) {
+            menu.setItem(45, navigationItem("&aPrevious Page", List.of("&7View earlier listings."), currentPage - 1));
+        }
+
+        if (currentPage + 1 < totalPages) {
+            menu.setItem(53, navigationItem("&aNext Page", List.of("&7View more listings."), currentPage + 1));
+        }
     }
 
     private static ItemStack item(Material material, String name, List<String> lore) {

@@ -40,7 +40,7 @@ public class BankGuiListener implements Listener {
 
         if (title.equals(BankGui.MAIN_TITLE)) {
             if (plainName.equalsIgnoreCase("Send Money")) {
-                BankSendGui.openRecipientSelection(player);
+                BankSendGui.openRecipientSelection(player, 0);
             } else if (plainName.equalsIgnoreCase("Recent Transactions")) {
                 BankGui.openTransactions(player);
             }
@@ -53,6 +53,12 @@ public class BankGuiListener implements Listener {
         }
 
         if (title.equals(BankSendGui.SELECT_TITLE)) {
+            Integer navPage = BankSendGui.getPageFromItem(current);
+            if (navPage != null && BankSendGui.getTargetFromItem(current) == null && plainName.toLowerCase().contains("page")) {
+                BankSendGui.openRecipientSelection(player, navPage);
+                return;
+            }
+
             if (plainName.equalsIgnoreCase("Back")) {
                 BankGui.openMain(player);
                 return;
@@ -64,12 +70,14 @@ public class BankGuiListener implements Listener {
             }
 
             org.bukkit.OfflinePlayer target = org.bukkit.Bukkit.getOfflinePlayer(uuid);
-            BankSendGui.openAmountSelection(player, target);
+            int currentPage = navPage == null ? 0 : navPage;
+            BankSendGui.openAmountSelection(player, target, currentPage);
             return;
         }
 
         if (BankSendGui.isSendInventory(title) && plainName.equalsIgnoreCase("Choose different player")) {
-            BankSendGui.openRecipientSelection(player);
+            Integer page = BankSendGui.getPageFromItem(current);
+            BankSendGui.openRecipientSelection(player, page == null ? 0 : page);
             return;
         }
 
@@ -77,7 +85,8 @@ public class BankGuiListener implements Listener {
             java.util.UUID targetId = BankSendGui.getTargetFromItem(current);
             if (targetId == null) {
                 player.sendMessage(Util.color("&cCould not determine who you're sending to. Please pick a player again."));
-                BankSendGui.openRecipientSelection(player);
+                Integer page = BankSendGui.getPageFromItem(current);
+                BankSendGui.openRecipientSelection(player, page == null ? 0 : page);
                 return;
             }
 

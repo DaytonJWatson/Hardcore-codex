@@ -30,6 +30,21 @@ public class AuctionHouseCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (args.length >= 1) {
+            try {
+                int page = Integer.parseInt(args[0]);
+                if (page <= 0) {
+                    player.sendMessage(Util.color("&cPage numbers start at 1."));
+                    return true;
+                }
+                AuctionHouseView.open(player, page - 1);
+                return true;
+            } catch (NumberFormatException ex) {
+                player.sendMessage(Util.color("&cUnknown auction action. Try /auction, /auction <page>, or /auction add."));
+                return true;
+            }
+        }
+
         AuctionHouseView.open(player);
         return true;
     }
@@ -86,8 +101,15 @@ public class AuctionHouseCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> suggestions = new ArrayList<>();
-        if (args.length == 1 && sender.isOp()) {
-            suggestions.add("add");
+        if (args.length == 1) {
+            AuctionHouseManager manager = AuctionHouseManager.get();
+            int totalPages = Math.max(1, (int) Math.ceil(manager.getListings().size() / (double) AuctionHouseView.pageSize()));
+            for (int i = 1; i <= Math.min(totalPages, 5); i++) {
+                suggestions.add(String.valueOf(i));
+            }
+            if (sender.isOp()) {
+                suggestions.add("add");
+            }
         }
         return suggestions;
     }
