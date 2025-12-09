@@ -59,6 +59,7 @@ public class StatsCommand implements CommandExecutor, TabCompleter {
 
         int kills = stats.getKills(targetUuid);
         long lastDeath = stats.getLastDeath(targetUuid);
+        String lastDeathCause = stats.getLastDeathCause(targetUuid);
         boolean isAlive = (lastDeath == 0L);
         long lifeMillis = stats.getLifeLengthMillis(targetUuid, isAlive);
 
@@ -76,6 +77,9 @@ public class StatsCommand implements CommandExecutor, TabCompleter {
         String statusText = isAlive ? ChatColor.GREEN + "ALIVE" : ChatColor.RED + "DEAD";
         String banditText = isBandit ? ChatColor.DARK_RED + "YES" : ChatColor.GREEN + "NO";
         String heroText   = isHero ? ChatColor.GREEN + "YES" : ChatColor.DARK_RED + "NO";
+        String deathCauseText = (!isAlive && lastDeathCause != null && !lastDeathCause.isEmpty())
+                ? lastDeathCause
+                : "Unknown";
 
         // Same number of lines as previous version, just cleaner styling
         sender.sendMessage(bar);
@@ -88,6 +92,12 @@ public class StatsCommand implements CommandExecutor, TabCompleter {
                 ChatColor.DARK_GRAY + "Status: " +
                 ChatColor.DARK_GRAY + "[" + statusText + ChatColor.DARK_GRAY + "]"
         );
+        if (!isAlive) {
+            sender.sendMessage(
+                    ChatColor.DARK_GRAY + "⟡ " + ChatColor.GOLD + "Last Death" + ChatColor.DARK_GRAY + ": " +
+                    ChatColor.WHITE + deathCauseText
+            );
+        }
         sender.sendMessage(
                 ChatColor.DARK_GRAY + "⟡ " + ChatColor.GOLD + "Life" + ChatColor.DARK_GRAY + ": " +
                 ChatColor.WHITE + lifeFormatted +
