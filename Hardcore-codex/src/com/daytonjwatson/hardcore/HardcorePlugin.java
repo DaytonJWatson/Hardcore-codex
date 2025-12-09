@@ -30,6 +30,7 @@ import com.daytonjwatson.hardcore.managers.DeathBanManager;
 import com.daytonjwatson.hardcore.managers.MuteManager;
 import com.daytonjwatson.hardcore.managers.StatsManager;
 import com.daytonjwatson.hardcore.managers.BankManager;
+import com.daytonjwatson.hardcore.managers.BankTradeManager;
 import com.daytonjwatson.hardcore.listeners.PlayerLoginListener;
 import com.daytonjwatson.hardcore.managers.AuctionHouseManager;
 import com.daytonjwatson.hardcore.listeners.AuctionHouseListener;
@@ -54,6 +55,7 @@ public class HardcorePlugin extends JavaPlugin {
         DeathBanManager.init(this);
         MuteManager.init(this);
         BankManager.init(this);
+        BankTradeManager.init();
         AuctionHouseManager.init(this);
 
         // Initialize stats system (loads stats.yml, etc.)

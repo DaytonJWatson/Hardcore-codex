@@ -37,6 +37,18 @@ public final class BankGui {
                 "&7You can still type &f/bank send <player> <amount>&7."
         ));
 
+        ItemStack tradeItem = item(Material.CHEST_MINECART, "&6Trade Items", List.of(
+                "&7Trade or gift items to online players.",
+                "&7Charge a price that comes straight from their bank.",
+                "&8Great for quick peer-to-peer deals."
+        ));
+
+        ItemStack topItem = item(Material.PAPER, "&bTop Balances", List.of(
+                "&7See the richest players on the server.",
+                "&7Click to open the baltop leaderboard.",
+                "&8Updates as soon as balances change."
+        ));
+
         List<String> recentLore = new ArrayList<>();
         recentLore.add("&7Most recent activity:");
         List<String> history = bank.getTransactions(player.getUniqueId());
@@ -59,6 +71,8 @@ public final class BankGui {
         menu.setItem(11, balanceItem);
         menu.setItem(13, sendItem);
         menu.setItem(15, historyItem);
+        menu.setItem(20, tradeItem);
+        menu.setItem(24, topItem);
 
         player.openInventory(menu);
     }
