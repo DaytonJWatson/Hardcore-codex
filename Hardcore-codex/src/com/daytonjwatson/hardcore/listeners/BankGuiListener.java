@@ -196,6 +196,22 @@ public class BankGuiListener implements Listener {
             return;
         }
 
+        if (org.bukkit.ChatColor.stripColor(title)
+                .startsWith(org.bukkit.ChatColor.stripColor(BankTradeGui.INCOMING_TITLE_PREFIX))) {
+            if (plainName.equalsIgnoreCase("Accept Trade")) {
+                if (BankTradeManager.get().acceptTrade(player)) {
+                    player.closeInventory();
+                }
+                return;
+            }
+
+            if (plainName.equalsIgnoreCase("Decline Trade") || plainName.equalsIgnoreCase("Back")) {
+                BankTradeManager.get().declineTrade(player.getUniqueId());
+                player.closeInventory();
+            }
+            return;
+        }
+
         if (BankTradeGui.isTradeInventory(title) && plainName.equalsIgnoreCase("Choose different player")) {
             Integer page = BankTradeGui.getPageFromItem(current);
             BankTradeManager.get().clear(player.getUniqueId());
@@ -221,7 +237,8 @@ public class BankGuiListener implements Listener {
             return;
         }
 
-        if (BankTradeGui.isTradeInventory(title)) {
+        if (org.bukkit.ChatColor.stripColor(title)
+                .startsWith(org.bukkit.ChatColor.stripColor(BankTradeGui.OFFER_TITLE_PREFIX))) {
             java.util.UUID targetId = BankTradeGui.getTargetFromItem(current);
             Double price = BankTradeGui.getPriceFromItem(current);
 
@@ -236,7 +253,12 @@ public class BankGuiListener implements Listener {
                 return;
             }
 
-            if (BankTradeManager.get().executeTrade(player, target, price)) {
+            if (BankTradeManager.get().sendOffer(player, target, price)) {
+                BankTradeManager.TradeSession offerSession = BankTradeManager.get().getPendingTrade(player.getUniqueId());
+                ItemStack offered = offerSession != null ? offerSession.item() : player.getInventory().getItemInMainHand();
+                BankTradeGui.openIncomingOffer(target, player, offered, price);
+                player.sendMessage(Util.color("&aSent a trade offer to &e" + target.getName() + "&a for &f"
+                        + BankManager.get().formatCurrency(price) + "&a. Waiting for them to accept."));
                 player.closeInventory();
             }
         }
@@ -327,8 +349,10 @@ public class BankGuiListener implements Listener {
 
             double finalAmount = amount;
             Bukkit.getScheduler().runTask(HardcorePlugin.getInstance(), () -> {
-                if (BankTradeManager.get().executeTrade(player, target, finalAmount)) {
-                    player.closeInventory();
+                if (BankTradeManager.get().sendOffer(player, target, finalAmount)) {
+                    BankTradeGui.openIncomingOffer(target, player, session.item(), finalAmount);
+                    player.sendMessage(Util.color("&aSent a trade offer to &e" + target.getName() + "&a for &f"
+                            + BankManager.get().formatCurrency(finalAmount) + "&a. Waiting for them to accept."));
                 }
             });
         }

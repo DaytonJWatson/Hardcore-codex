@@ -23,8 +23,10 @@ public final class BankTradeGui {
 
     public static final String SELECT_TITLE = Util.color("&6&lBank &8| &7Trade Partner");
     public static final String OFFER_TITLE_PREFIX = Util.color("&6&lBank &8| &7Trade with ");
+    public static final String INCOMING_TITLE_PREFIX = Util.color("&6&lBank &8| &7Offer from ");
 
     private static final NamespacedKey TARGET_KEY = new NamespacedKey(HardcorePlugin.getInstance(), "bank_trade_target");
+    private static final NamespacedKey SENDER_KEY = new NamespacedKey(HardcorePlugin.getInstance(), "bank_trade_sender");
     private static final NamespacedKey PRICE_KEY = new NamespacedKey(HardcorePlugin.getInstance(), "bank_trade_price");
     private static final NamespacedKey PAGE_KEY = new NamespacedKey(HardcorePlugin.getInstance(), "bank_trade_page");
     private static final int[] CONTENT_SLOTS = {10, 11, 12, 13, 14, 15, 16,
@@ -143,10 +145,55 @@ public final class BankTradeGui {
         sender.openInventory(menu);
     }
 
+    public static void openIncomingOffer(Player target, Player sender, ItemStack item, double price) {
+        String senderName = sender.getName() != null ? sender.getName() : "player";
+        Inventory menu = Bukkit.createInventory(null, 27, INCOMING_TITLE_PREFIX + Util.color("&e" + senderName));
+
+        ItemStack filler = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
+        for (int i = 0; i < menu.getSize(); i++) {
+            menu.setItem(i, filler);
+        }
+
+        ItemStack preview = item.clone();
+        ItemMeta previewMeta = preview.getItemMeta();
+        if (previewMeta != null) {
+            List<String> lore = previewMeta.hasLore() ? new ArrayList<>(previewMeta.getLore()) : new ArrayList<>();
+            lore.add(Util.color("&7From: &f" + senderName));
+            lore.add(Util.color("&7Price: &f" + BankManager.get().formatCurrency(price)));
+            previewMeta.setLore(lore);
+            preview.setItemMeta(previewMeta);
+        }
+        menu.setItem(13, preview);
+
+        ItemStack accept = item(Material.LIME_WOOL, "&aAccept Trade", List.of(
+                "&7Pay &f" + BankManager.get().formatCurrency(price),
+                "&7and receive this item."));
+        ItemStack decline = item(Material.RED_WOOL, "&cDecline Trade", List.of("&7No items or money will move."));
+
+        ItemMeta acceptMeta = accept.getItemMeta();
+        if (acceptMeta != null) {
+            acceptMeta.getPersistentDataContainer().set(SENDER_KEY, PersistentDataType.STRING, sender.getUniqueId().toString());
+            acceptMeta.getPersistentDataContainer().set(PRICE_KEY, PersistentDataType.DOUBLE, price);
+            accept.setItemMeta(acceptMeta);
+        }
+
+        ItemMeta declineMeta = decline.getItemMeta();
+        if (declineMeta != null) {
+            declineMeta.getPersistentDataContainer().set(SENDER_KEY, PersistentDataType.STRING, sender.getUniqueId().toString());
+            decline.setItemMeta(declineMeta);
+        }
+
+        menu.setItem(11, accept);
+        menu.setItem(15, decline);
+
+        target.openInventory(menu);
+    }
+
     public static boolean isTradeInventory(String title) {
         String stripped = org.bukkit.ChatColor.stripColor(title);
         return stripped.equals(org.bukkit.ChatColor.stripColor(SELECT_TITLE))
-                || stripped.startsWith(org.bukkit.ChatColor.stripColor(OFFER_TITLE_PREFIX));
+                || stripped.startsWith(org.bukkit.ChatColor.stripColor(OFFER_TITLE_PREFIX))
+                || stripped.startsWith(org.bukkit.ChatColor.stripColor(INCOMING_TITLE_PREFIX));
     }
 
     public static UUID getTargetFromItem(ItemStack item) {
@@ -170,6 +217,17 @@ public final class BankTradeGui {
     public static Integer getPageFromItem(ItemStack item) {
         if (item == null || item.getItemMeta() == null) return null;
         return item.getItemMeta().getPersistentDataContainer().get(PAGE_KEY, PersistentDataType.INTEGER);
+    }
+
+    public static UUID getSenderFromItem(ItemStack item) {
+        if (item == null || item.getItemMeta() == null) return null;
+        String raw = item.getItemMeta().getPersistentDataContainer().get(SENDER_KEY, PersistentDataType.STRING);
+        if (raw == null) return null;
+        try {
+            return UUID.fromString(raw);
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
     }
 
     private static ItemStack amountItem(double amount, UUID target, String label) {

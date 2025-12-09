@@ -14,6 +14,7 @@ public class BankTradeManager {
     private static BankTradeManager instance;
 
     private final Map<UUID, TradeSession> pendingTrades = new HashMap<>();
+    private final Map<UUID, UUID> incomingByTarget = new HashMap<>();
 
     private BankTradeManager() {
     }
@@ -31,7 +32,7 @@ public class BankTradeManager {
     public void setPendingTrade(UUID sender, UUID target, ItemStack item, int returnPage) {
         if (item == null) return;
         ItemStack clone = item.clone();
-        pendingTrades.put(sender, new TradeSession(target, clone, returnPage, false));
+        pendingTrades.put(sender, new TradeSession(sender, target, clone, returnPage, null, false, TradeState.SELECTING_PRICE));
     }
 
     public TradeSession getPendingTrade(UUID sender) {
@@ -41,7 +42,9 @@ public class BankTradeManager {
     public void setAwaitingPrice(UUID sender, boolean awaiting) {
         TradeSession session = pendingTrades.get(sender);
         if (session == null) return;
-        pendingTrades.put(sender, new TradeSession(session.target(), session.item(), session.returnPage(), awaiting));
+        pendingTrades.put(sender,
+                new TradeSession(session.sender(), session.target(), session.item(), session.returnPage(), session.price(), awaiting,
+                        session.state()));
     }
 
     public boolean isAwaitingPrice(UUID sender) {
@@ -49,11 +52,19 @@ public class BankTradeManager {
         return session != null && session.awaitingPrice();
     }
 
-    public void clear(UUID sender) {
-        pendingTrades.remove(sender);
+    public void clear(UUID participant) {
+        TradeSession bySender = pendingTrades.remove(participant);
+        if (bySender != null) {
+            incomingByTarget.remove(bySender.target());
+        }
+
+        UUID byTargetSender = incomingByTarget.remove(participant);
+        if (byTargetSender != null) {
+            pendingTrades.remove(byTargetSender);
+        }
     }
 
-    public boolean executeTrade(Player sender, Player target, double price) {
+    public boolean sendOffer(Player sender, Player target, double price) {
         TradeSession session = pendingTrades.get(sender.getUniqueId());
         if (session == null) {
             sender.sendMessage(Util.color("&cNo trade data found. Please open the trade menu again."));
@@ -76,10 +87,45 @@ public class BankTradeManager {
             return false;
         }
 
+        pendingTrades.put(sender.getUniqueId(), new TradeSession(sender.getUniqueId(), target.getUniqueId(), offered,
+                session.returnPage(), price, false, TradeState.AWAITING_ACCEPT));
+        incomingByTarget.put(target.getUniqueId(), sender.getUniqueId());
+        return true;
+    }
+
+    public TradeSession getPendingForTarget(UUID target) {
+        UUID sender = incomingByTarget.get(target);
+        if (sender == null) return null;
+        return pendingTrades.get(sender);
+    }
+
+    public boolean acceptTrade(Player target) {
+        TradeSession session = getPendingForTarget(target.getUniqueId());
+        if (session == null || session.state() != TradeState.AWAITING_ACCEPT) {
+            target.sendMessage(Util.color("&cNo trade request to accept."));
+            return false;
+        }
+
+        Player sender = org.bukkit.Bukkit.getPlayer(session.sender());
+        if (sender == null || !sender.isOnline()) {
+            target.sendMessage(Util.color("&cThat player is no longer online."));
+            clear(target.getUniqueId());
+            return false;
+        }
+
+        ItemStack offered = session.item();
+        if (!hasItem(sender.getInventory(), offered)) {
+            target.sendMessage(Util.color("&cThe sender no longer has that item to trade."));
+            sender.sendMessage(Util.color("&cTrade cancelled because you no longer have the item."));
+            clear(target.getUniqueId());
+            return false;
+        }
+
         BankManager bank = BankManager.get();
+        double price = session.price() == null ? 0 : session.price();
         if (price > 0 && !bank.transfer(target.getUniqueId(), sender.getUniqueId(), price)) {
-            sender.sendMessage(Util.color("&c" + target.getName() + " doesn't have enough balance to pay that price."));
-            target.sendMessage(Util.color("&cYou don't have enough balance to buy that trade offer."));
+            target.sendMessage(Util.color("&cYou don't have enough balance to accept that trade."));
+            sender.sendMessage(Util.color("&c" + target.getName() + " couldn't afford the trade."));
             return false;
         }
 
@@ -88,13 +134,24 @@ public class BankTradeManager {
         leftovers.values().forEach(item -> target.getWorld().dropItemNaturally(target.getLocation(), item));
 
         String priceText = price > 0 ? bank.formatCurrency(price) : "free";
-        sender.sendMessage(Util.color("&aTraded &f" + formatItemName(offered) + " &ato &e" + target.getName()
+        sender.sendMessage(Util.color("&aYour trade with &e" + target.getName() + " &awas accepted for &f" + priceText + "&a."));
+        target.sendMessage(Util.color("&aYou accepted &f" + formatItemName(offered) + " &afrom &e" + sender.getName()
                 + " &afor &f" + priceText + "&a."));
-        target.sendMessage(Util.color("&aYou received &f" + formatItemName(offered) + " &afrom &e"
-                + sender.getName() + "&a for &f" + priceText + "&a."));
 
-        clear(sender.getUniqueId());
+        clear(target.getUniqueId());
         return true;
+    }
+
+    public void declineTrade(UUID target) {
+        TradeSession session = getPendingForTarget(target);
+        if (session == null) return;
+
+        Player sender = org.bukkit.Bukkit.getPlayer(session.sender());
+        if (sender != null) {
+            sender.sendMessage(Util.color("&cYour trade offer to &e" + session.targetName() + " &cwas declined."));
+        }
+
+        clear(target);
     }
 
     private boolean hasItem(PlayerInventory inventory, ItemStack item) {
@@ -139,5 +196,13 @@ public class BankTradeManager {
         return base + " x" + item.getAmount();
     }
 
-    public record TradeSession(UUID target, ItemStack item, int returnPage, boolean awaitingPrice) {}
+    public enum TradeState {SELECTING_PRICE, AWAITING_ACCEPT}
+
+    public record TradeSession(UUID sender, UUID target, ItemStack item, int returnPage, Double price, boolean awaitingPrice,
+                               TradeState state) {
+        public String targetName() {
+            Player online = org.bukkit.Bukkit.getPlayer(target);
+            return online != null ? online.getName() : "player";
+        }
+    }
 }
