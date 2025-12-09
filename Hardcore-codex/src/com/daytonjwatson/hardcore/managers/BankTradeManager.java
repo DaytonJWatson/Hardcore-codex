@@ -189,7 +189,7 @@ public class BankTradeManager {
         inventory.setContents(contents);
     }
 
-    private String formatItemName(ItemStack item) {
+    public String formatItemName(ItemStack item) {
         String base = item.hasItemMeta() && item.getItemMeta().hasDisplayName()
                 ? item.getItemMeta().getDisplayName()
                 : Util.formatMaterialName(item.getType());

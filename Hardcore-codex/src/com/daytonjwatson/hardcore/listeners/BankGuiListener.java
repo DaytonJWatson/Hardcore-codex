@@ -49,6 +49,15 @@ public class BankGuiListener implements Listener {
             } else if (plainName.equalsIgnoreCase("Recent Transactions")) {
                 BankGui.openTransactions(player);
             } else if (plainName.equalsIgnoreCase("Trade Items")) {
+                BankTradeManager.TradeSession pending = BankTradeManager.get().getPendingForTarget(player.getUniqueId());
+                if (pending != null && pending.state() == BankTradeManager.TradeState.AWAITING_ACCEPT) {
+                    Player sender = org.bukkit.Bukkit.getPlayer(pending.sender());
+                    if (sender != null && sender.isOnline()) {
+                        BankTradeGui.openIncomingOffer(player, sender, pending.item(), pending.price() == null ? 0 : pending.price());
+                        return;
+                    }
+                    BankTradeManager.get().clear(player.getUniqueId());
+                }
                 BankTradeGui.openRecipientSelection(player, 0);
             } else if (plainName.equalsIgnoreCase("Top Balances")) {
                 BankTopGui.open(player, 0);
@@ -256,9 +265,12 @@ public class BankGuiListener implements Listener {
             if (BankTradeManager.get().sendOffer(player, target, price)) {
                 BankTradeManager.TradeSession offerSession = BankTradeManager.get().getPendingTrade(player.getUniqueId());
                 ItemStack offered = offerSession != null ? offerSession.item() : player.getInventory().getItemInMainHand();
-                BankTradeGui.openIncomingOffer(target, player, offered, price);
-                player.sendMessage(Util.color("&aSent a trade offer to &e" + target.getName() + "&a for &f"
-                        + BankManager.get().formatCurrency(price) + "&a. Waiting for them to accept."));
+                String priceText = price > 0 ? BankManager.get().formatCurrency(price) : "free";
+                target.sendMessage(Util.color("&6Bank &8» &e" + player.getName() + " &7offered &f"
+                        + BankTradeManager.get().formatItemName(offered) + " &7for &f" + priceText + "&7."));
+                target.sendMessage(Util.color("&7Type &a/bank trade view &7to review, &a/bank trade accept &7to agree, or &c/bank trade decline &7to refuse. You can also open &a/bank &7and click Trade Items."));
+                player.sendMessage(Util.color("&aSent a trade offer to &e" + target.getName() + "&a for &f" + priceText
+                        + "&a. Waiting for them to accept."));
                 player.closeInventory();
             }
         }
@@ -350,9 +362,14 @@ public class BankGuiListener implements Listener {
             double finalAmount = amount;
             Bukkit.getScheduler().runTask(HardcorePlugin.getInstance(), () -> {
                 if (BankTradeManager.get().sendOffer(player, target, finalAmount)) {
-                    BankTradeGui.openIncomingOffer(target, player, session.item(), finalAmount);
+                    double price = finalAmount;
+                    ItemStack offered = session.item();
+                    String priceText = price > 0 ? BankManager.get().formatCurrency(price) : "free";
+                    target.sendMessage(Util.color("&6Bank &8» &e" + player.getName() + " &7offered &f"
+                            + BankTradeManager.get().formatItemName(offered) + " &7for &f" + priceText + "&7."));
+                    target.sendMessage(Util.color("&7Type &a/bank trade view &7to review, &a/bank trade accept &7to agree, or &c/bank trade decline &7to refuse. You can also open &a/bank &7and click Trade Items."));
                     player.sendMessage(Util.color("&aSent a trade offer to &e" + target.getName() + "&a for &f"
-                            + BankManager.get().formatCurrency(finalAmount) + "&a. Waiting for them to accept."));
+                            + priceText + "&a. Waiting for them to accept."));
                 }
             });
         }

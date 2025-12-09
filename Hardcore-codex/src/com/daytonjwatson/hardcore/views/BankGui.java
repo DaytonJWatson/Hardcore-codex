@@ -11,6 +11,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import com.daytonjwatson.hardcore.managers.BankManager;
+import com.daytonjwatson.hardcore.managers.BankTradeManager;
 import com.daytonjwatson.hardcore.utils.Util;
 
 public final class BankGui {
@@ -37,11 +38,18 @@ public final class BankGui {
                 "&7You can still type &f/bank send <player> <amount>&7."
         ));
 
-        ItemStack tradeItem = item(Material.CHEST_MINECART, "&6Trade Items", List.of(
-                "&7Trade or gift items to online players.",
-                "&7Charge a price that comes straight from their bank.",
-                "&8Great for quick peer-to-peer deals."
-        ));
+        BankTradeManager.TradeSession pendingTrade = BankTradeManager.get().getPendingForTarget(player.getUniqueId());
+        boolean hasIncomingTrade = pendingTrade != null && pendingTrade.state() == BankTradeManager.TradeState.AWAITING_ACCEPT;
+
+        List<String> tradeLore = new ArrayList<>();
+        tradeLore.add("&7Trade or gift items to online players.");
+        tradeLore.add("&7Charge a price that comes straight from their bank.");
+        tradeLore.add("&8Great for quick peer-to-peer deals.");
+        if (hasIncomingTrade) {
+            tradeLore.add("&aYou have a pending offer waiting.");
+        }
+
+        ItemStack tradeItem = item(Material.CHEST_MINECART, "&6Trade Items", tradeLore);
 
         ItemStack topItem = item(Material.PAPER, "&bTop Balances", List.of(
                 "&7See the richest players on the server.",
