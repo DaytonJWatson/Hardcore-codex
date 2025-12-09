@@ -26,8 +26,13 @@ public class PlayerDeathListener implements Listener {
             return;
         }
 
+        String deathMessage = event.getDeathMessage();
+        String killerName = killer != null ? killer.getName() : "Environment";
+        String defaultCause = (killer != null ? "Killed by " + killerName : "Died to the environment");
+        String deathCause = (deathMessage != null && !deathMessage.isEmpty()) ? deathMessage : defaultCause;
+
         StatsManager stats = StatsManager.get();
-        stats.handleDeath(victim, killer);
+        stats.handleDeath(victim, killer, deathCause);
 
         // No killer = environmental / mob / suicide → still do sound/tab, but no PvP announcements
         if (killer != null) {
@@ -47,8 +52,7 @@ public class PlayerDeathListener implements Listener {
             p.playSound(p.getLocation(), ConfigValues.deathSound(), 1.0f, 1.0f);
         }
 
-        String killerName = killer != null ? killer.getName() : "Environment";
-        String reason = killer != null ? "Killed by " + killerName : "Died to the environment";
+        String reason = deathCause;
 
         BanManager.ban(victim, reason, null, "Deathban");
         DeathBanManager.recordDeathBan(victim, reason, killerName);
