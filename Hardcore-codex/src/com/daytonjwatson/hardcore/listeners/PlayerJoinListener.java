@@ -6,6 +6,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 
 import com.daytonjwatson.hardcore.config.ConfigValues;
+import com.daytonjwatson.hardcore.managers.AuctionHouseManager;
 import com.daytonjwatson.hardcore.managers.StatsManager;
 import com.daytonjwatson.hardcore.utils.MessageStyler;
 import com.daytonjwatson.hardcore.utils.TabUtil;
@@ -30,6 +31,11 @@ public class PlayerJoinListener implements Listener {
                 }
 
                 stats.handleJoin(player);
+
+                AuctionHouseManager auctionHouseManager = AuctionHouseManager.get();
+                if (auctionHouseManager != null) {
+                        auctionHouseManager.deliverPending(player);
+                }
 
                 TabUtil.updateTabForAll();
         }

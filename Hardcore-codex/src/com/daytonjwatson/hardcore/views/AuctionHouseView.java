@@ -60,6 +60,8 @@ public final class AuctionHouseView {
                 lore.add(Util.color("&7Seller: &f" + sellerName));
                 lore.add(Util.color("&7Price: &f" + bank.formatCurrency(listing.getPricePerItem())));
                 lore.add(Util.color("&7Available: &f" + listing.getQuantity()));
+                long remaining = Math.max(0, listing.getExpiresAt() - System.currentTimeMillis());
+                lore.add(Util.color("&7Expires in: &f" + Util.formatDuration(remaining)));
                 if (listing.getQuantity() > 1) {
                     lore.add(Util.color("&8Left-click to buy. You'll be asked for an amount."));
                 } else {

@@ -10,15 +10,17 @@ public class AuctionListing {
     private final UUID seller;
     private final ItemStack item;
     private final double pricePerItem;
+    private final long expiresAt;
     private int quantity;
 
-    public AuctionListing(UUID id, UUID seller, ItemStack item, double pricePerItem, int quantity) {
+    public AuctionListing(UUID id, UUID seller, ItemStack item, double pricePerItem, int quantity, long expiresAt) {
         this.id = id;
         this.seller = seller;
         this.item = item.clone();
         this.item.setAmount(1);
         this.pricePerItem = pricePerItem;
         this.quantity = quantity;
+        this.expiresAt = expiresAt;
     }
 
     public UUID getId() {
@@ -39,6 +41,10 @@ public class AuctionListing {
 
     public int getQuantity() {
         return quantity;
+    }
+
+    public long getExpiresAt() {
+        return expiresAt;
     }
 
     public void consume(int amount) {
