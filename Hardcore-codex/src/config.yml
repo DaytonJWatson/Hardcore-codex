@@ -170,11 +170,16 @@ content:
       title: "&cHardcore Guide"
       author: "Hardcore"
       pages:
-        - "&cHardcore Basics\n\n&7One life. Death = ban from the\nworld with no respawns. PvP,\nraiding, and stealing are on, so\nstay cautious and expect fights."
-        - "&cGetting Started\n\n&7You spawn in the wild—no safe\nhub. Punch trees, craft tools,\nand grab food before night.\nTravel light and avoid crowds\nuntil you have gear."
-        - "&cSurvival Tips\n\n&7Use a shield, water bucket,\nand building blocks. Light caves,\nbridge safely, and block creepers.\nNever dig straight down or take\nlaggy fights."
-        - "&cServer Features\n\n&7Unfair kills mark you as a\n&4Bandit&7; hunt bandits to clear.\nTrack them with /bandittracker.\nCheck /stats, /rules, and /help\nfor milestones and basics."
-        - "&cEconomy & Trading\n\n&7Use /bank to check balance\nand send money. Track history.\nSell with /auction or buy gear.\nHunt mobs, trade, and team up\nto fund your next life."
+        - "&cHardcore Basics\n\n&7One life only. Death = ban\nfrom this world. PvP, raiding,\nand stealing are on. No claims\nor keep-inventory—every fight\nrisks everything."
+        - "&cJoining the World\n\n&7You spawn in the wild—no safe\nhub. Move out of view fast. Grab\ntrees, make tools, and cook food\nbefore night. Bed sets a log-out\npoint, not a respawn."
+        - "&cFirst 10 Minutes\n\n&7Craft stone tools, shield, and\nwater bucket. Kill animals for\nfood. Make torches and dig a\nsafe starter hole. Smelt iron\nwhile crouched to hide name."
+        - "&cTravel & Bases\n\n&7Travel by day; watch skylines\nfor player builds. Base underground\nor in remote biomes. Avoid straight\ntunnels and leave false exits. Hide\nchests; move stashes often."
+        - "&cCombat Survival\n\n&7Block creepers, use shields,\nand carry blocks to pillar or\nwall mid-fight. Bring buckets\nfor drops and fall saves. Avoid\nlaggy fights and never dig below\nyour feet in caves."
+        - "&cBandits & Heroes\n\n&7Unfair gear kills flag you as\na &4Bandit&7. Slay 3 bandits to\nredeem. Non-bandits who kill 3\nbandits become &6Heroes&7. Check\nprogress via on-kill messages."
+        - "&cBandit Tracker\n\n&7Craft the tracker (recipe in\n/guide UI). Sneak-right-click to\nlock the nearest bandit. Signal\ndrifts with distance—recalibrate\noften. Cooldown: 30s."
+        - "&cEconomy Basics\n\n&7Use /bank to open your account,\ncheck balance, and send money.\nReview past 30 transactions. Save\nfor gear, repairs, and bribes."
+        - "&cAuctions & Trading\n\n&7Sell with /auction; set fair\nprices to move stock. Browse and\nbuy from others for gear. Trade\nface-to-face in safe spots and\nuse small trades to test trust."
+        - "&cAllies & Etiquette\n\n&7Alliances are informal—betrayal\nallowed. Agree on loot splits\nbefore raids. Use voice cues and\n/coords in chat sparingly. Respect\nnew players even if PvP is on."
 
   help:
     title: "Hardcore Help"
