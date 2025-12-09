@@ -16,6 +16,7 @@ import com.daytonjwatson.hardcore.managers.BankManager;
 import com.daytonjwatson.hardcore.managers.BankTradeManager;
 import com.daytonjwatson.hardcore.utils.Util;
 import com.daytonjwatson.hardcore.views.BankGui;
+import com.daytonjwatson.hardcore.views.BankSellGui;
 import com.daytonjwatson.hardcore.views.BankSendGui;
 import com.daytonjwatson.hardcore.views.BankTopGui;
 import com.daytonjwatson.hardcore.views.BankTradeGui;
@@ -28,6 +29,7 @@ public class BankGuiListener implements Listener {
         String title = view.getTitle();
 
         if (!title.equals(BankGui.MAIN_TITLE) && !title.equals(BankGui.HISTORY_TITLE)
+                && !title.equals(BankSellGui.SELL_TITLE)
                 && !BankSendGui.isSendInventory(title)
                 && !BankTopGui.isTopInventory(title)
                 && !BankTradeGui.isTradeInventory(title)) {
@@ -65,6 +67,8 @@ public class BankGuiListener implements Listener {
                 BankTradeGui.openRecipientSelection(player, 0);
             } else if (plainName.equalsIgnoreCase("Top Balances")) {
                 BankTopGui.open(player, 0);
+            } else if (plainName.equalsIgnoreCase("Sell Items")) {
+                BankSellGui.open(player);
             }
             return;
         }
@@ -114,6 +118,46 @@ public class BankGuiListener implements Listener {
             org.bukkit.OfflinePlayer target = org.bukkit.Bukkit.getOfflinePlayer(uuid);
             int currentPage = navPage == null ? 0 : navPage;
             BankSendGui.openAmountSelection(player, target, currentPage);
+            return;
+        }
+
+        if (title.equals(BankSellGui.SELL_TITLE)) {
+            if (plainName.equalsIgnoreCase("Back")) {
+                BankGui.openMain(player);
+                return;
+            }
+
+            BankManager bank = BankManager.get();
+            if (plainName.equalsIgnoreCase("Sell Item In Hand")) {
+                ItemStack hand = player.getInventory().getItemInMainHand();
+                double value = BankSellGui.calculateSellPrice(hand);
+                if (value <= 0) {
+                    player.sendMessage(Util.color("&cThere's nothing in your hand to sell."));
+                    return;
+                }
+
+                player.getInventory().setItemInMainHand(null);
+                bank.deposit(player.getUniqueId(), value, "Sold " + hand.getAmount() + "x "
+                        + BankTradeManager.get().formatItemName(hand) + " from hand");
+                player.sendMessage(Util.color("&aSold your held item for &f" + bank.formatCurrency(value) + "&a."));
+                BankSellGui.open(player);
+                return;
+            }
+
+            if (plainName.equalsIgnoreCase("Sell Entire Inventory")) {
+                double total = BankSellGui.calculateInventoryValue(player);
+                if (total <= 0) {
+                    player.sendMessage(Util.color("&cYou have no items to sell."));
+                    return;
+                }
+
+                player.getInventory().clear();
+                player.getInventory().setArmorContents(new ItemStack[player.getInventory().getArmorContents().length]);
+                player.getInventory().setItemInOffHand(null);
+                bank.deposit(player.getUniqueId(), total, "Sold entire inventory");
+                player.sendMessage(Util.color("&aSold your inventory for &f" + bank.formatCurrency(total) + "&a."));
+                BankSellGui.open(player);
+            }
             return;
         }
 
