@@ -38,15 +38,15 @@ public final class BankGui {
                 "&7You can still type &f/bank send <player> <amount>&7."
         ));
 
-        BankTradeManager.TradeSession pendingTrade = BankTradeManager.get().getPendingForTarget(player.getUniqueId());
-        boolean hasIncomingTrade = pendingTrade != null && pendingTrade.state() == BankTradeManager.TradeState.AWAITING_ACCEPT;
+        int pendingTrades = BankTradeManager.get().getPendingCount(player.getUniqueId());
+        boolean hasIncomingTrade = pendingTrades > 0;
 
         List<String> tradeLore = new ArrayList<>();
         tradeLore.add("&7Trade or gift items to online players.");
         tradeLore.add("&7Charge a price that comes straight from their bank.");
         tradeLore.add("&8Great for quick peer-to-peer deals.");
         if (hasIncomingTrade) {
-            tradeLore.add("&aYou have a pending offer waiting.");
+            tradeLore.add("&aYou have " + pendingTrades + " pending offer" + (pendingTrades == 1 ? "" : "s") + ".");
         }
 
         ItemStack tradeItem = item(Material.CHEST_MINECART, "&6Trade Items", tradeLore);

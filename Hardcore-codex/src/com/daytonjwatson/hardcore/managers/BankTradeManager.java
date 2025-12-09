@@ -1,20 +1,28 @@
 package com.daytonjwatson.hardcore.managers;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.scheduler.BukkitRunnable;
+
+import com.daytonjwatson.hardcore.HardcorePlugin;
 import com.daytonjwatson.hardcore.utils.Util;
 
 public class BankTradeManager {
 
     private static BankTradeManager instance;
 
+    private static final int MAX_PENDING_OFFERS = 3;
+    private static final long EXPIRATION_MILLIS = 15 * 60 * 1000L;
+
     private final Map<UUID, TradeSession> pendingTrades = new HashMap<>();
-    private final Map<UUID, UUID> incomingByTarget = new HashMap<>();
+    private final Map<UUID, List<UUID>> incomingByTarget = new HashMap<>();
 
     private BankTradeManager() {
     }
@@ -22,6 +30,7 @@ public class BankTradeManager {
     public static void init() {
         if (instance == null) {
             instance = new BankTradeManager();
+            instance.startCleanupTask();
         }
     }
 
@@ -32,11 +41,19 @@ public class BankTradeManager {
     public void setPendingTrade(UUID sender, UUID target, ItemStack item, int returnPage) {
         if (item == null) return;
         ItemStack clone = item.clone();
-        pendingTrades.put(sender, new TradeSession(sender, target, clone, returnPage, null, false, TradeState.SELECTING_PRICE));
+        pendingTrades.put(sender,
+                new TradeSession(sender, target, clone, returnPage, null, false, TradeState.SELECTING_PRICE,
+                        System.currentTimeMillis()));
     }
 
     public TradeSession getPendingTrade(UUID sender) {
-        return pendingTrades.get(sender);
+        TradeSession session = pendingTrades.get(sender);
+        if (session == null) return null;
+        if (isExpired(session)) {
+            removeBySender(sender);
+            return null;
+        }
+        return session;
     }
 
     public void setAwaitingPrice(UUID sender, boolean awaiting) {
@@ -44,7 +61,7 @@ public class BankTradeManager {
         if (session == null) return;
         pendingTrades.put(sender,
                 new TradeSession(session.sender(), session.target(), session.item(), session.returnPage(), session.price(), awaiting,
-                        session.state()));
+                        session.state(), System.currentTimeMillis()));
     }
 
     public boolean isAwaitingPrice(UUID sender) {
@@ -53,15 +70,17 @@ public class BankTradeManager {
     }
 
     public void clear(UUID participant) {
-        TradeSession bySender = pendingTrades.remove(participant);
-        if (bySender != null) {
-            incomingByTarget.remove(bySender.target());
-        }
+        cleanupExpired();
 
-        UUID byTargetSender = incomingByTarget.remove(participant);
-        if (byTargetSender != null) {
-            pendingTrades.remove(byTargetSender);
+        removeBySender(participant);
+
+        List<UUID> toRemove = new ArrayList<>();
+        for (TradeSession session : pendingTrades.values()) {
+            if (session.target().equals(participant)) {
+                toRemove.add(session.sender());
+            }
         }
+        toRemove.forEach(this::removeBySender);
     }
 
     public boolean sendOffer(Player sender, Player target, double price) {
@@ -82,21 +101,55 @@ public class BankTradeManager {
             return false;
         }
 
+        int pendingCount = getPendingCount(target.getUniqueId());
+        if (pendingCount >= MAX_PENDING_OFFERS) {
+            sender.sendMessage(Util.color("&cThat player already has too many pending trade offers. Try again later."));
+            return false;
+        }
+
         if (!hasItem(sender.getInventory(), offered)) {
             sender.sendMessage(Util.color("&cYou no longer have that item to trade."));
             return false;
         }
 
         pendingTrades.put(sender.getUniqueId(), new TradeSession(sender.getUniqueId(), target.getUniqueId(), offered,
-                session.returnPage(), price, false, TradeState.AWAITING_ACCEPT));
-        incomingByTarget.put(target.getUniqueId(), sender.getUniqueId());
+                session.returnPage(), price, false, TradeState.AWAITING_ACCEPT, System.currentTimeMillis()));
+        List<UUID> incoming = incomingByTarget.computeIfAbsent(target.getUniqueId(), id -> new ArrayList<>());
+        if (!incoming.contains(sender.getUniqueId())) {
+            incoming.add(sender.getUniqueId());
+        }
         return true;
     }
 
     public TradeSession getPendingForTarget(UUID target) {
-        UUID sender = incomingByTarget.get(target);
-        if (sender == null) return null;
-        return pendingTrades.get(sender);
+        List<TradeSession> sessions = getPendingOffers(target);
+        if (sessions.isEmpty()) return null;
+        return sessions.get(0);
+    }
+
+    public List<TradeSession> getPendingOffers(UUID target) {
+        cleanupExpired();
+
+        List<UUID> senders = incomingByTarget.get(target);
+        if (senders == null) {
+            return List.of();
+        }
+
+        List<TradeSession> active = new ArrayList<>();
+        List<UUID> copy = new ArrayList<>(senders);
+        for (UUID sender : copy) {
+            TradeSession session = pendingTrades.get(sender);
+            if (session == null || isExpired(session)) {
+                removeBySender(sender);
+                continue;
+            }
+            active.add(session);
+        }
+        return active;
+    }
+
+    public int getPendingCount(UUID target) {
+        return getPendingOffers(target).size();
     }
 
     public boolean acceptTrade(Player target) {
@@ -138,7 +191,7 @@ public class BankTradeManager {
         target.sendMessage(Util.color("&aYou accepted &f" + formatItemName(offered) + " &afrom &e" + sender.getName()
                 + " &afor &f" + priceText + "&a."));
 
-        clear(target.getUniqueId());
+        removeBySender(session.sender());
         return true;
     }
 
@@ -151,7 +204,7 @@ public class BankTradeManager {
             sender.sendMessage(Util.color("&cYour trade offer to &e" + session.targetName() + " &cwas declined."));
         }
 
-        clear(target);
+        removeBySender(session.sender());
     }
 
     private boolean hasItem(PlayerInventory inventory, ItemStack item) {
@@ -199,10 +252,46 @@ public class BankTradeManager {
     public enum TradeState {SELECTING_PRICE, AWAITING_ACCEPT}
 
     public record TradeSession(UUID sender, UUID target, ItemStack item, int returnPage, Double price, boolean awaitingPrice,
-                               TradeState state) {
+                               TradeState state, long createdAt) {
         public String targetName() {
             Player online = org.bukkit.Bukkit.getPlayer(target);
             return online != null ? online.getName() : "player";
+        }
+    }
+
+    private void startCleanupTask() {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                cleanupExpired();
+            }
+        }.runTaskTimer(HardcorePlugin.getInstance(), 20L * 60, 20L * 60);
+    }
+
+    private void cleanupExpired() {
+        List<UUID> toRemove = new ArrayList<>();
+        for (TradeSession session : pendingTrades.values()) {
+            if (isExpired(session)) {
+                toRemove.add(session.sender());
+            }
+        }
+        toRemove.forEach(this::removeBySender);
+    }
+
+    private boolean isExpired(TradeSession session) {
+        return System.currentTimeMillis() - session.createdAt() > EXPIRATION_MILLIS;
+    }
+
+    private void removeBySender(UUID sender) {
+        TradeSession removed = pendingTrades.remove(sender);
+        if (removed == null) return;
+
+        List<UUID> incoming = incomingByTarget.get(removed.target());
+        if (incoming != null) {
+            incoming.remove(sender);
+            if (incoming.isEmpty()) {
+                incomingByTarget.remove(removed.target());
+            }
         }
     }
 }

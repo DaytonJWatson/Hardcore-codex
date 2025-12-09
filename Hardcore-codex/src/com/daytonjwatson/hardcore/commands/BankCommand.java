@@ -74,17 +74,22 @@ public class BankCommand implements CommandExecutor, TabCompleter {
         switch (action) {
             case "view":
             case "open": {
-                BankTradeManager.TradeSession session = trades.getPendingForTarget(player.getUniqueId());
-                if (session == null || session.state() != BankTradeManager.TradeState.AWAITING_ACCEPT) {
+                List<BankTradeManager.TradeSession> offers = trades.getPendingOffers(player.getUniqueId());
+                if (offers.isEmpty()) {
                     player.sendMessage(Util.color("&cYou don't have any incoming trade offers."));
                     return;
                 }
 
+                BankTradeManager.TradeSession session = offers.get(0);
                 Player sender = Bukkit.getPlayer(session.sender());
                 if (sender == null || !sender.isOnline()) {
                     player.sendMessage(Util.color("&cThe sender is no longer online."));
                     trades.clear(player.getUniqueId());
                     return;
+                }
+
+                if (offers.size() > 1) {
+                    player.sendMessage(Util.color("&eYou have " + offers.size() + " pending offers. Showing the oldest one."));
                 }
 
                 BankTradeGui.openIncomingOffer(player, sender, session.item(), session.price() == null ? 0 : session.price());
@@ -96,7 +101,12 @@ public class BankCommand implements CommandExecutor, TabCompleter {
             case "decline":
             case "reject":
                 trades.declineTrade(player.getUniqueId());
-                player.sendMessage(Util.color("&aDeclined any pending trade offers."));
+                int remaining = trades.getPendingCount(player.getUniqueId());
+                if (remaining > 0) {
+                    player.sendMessage(Util.color("&aDeclined one offer. &7" + remaining + " more pending."));
+                } else {
+                    player.sendMessage(Util.color("&aDeclined the pending trade offer."));
+                }
                 return;
             default:
                 player.sendMessage(Util.color("&cUnknown trade action. Use /" + label + " trade <view|accept|decline>."));

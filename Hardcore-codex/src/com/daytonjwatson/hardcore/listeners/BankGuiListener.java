@@ -49,11 +49,15 @@ public class BankGuiListener implements Listener {
             } else if (plainName.equalsIgnoreCase("Recent Transactions")) {
                 BankGui.openTransactions(player);
             } else if (plainName.equalsIgnoreCase("Trade Items")) {
-                BankTradeManager.TradeSession pending = BankTradeManager.get().getPendingForTarget(player.getUniqueId());
-                if (pending != null && pending.state() == BankTradeManager.TradeState.AWAITING_ACCEPT) {
-                    Player sender = org.bukkit.Bukkit.getPlayer(pending.sender());
+                java.util.List<BankTradeManager.TradeSession> pending = BankTradeManager.get().getPendingOffers(player.getUniqueId());
+                if (!pending.isEmpty()) {
+                    BankTradeManager.TradeSession session = pending.get(0);
+                    Player sender = org.bukkit.Bukkit.getPlayer(session.sender());
                     if (sender != null && sender.isOnline()) {
-                        BankTradeGui.openIncomingOffer(player, sender, pending.item(), pending.price() == null ? 0 : pending.price());
+                        if (pending.size() > 1) {
+                            player.sendMessage(Util.color("&eYou have " + pending.size() + " pending offers. Showing the oldest one."));
+                        }
+                        BankTradeGui.openIncomingOffer(player, sender, session.item(), session.price() == null ? 0 : session.price());
                         return;
                     }
                     BankTradeManager.get().clear(player.getUniqueId());
