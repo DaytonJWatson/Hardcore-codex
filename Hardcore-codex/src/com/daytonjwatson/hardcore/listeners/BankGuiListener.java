@@ -13,9 +13,12 @@ import org.bukkit.inventory.ItemStack;
 
 import com.daytonjwatson.hardcore.HardcorePlugin;
 import com.daytonjwatson.hardcore.managers.BankManager;
+import com.daytonjwatson.hardcore.managers.BankTradeManager;
 import com.daytonjwatson.hardcore.utils.Util;
 import com.daytonjwatson.hardcore.views.BankGui;
 import com.daytonjwatson.hardcore.views.BankSendGui;
+import com.daytonjwatson.hardcore.views.BankTopGui;
+import com.daytonjwatson.hardcore.views.BankTradeGui;
 
 public class BankGuiListener implements Listener {
 
@@ -25,7 +28,9 @@ public class BankGuiListener implements Listener {
         String title = view.getTitle();
 
         if (!title.equals(BankGui.MAIN_TITLE) && !title.equals(BankGui.HISTORY_TITLE)
-                && !BankSendGui.isSendInventory(title)) {
+                && !BankSendGui.isSendInventory(title)
+                && !BankTopGui.isTopInventory(title)
+                && !BankTradeGui.isTradeInventory(title)) {
             return;
         }
 
@@ -43,12 +48,49 @@ public class BankGuiListener implements Listener {
                 BankSendGui.openRecipientSelection(player, 0);
             } else if (plainName.equalsIgnoreCase("Recent Transactions")) {
                 BankGui.openTransactions(player);
+            } else if (plainName.equalsIgnoreCase("Trade Items")) {
+                java.util.List<BankTradeManager.TradeSession> pending = BankTradeManager.get().getPendingOffers(player.getUniqueId());
+                if (!pending.isEmpty()) {
+                    BankTradeManager.TradeSession session = pending.get(0);
+                    Player sender = org.bukkit.Bukkit.getPlayer(session.sender());
+                    if (sender != null && sender.isOnline()) {
+                        if (pending.size() > 1) {
+                            player.sendMessage(Util.color("&eYou have " + pending.size() + " pending offers. Showing the oldest one."));
+                        }
+                        BankTradeGui.openIncomingOffer(player, sender, session.item(), session.price() == null ? 0 : session.price());
+                        return;
+                    }
+                    BankTradeManager.get().clear(player.getUniqueId());
+                }
+                BankTradeGui.openRecipientSelection(player, 0);
+            } else if (plainName.equalsIgnoreCase("Top Balances")) {
+                BankTopGui.open(player, 0);
             }
             return;
         }
 
         if (title.equals(BankGui.HISTORY_TITLE) && plainName.equalsIgnoreCase("Back")) {
             BankGui.openMain(player);
+            return;
+        }
+
+        if (BankTopGui.isTopInventory(title)) {
+            if (plainName.equalsIgnoreCase("Back")) {
+                BankGui.openMain(player);
+                return;
+            }
+
+            Integer navPage = null;
+            if (current.getItemMeta() != null && current.getItemMeta().getPersistentDataContainer()
+                    .has(com.daytonjwatson.hardcore.views.AuctionHouseView.navigationKey(),
+                            org.bukkit.persistence.PersistentDataType.INTEGER)) {
+                navPage = current.getItemMeta().getPersistentDataContainer().get(
+                        com.daytonjwatson.hardcore.views.AuctionHouseView.navigationKey(),
+                        org.bukkit.persistence.PersistentDataType.INTEGER);
+            }
+            if (navPage != null) {
+                BankTopGui.open(player, navPage);
+            }
             return;
         }
 
@@ -138,21 +180,126 @@ public class BankGuiListener implements Listener {
             }
             player.closeInventory();
         }
+
+        if (title.equals(BankTradeGui.SELECT_TITLE)) {
+            Integer navPage = BankTradeGui.getPageFromItem(current);
+            if (navPage != null && BankTradeGui.getTargetFromItem(current) == null && plainName.toLowerCase().contains("page")) {
+                BankTradeGui.openRecipientSelection(player, navPage);
+                return;
+            }
+
+            if (plainName.equalsIgnoreCase("Back")) {
+                BankTradeManager.get().clear(player.getUniqueId());
+                BankGui.openMain(player);
+                return;
+            }
+
+            java.util.UUID targetId = BankTradeGui.getTargetFromItem(current);
+            if (targetId == null) {
+                return;
+            }
+
+            Player target = org.bukkit.Bukkit.getPlayer(targetId);
+            if (target == null) {
+                player.sendMessage(Util.color("&cThat player is no longer online."));
+                BankTradeGui.openRecipientSelection(player, navPage == null ? 0 : navPage);
+                return;
+            }
+            BankTradeGui.openOfferConfirm(player, target, navPage == null ? 0 : navPage);
+            return;
+        }
+
+        if (org.bukkit.ChatColor.stripColor(title)
+                .startsWith(org.bukkit.ChatColor.stripColor(BankTradeGui.INCOMING_TITLE_PREFIX))) {
+            if (plainName.equalsIgnoreCase("Accept Trade")) {
+                if (BankTradeManager.get().acceptTrade(player)) {
+                    player.closeInventory();
+                }
+                return;
+            }
+
+            if (plainName.equalsIgnoreCase("Decline Trade") || plainName.equalsIgnoreCase("Back")) {
+                BankTradeManager.get().declineTrade(player.getUniqueId());
+                player.closeInventory();
+            }
+            return;
+        }
+
+        if (BankTradeGui.isTradeInventory(title) && plainName.equalsIgnoreCase("Choose different player")) {
+            Integer page = BankTradeGui.getPageFromItem(current);
+            BankTradeManager.get().clear(player.getUniqueId());
+            BankTradeGui.openRecipientSelection(player, page == null ? 0 : page);
+            return;
+        }
+
+        if (BankTradeGui.isTradeInventory(title) && plainName.equalsIgnoreCase("Enter Custom Price")) {
+            java.util.UUID targetId = BankTradeGui.getTargetFromItem(current);
+            if (targetId == null) {
+                player.sendMessage(Util.color("&cCould not determine who you're trading with. Please pick a player again."));
+                Integer page = BankTradeGui.getPageFromItem(current);
+                BankTradeGui.openRecipientSelection(player, page == null ? 0 : page);
+                return;
+            }
+
+            BankTradeManager.get().setAwaitingPrice(player.getUniqueId(), true);
+            player.closeInventory();
+            org.bukkit.OfflinePlayer target = org.bukkit.Bukkit.getOfflinePlayer(targetId);
+            String targetName = target.getName() != null ? target.getName() : "that player";
+            player.sendMessage(Util.color("&6Bank &8» &7Type the price for your trade to &e" + targetName
+                    + " &7in chat, or type &ccancel &7to abort."));
+            return;
+        }
+
+        if (org.bukkit.ChatColor.stripColor(title)
+                .startsWith(org.bukkit.ChatColor.stripColor(BankTradeGui.OFFER_TITLE_PREFIX))) {
+            java.util.UUID targetId = BankTradeGui.getTargetFromItem(current);
+            Double price = BankTradeGui.getPriceFromItem(current);
+
+            if (targetId == null || price == null) {
+                return;
+            }
+
+            Player target = org.bukkit.Bukkit.getPlayer(targetId);
+            if (target == null) {
+                player.sendMessage(Util.color("&cThat player went offline."));
+                BankTradeGui.openRecipientSelection(player, BankTradeGui.getPageFromItem(current) == null ? 0 : BankTradeGui.getPageFromItem(current));
+                return;
+            }
+
+            if (BankTradeManager.get().sendOffer(player, target, price)) {
+                BankTradeManager.TradeSession offerSession = BankTradeManager.get().getPendingTrade(player.getUniqueId());
+                ItemStack offered = offerSession != null ? offerSession.item() : player.getInventory().getItemInMainHand();
+                String priceText = price > 0 ? BankManager.get().formatCurrency(price) : "free";
+                target.sendMessage(Util.color("&6Bank &8» &e" + player.getName() + " &7offered &f"
+                        + BankTradeManager.get().formatItemName(offered) + " &7for &f" + priceText + "&7."));
+                target.sendMessage(Util.color("&7Type &a/bank trade view &7to review, &a/bank trade accept &7to agree, or &c/bank trade decline &7to refuse. You can also open &a/bank &7and click Trade Items."));
+                player.sendMessage(Util.color("&aSent a trade offer to &e" + target.getName() + "&a for &f" + priceText
+                        + "&a. Waiting for them to accept."));
+                player.closeInventory();
+            }
+        }
     }
 
     @EventHandler
     public void onChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
         BankManager bank = BankManager.get();
-        if (!bank.hasPendingCustomSend(player.getUniqueId())) {
+        if (!bank.hasPendingCustomSend(player.getUniqueId()) && !BankTradeManager.get().isAwaitingPrice(player.getUniqueId())) {
             return;
         }
 
         event.setCancelled(true);
         String message = ChatColor.stripColor(event.getMessage().trim());
         if (message.equalsIgnoreCase("cancel")) {
-            bank.clearPendingCustomSend(player.getUniqueId());
-            player.sendMessage(Util.color("&6Bank &8» &7Transfer cancelled."));
+            if (bank.hasPendingCustomSend(player.getUniqueId())) {
+                bank.clearPendingCustomSend(player.getUniqueId());
+                player.sendMessage(Util.color("&6Bank &8» &7Transfer cancelled."));
+            }
+            if (BankTradeManager.get().isAwaitingPrice(player.getUniqueId())) {
+                BankTradeManager.get().setAwaitingPrice(player.getUniqueId(), false);
+                BankTradeManager.get().clear(player.getUniqueId());
+                player.sendMessage(Util.color("&6Bank &8» &7Trade cancelled."));
+            }
             return;
         }
 
@@ -169,38 +316,72 @@ public class BankGuiListener implements Listener {
             return;
         }
 
-        java.util.UUID targetId = bank.getPendingCustomSend(player.getUniqueId());
-        bank.clearPendingCustomSend(player.getUniqueId());
+        if (bank.hasPendingCustomSend(player.getUniqueId())) {
+            java.util.UUID targetId = bank.getPendingCustomSend(player.getUniqueId());
+            bank.clearPendingCustomSend(player.getUniqueId());
 
-        Bukkit.getScheduler().runTask(HardcorePlugin.getInstance(), () -> {
-            if (targetId == null) {
-                player.sendMessage(Util.color("&cCould not find who to send that to."));
+            Bukkit.getScheduler().runTask(HardcorePlugin.getInstance(), () -> {
+                if (targetId == null) {
+                    player.sendMessage(Util.color("&cCould not find who to send that to."));
+                    return;
+                }
+
+                if (targetId.equals(player.getUniqueId())) {
+                    player.sendMessage(Util.color("&cYou cannot send money to yourself."));
+                    return;
+                }
+
+                com.daytonjwatson.hardcore.managers.BankManager manager = com.daytonjwatson.hardcore.managers.BankManager.get();
+                if (!manager.transfer(player.getUniqueId(), targetId, amount)) {
+                    player.sendMessage(Util.color("&cYou don't have enough funds to send that amount."));
+                    return;
+                }
+
+                org.bukkit.OfflinePlayer target = org.bukkit.Bukkit.getOfflinePlayer(targetId);
+                String targetName = target.getName() != null ? target.getName() : "player";
+                player.sendMessage(Util.color("&aSent &f" + manager.formatCurrency(amount) + " &ato &e" + targetName + "&a."));
+                if (target.isOnline() && target.getPlayer() != null) {
+                    target.getPlayer().sendMessage(Util.color("&aYou received &f" + manager.formatCurrency(amount) + " &afrom &e"
+                            + player.getName() + "&a."));
+                }
+            });
+            return;
+        }
+
+        if (BankTradeManager.get().isAwaitingPrice(player.getUniqueId())) {
+            BankTradeManager.get().setAwaitingPrice(player.getUniqueId(), false);
+            BankTradeManager.TradeSession session = BankTradeManager.get().getPendingTrade(player.getUniqueId());
+            if (session == null) {
+                player.sendMessage(Util.color("&cTrade data expired. Please open the trade menu again."));
                 return;
             }
 
-            if (targetId.equals(player.getUniqueId())) {
-                player.sendMessage(Util.color("&cYou cannot send money to yourself."));
+            Player target = org.bukkit.Bukkit.getPlayer(session.target());
+            if (target == null) {
+                player.sendMessage(Util.color("&cThat player went offline."));
+                BankTradeManager.get().clear(player.getUniqueId());
                 return;
             }
 
-            com.daytonjwatson.hardcore.managers.BankManager manager = com.daytonjwatson.hardcore.managers.BankManager.get();
-            if (!manager.transfer(player.getUniqueId(), targetId, amount)) {
-                player.sendMessage(Util.color("&cYou don't have enough funds to send that amount."));
-                return;
-            }
-
-            org.bukkit.OfflinePlayer target = org.bukkit.Bukkit.getOfflinePlayer(targetId);
-            String targetName = target.getName() != null ? target.getName() : "player";
-            player.sendMessage(Util.color("&aSent &f" + manager.formatCurrency(amount) + " &ato &e" + targetName + "&a."));
-            if (target.isOnline() && target.getPlayer() != null) {
-                target.getPlayer().sendMessage(Util.color("&aYou received &f" + manager.formatCurrency(amount) + " &afrom &e"
-                        + player.getName() + "&a."));
-            }
-        });
+            double finalAmount = amount;
+            Bukkit.getScheduler().runTask(HardcorePlugin.getInstance(), () -> {
+                if (BankTradeManager.get().sendOffer(player, target, finalAmount)) {
+                    double price = finalAmount;
+                    ItemStack offered = session.item();
+                    String priceText = price > 0 ? BankManager.get().formatCurrency(price) : "free";
+                    target.sendMessage(Util.color("&6Bank &8» &e" + player.getName() + " &7offered &f"
+                            + BankTradeManager.get().formatItemName(offered) + " &7for &f" + priceText + "&7."));
+                    target.sendMessage(Util.color("&7Type &a/bank trade view &7to review, &a/bank trade accept &7to agree, or &c/bank trade decline &7to refuse. You can also open &a/bank &7and click Trade Items."));
+                    player.sendMessage(Util.color("&aSent a trade offer to &e" + target.getName() + "&a for &f"
+                            + priceText + "&a. Waiting for them to accept."));
+                }
+            });
+        }
     }
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         BankManager.get().clearPendingCustomSend(event.getPlayer().getUniqueId());
+        BankTradeManager.get().clear(event.getPlayer().getUniqueId());
     }
 }

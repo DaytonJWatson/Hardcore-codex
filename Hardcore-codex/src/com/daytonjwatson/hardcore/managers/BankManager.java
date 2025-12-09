@@ -196,4 +196,13 @@ public class BankManager {
     public boolean hasPendingCustomSend(UUID sender) {
         return pendingCustomSends.containsKey(sender);
     }
+
+    public List<Map.Entry<UUID, Double>> getTopBalances(int limit) {
+        List<Map.Entry<UUID, Double>> entries = new ArrayList<>(balances.entrySet());
+        entries.sort((a, b) -> Double.compare(b.getValue(), a.getValue()));
+        if (limit > 0 && entries.size() > limit) {
+            return new ArrayList<>(entries.subList(0, limit));
+        }
+        return entries;
+    }
 }
