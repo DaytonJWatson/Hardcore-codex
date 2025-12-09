@@ -188,6 +188,8 @@ content:
       - "&c/rules &7- Hardcore server rules"
       - "&c/stats &7- View player stats"
       - "&c/bandittracker &7- Track the nearest bandit"
+      - "&c/bank &7- Check balance, history, and send money"
+      - "&c/auction &7- Buy items or browse the auction house"
       - "&4Play cautiously. You only get one life."
 
   rules:

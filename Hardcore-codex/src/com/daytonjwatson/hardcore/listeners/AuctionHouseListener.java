@@ -39,6 +39,19 @@ public class AuctionHouseListener implements Listener {
             return;
         }
 
+        Integer targetPage = clicked.getItemMeta().getPersistentDataContainer()
+                .get(AuctionHouseView.navigationKey(), PersistentDataType.INTEGER);
+        if (targetPage != null) {
+            AuctionHouseView.open(player, targetPage);
+            return;
+        }
+
+        String name = clicked.getItemMeta().getDisplayName();
+        if (name != null && ChatColor.stripColor(name).equalsIgnoreCase("Close")) {
+            player.closeInventory();
+            return;
+        }
+
         String idRaw = clicked.getItemMeta().getPersistentDataContainer()
                 .get(AuctionHouseView.listingKey(), PersistentDataType.STRING);
         if (idRaw == null) {
