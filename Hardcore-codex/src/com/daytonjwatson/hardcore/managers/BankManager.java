@@ -36,6 +36,7 @@ public class BankManager {
     private final FileConfiguration config;
     private final Map<UUID, Double> balances = new ConcurrentHashMap<>();
     private final Map<UUID, Deque<String>> transactions = new ConcurrentHashMap<>();
+    private final Map<UUID, UUID> pendingCustomSends = new ConcurrentHashMap<>();
 
     private final double startingBalance;
     private final int maxTransactions;
@@ -178,5 +179,21 @@ public class BankManager {
 
     public String formatCurrency(double amount) {
         return ConfigValues.bankCurrencySymbol() + DECIMAL_FORMAT.format(amount);
+    }
+
+    public void setPendingCustomSend(UUID sender, UUID target) {
+        pendingCustomSends.put(sender, target);
+    }
+
+    public UUID getPendingCustomSend(UUID sender) {
+        return pendingCustomSends.get(sender);
+    }
+
+    public void clearPendingCustomSend(UUID sender) {
+        pendingCustomSends.remove(sender);
+    }
+
+    public boolean hasPendingCustomSend(UUID sender) {
+        return pendingCustomSends.containsKey(sender);
     }
 }

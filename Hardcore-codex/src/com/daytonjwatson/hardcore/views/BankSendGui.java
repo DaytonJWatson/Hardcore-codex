@@ -101,10 +101,15 @@ public final class BankSendGui {
         menu.setItem(5, quarterBalance);
 
         ItemStack custom = item(Material.NAME_TAG, "&eEnter Custom Amount", List.of(
-                "&7Click to type an amount in chat.",
-                "&7Usage: &f/bank send " + targetName + " <amount>",
+                "&7Click to type just the amount in chat.",
+                "&7Or type &ccancel &7to back out.",
                 "&8Chat entry stays available as an option."
         ));
+        ItemMeta customMeta = custom.getItemMeta();
+        if (customMeta != null) {
+            customMeta.getPersistentDataContainer().set(TARGET_KEY, PersistentDataType.STRING, target.getUniqueId().toString());
+            custom.setItemMeta(customMeta);
+        }
         menu.setItem(22, custom);
 
         ItemStack back = item(Material.ARROW, "&7Choose different player", List.of("&7Go back to player list"));
