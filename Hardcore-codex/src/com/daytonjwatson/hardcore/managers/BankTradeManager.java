@@ -129,6 +129,7 @@ public class BankTradeManager {
 
     public List<TradeSession> getPendingOffers(UUID target) {
         cleanupExpired();
+        pruneInvalidForTarget(target);
 
         List<UUID> senders = incomingByTarget.get(target);
         if (senders == null) {
@@ -149,7 +150,10 @@ public class BankTradeManager {
     }
 
     public int getPendingCount(UUID target) {
-        return getPendingOffers(target).size();
+        cleanupExpired();
+        pruneInvalidForTarget(target);
+        List<UUID> senders = incomingByTarget.get(target);
+        return senders == null ? 0 : senders.size();
     }
 
     public boolean acceptTrade(Player target) {
@@ -276,6 +280,21 @@ public class BankTradeManager {
             }
         }
         toRemove.forEach(this::removeBySender);
+    }
+
+    private void pruneInvalidForTarget(UUID target) {
+        List<UUID> senders = incomingByTarget.get(target);
+        if (senders == null || senders.isEmpty()) {
+            return;
+        }
+
+        List<UUID> copy = new ArrayList<>(senders);
+        for (UUID sender : copy) {
+            TradeSession session = pendingTrades.get(sender);
+            if (session == null || !session.target().equals(target) || isExpired(session)) {
+                removeBySender(sender);
+            }
+        }
     }
 
     private boolean isExpired(TradeSession session) {
