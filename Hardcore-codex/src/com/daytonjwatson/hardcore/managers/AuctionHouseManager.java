@@ -22,7 +22,6 @@ import org.bukkit.inventory.ItemStack;
 
 import com.daytonjwatson.hardcore.HardcorePlugin;
 import com.daytonjwatson.hardcore.auction.AuctionListing;
-import com.daytonjwatson.hardcore.managers.BankManager;
 import com.daytonjwatson.hardcore.utils.Util;
 
 public class AuctionHouseManager {
