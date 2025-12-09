@@ -28,3 +28,7 @@ commands:
   pay:
     description: Quick shortcut for sending money to another player.
     usage: /pay <player> <amount>
+  auction:
+    description: Opens the Hardcore auction house.
+    usage: /auction [add]
+    aliases: [ah]

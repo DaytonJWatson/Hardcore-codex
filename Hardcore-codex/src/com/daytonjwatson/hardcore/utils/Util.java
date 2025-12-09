@@ -72,4 +72,22 @@ public class Util {
 
         return sb.toString().trim();
     }
+
+    public static String formatMaterialName(Material material) {
+        String name = material.name().toLowerCase().replace('_', ' ');
+        StringBuilder builder = new StringBuilder();
+        boolean capitalizeNext = true;
+        for (char c : name.toCharArray()) {
+            if (capitalizeNext && Character.isLetter(c)) {
+                builder.append(Character.toUpperCase(c));
+                capitalizeNext = false;
+            } else {
+                builder.append(c);
+            }
+            if (c == ' ') {
+                capitalizeNext = true;
+            }
+        }
+        return builder.toString();
+    }
 }
