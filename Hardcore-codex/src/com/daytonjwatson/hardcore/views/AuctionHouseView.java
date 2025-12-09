@@ -7,6 +7,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -54,9 +55,18 @@ public final class AuctionHouseView {
             ItemMeta meta = display.getItemMeta();
             if (meta != null) {
                 List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
+                OfflinePlayer seller = listing.getSeller() == null ? null : Bukkit.getOfflinePlayer(listing.getSeller());
+                String sellerName = seller == null || seller.getName() == null ? "Unknown" : seller.getName();
+                lore.add(Util.color("&7Seller: &f" + sellerName));
                 lore.add(Util.color("&7Price: &f" + bank.formatCurrency(listing.getPricePerItem())));
                 lore.add(Util.color("&7Available: &f" + listing.getQuantity()));
-                lore.add(Util.color("&8Left-click to buy. You'll be asked for an amount."));
+                long remaining = Math.max(0, listing.getExpiresAt() - System.currentTimeMillis());
+                lore.add(Util.color("&7Expires in: &f" + Util.formatDuration(remaining)));
+                if (listing.getQuantity() > 1) {
+                    lore.add(Util.color("&8Left-click to buy. You'll be asked for an amount."));
+                } else {
+                    lore.add(Util.color("&8Left-click to buy this item."));
+                }
                 meta.setLore(lore);
                 meta.getPersistentDataContainer().set(LISTING_KEY, PersistentDataType.STRING,
                         listing.getId().toString());
