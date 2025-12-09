@@ -71,6 +71,12 @@ public class AuctionHouseListener implements Listener {
             return;
         }
 
+        if (match.getQuantity() == 1) {
+            player.closeInventory();
+            manager.processPurchase(player, match.getId(), 1);
+            return;
+        }
+
         manager.setPendingPurchase(player.getUniqueId(), match.getId());
         player.closeInventory();
         player.sendMessage(Util.color("&6Auction &8» &7Enter how many you want to buy (1-" + match.getQuantity() + ") in chat, or type &ccancel &7to abort."));
