@@ -1,6 +1,7 @@
 package com.daytonjwatson.hardcore.commands;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -58,10 +59,7 @@ public class BankCommand implements CommandExecutor, TabCompleter {
 
     private void handleSend(Player sender, String targetName, String amountRaw) {
         BankManager bank = BankManager.get();
-        OfflinePlayer target = Bukkit.getPlayerExact(targetName);
-        if (target == null) {
-            target = Bukkit.getOfflinePlayer(targetName);
-        }
+        OfflinePlayer target = findOfflinePlayerByName(targetName);
 
         if (target == null || target.getName() == null) {
             sender.sendMessage(Util.color("&cCould not find player '&f" + targetName + "&c'."));
@@ -98,6 +96,18 @@ public class BankCommand implements CommandExecutor, TabCompleter {
         if (target.isOnline() && target.getPlayer() != null) {
             target.getPlayer().sendMessage(Util.color("&aYou received &f" + bank.formatCurrency(amount) + " &afrom &e" + sender.getName() + "&a."));
         }
+    }
+
+    private OfflinePlayer findOfflinePlayerByName(String name) {
+        OfflinePlayer onlineMatch = Bukkit.getPlayerExact(name);
+        if (onlineMatch != null) {
+            return onlineMatch;
+        }
+
+        return Arrays.stream(Bukkit.getOfflinePlayers())
+                .filter(player -> player.getName() != null && player.getName().equalsIgnoreCase(name))
+                .findFirst()
+                .orElse(null);
     }
 
     @Override
