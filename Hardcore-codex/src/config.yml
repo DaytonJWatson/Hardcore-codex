@@ -47,6 +47,17 @@ chat:
   name-color: "&7"
   format: "%prefix%&7 <%name_color%%player%&7> %message%"
 
+###############################
+# Economy                     #
+###############################
+economy:
+  # Starting currency given to new bank accounts.
+  starting-balance: 250.0
+  # Maximum number of recent transactions stored per player.
+  max-transactions: 30
+  # Prefix shown when displaying currency (supports color codes).
+  currency-symbol: "$"
+
 # Header/footer shown in the in-game player list.
 tablist:
   enabled: true

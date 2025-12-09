@@ -11,6 +11,7 @@ import com.daytonjwatson.hardcore.commands.HelpCommand;
 import com.daytonjwatson.hardcore.commands.AdminCommand;
 import com.daytonjwatson.hardcore.commands.RulesCommand;
 import com.daytonjwatson.hardcore.commands.StatsCommand;
+import com.daytonjwatson.hardcore.commands.BankCommand;
 import com.daytonjwatson.hardcore.config.Config;
 import com.daytonjwatson.hardcore.config.ConfigValues;
 import com.daytonjwatson.hardcore.listeners.PlayerChatListener;
@@ -19,6 +20,7 @@ import com.daytonjwatson.hardcore.listeners.PlayerJoinListener;
 import com.daytonjwatson.hardcore.listeners.PlayerQuitListener;
 import com.daytonjwatson.hardcore.listeners.BanditTrackerListener;
 import com.daytonjwatson.hardcore.listeners.FreezeListener;
+import com.daytonjwatson.hardcore.listeners.BankGuiListener;
 import com.daytonjwatson.hardcore.managers.BanditTrackerManager;
 import com.daytonjwatson.hardcore.managers.AdminManager;
 import com.daytonjwatson.hardcore.managers.AdminLogManager;
@@ -26,6 +28,7 @@ import com.daytonjwatson.hardcore.managers.BanManager;
 import com.daytonjwatson.hardcore.managers.DeathBanManager;
 import com.daytonjwatson.hardcore.managers.MuteManager;
 import com.daytonjwatson.hardcore.managers.StatsManager;
+import com.daytonjwatson.hardcore.managers.BankManager;
 import com.daytonjwatson.hardcore.listeners.PlayerLoginListener;
 
 public class HardcorePlugin extends JavaPlugin {
@@ -47,6 +50,7 @@ public class HardcorePlugin extends JavaPlugin {
         BanManager.init(this);
         DeathBanManager.init(this);
         MuteManager.init(this);
+        BankManager.init(this);
 
         // Initialize stats system (loads stats.yml, etc.)
         StatsManager.init(this);
@@ -70,6 +74,9 @@ public class HardcorePlugin extends JavaPlugin {
         BanManager.save();
         DeathBanManager.save();
         MuteManager.save();
+        if (BankManager.get() != null) {
+            BankManager.get().save();
+        }
 
         instance = null;
     }
@@ -84,6 +91,12 @@ public class HardcorePlugin extends JavaPlugin {
         // Bandit tracker is now crafted instead of granted via command; keep the
         // executor available in case legacy configs still register it.
         registerCommand("bandittracker", new BanditTrackerCommand());
+
+        BankCommand bankCommand = new BankCommand();
+        registerCommand("bank", bankCommand);
+        registerTabCompleter("bank", bankCommand);
+        registerCommand("pay", bankCommand);
+        registerTabCompleter("pay", bankCommand);
 
         if (getCommand("stats") != null) {
             StatsCommand statsCommand = new StatsCommand();
@@ -120,5 +133,6 @@ public class HardcorePlugin extends JavaPlugin {
         pm.registerEvents(new PlayerQuitListener(), this);
         pm.registerEvents(new BanditTrackerListener(), this);
         pm.registerEvents(new FreezeListener(), this);
+        pm.registerEvents(new BankGuiListener(), this);
     }
 }

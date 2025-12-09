@@ -22,3 +22,9 @@ commands:
     description: Recalibrates your crafted bandit tracker and shows its recipe.
     aliases: [trackbandit, huntbandit]
     usage: /bandittracker [recipe]
+  bank:
+    description: Opens your Hardcore bank account.
+    usage: /bank [balance|transactions|send]
+  pay:
+    description: Quick shortcut for sending money to another player.
+    usage: /pay <player> <amount>

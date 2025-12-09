@@ -271,6 +271,18 @@ public final class ConfigValues {
         return colorizedList("content.rules.lines");
     }
 
+    public static double bankStartingBalance() {
+        return config.getDouble("economy.starting-balance", 250.0);
+    }
+
+    public static int bankMaxTransactions() {
+        return config.getInt("economy.max-transactions", 30);
+    }
+
+    public static String bankCurrencySymbol() {
+        return translateColor(config.getString("economy.currency-symbol", "$")).trim();
+    }
+
     public static String translateColor(String value) {
         return HardcorePlugin.getInstance() == null ? value : ChatColor.translateAlternateColorCodes('&', value);
     }
