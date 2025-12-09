@@ -47,18 +47,7 @@ chat:
   name-color: "&7"
   format: "%prefix%&7 <%name_color%%player%&7> %message%"
 
-###############################
-# Economy                     #
-###############################
-economy:
-  # Starting currency given to new bank accounts.
-  starting-balance: 250.0
-  # Maximum number of recent transactions stored per player.
-  max-transactions: 30
-  # Prefix shown when displaying currency (supports color codes).
-  currency-symbol: "$"
-
-# Header/footer shown in the in-game player list.
+  # Header/footer shown in the in-game player list.
 tablist:
   enabled: true
   header:
@@ -72,7 +61,18 @@ tablist:
     show-life: true
     show-kd: true
     commands-line: "&8◆ &6Commands&8: &7/guide &8· &7/rules &8· &7/stats &8· &7/bandittracker"
-    bar-style: default  # kept for future styling options
+    bar-style: default  # kept for future styling options  
+  
+###############################
+# Economy                     #
+###############################
+economy:
+  # Starting currency given to new bank accounts.
+  starting-balance: 250.0
+  # Maximum number of recent transactions stored per player.
+  max-transactions: 30
+  # Prefix shown when displaying currency (supports color codes).
+  currency-symbol: "$"
 
 ###############################
 # Bandits & Heroes system     #

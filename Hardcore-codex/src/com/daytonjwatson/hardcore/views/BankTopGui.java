@@ -15,7 +15,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 
 import com.daytonjwatson.hardcore.managers.BankManager;
-import com.daytonjwatson.hardcore.views.AuctionHouseView;
 import com.daytonjwatson.hardcore.utils.Util;
 
 public final class BankTopGui {
