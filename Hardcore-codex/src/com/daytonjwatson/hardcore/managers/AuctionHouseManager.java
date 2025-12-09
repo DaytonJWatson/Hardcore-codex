@@ -97,6 +97,20 @@ public class AuctionHouseManager {
         saveListings();
     }
 
+    public boolean cancelListing(UUID id, String actor, String reason) {
+        AuctionListing listing = listings.get(id);
+        if (listing == null) {
+            return false;
+        }
+
+        String itemName = displayName(listing.getItem());
+        String message = Util.color("&6Auction &8» &cYour listing for &f" + listing.getQuantity() + "x &e"
+                + itemName + " &cwas removed by &f" + actor + "&c. Reason: &7" + reason);
+        returnListingToSeller(listing, message);
+        saveListings();
+        return true;
+    }
+
     public void save() {
         saveListings();
     }
@@ -320,7 +334,7 @@ public class AuctionHouseManager {
         saveListings();
     }
 
-    private void handleExpiry(AuctionListing listing) {
+    private void returnListingToSeller(AuctionListing listing, String message) {
         UUID sellerId = listing.getSeller();
         if (sellerId == null) {
             listings.remove(listing.getId());
@@ -337,16 +351,23 @@ public class AuctionHouseManager {
                 }
             }
             seller.updateInventory();
-            seller.sendMessage(Util.color("&6Auction &8» &cYour listing for &f" + listing.getQuantity() + "x &e"
-                    + displayName(listing.getItem()) + " &chas expired and was returned to you."));
+            if (message != null) {
+                seller.sendMessage(message);
+            }
         } else {
             pendingReturns.computeIfAbsent(sellerId, id -> new ArrayList<>()).addAll(stacks);
-            String message = Util.color("&6Auction &8» &cYour listing for &f" + listing.getQuantity() + "x &e"
-                    + displayName(listing.getItem()) + " &chas expired. Items will be delivered when you join.");
-            pendingMessages.computeIfAbsent(sellerId, id -> new ArrayList<>()).add(message);
+            if (message != null) {
+                pendingMessages.computeIfAbsent(sellerId, id -> new ArrayList<>()).add(message);
+            }
         }
 
         listings.remove(listing.getId());
+    }
+
+    private void handleExpiry(AuctionListing listing) {
+        String message = Util.color("&6Auction &8» &cYour listing for &f" + listing.getQuantity() + "x &e"
+                + displayName(listing.getItem()) + " &chas expired and was returned to you.");
+        returnListingToSeller(listing, message);
     }
 
     private List<ItemStack> splitStacks(ItemStack template, int quantity) {
