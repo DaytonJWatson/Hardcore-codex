@@ -51,6 +51,12 @@ public final class BankGui {
 
         ItemStack tradeItem = item(Material.CHEST_MINECART, "&6Trade Items", tradeLore);
 
+        ItemStack sellItem = item(Material.HOPPER, "&aSell Items", List.of(
+                "&7Convert items in your inventory into cash.",
+                "&7Everything is priced automatically and fairly.",
+                "&8Click to open the sell menu."
+        ));
+
         ItemStack topItem = item(Material.PAPER, "&bTop Balances", List.of(
                 "&7See the richest players on the server.",
                 "&7Click to open the baltop leaderboard.",
@@ -80,6 +86,7 @@ public final class BankGui {
         menu.setItem(13, sendItem);
         menu.setItem(15, historyItem);
         menu.setItem(20, tradeItem);
+        menu.setItem(22, sellItem);
         menu.setItem(24, topItem);
 
         player.openInventory(menu);
