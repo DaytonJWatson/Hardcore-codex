@@ -33,8 +33,8 @@ public final class BankGui {
 
         ItemStack sendItem = item(Material.GOLD_INGOT, "&eSend Money", List.of(
                 "&7Send currency to another player.",
-                "&7Click to begin a transfer via chat.",
-                "&8Usage: /bank send <player> <amount>"
+                "&7Click to choose a player and amount.",
+                "&7You can still type &f/bank send <player> <amount>&7."
         ));
 
         List<String> recentLore = new ArrayList<>();
