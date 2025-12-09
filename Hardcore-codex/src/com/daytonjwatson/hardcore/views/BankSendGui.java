@@ -150,6 +150,10 @@ public final class BankSendGui {
 
     public static String getMultiplierData(ItemStack item) {
         if (item == null || item.getItemMeta() == null) return null;
+        if (!item.getItemMeta().getPersistentDataContainer().has(AMOUNT_KEY, PersistentDataType.STRING)) {
+            return null;
+        }
+
         String raw = item.getItemMeta().getPersistentDataContainer().get(AMOUNT_KEY, PersistentDataType.STRING);
         if (raw == null || !raw.startsWith("MULTIPLIER:")) {
             return null;
