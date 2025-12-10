@@ -1,5 +1,6 @@
 package com.daytonjwatson.hardcore.listeners;
 
+import java.util.Map;
 import java.util.UUID;
 
 import org.bukkit.ChatColor;
@@ -7,6 +8,7 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
@@ -157,6 +159,16 @@ public class ShopListener implements Listener {
             try {
                 PlayerShop shop = ShopManager.get().getShop(UUID.fromString(id));
                 if (shop != null) {
+                    if (event.getClick() == ClickType.RIGHT || event.getClick() == ClickType.SHIFT_RIGHT) {
+                        shop.getStock().values().forEach(item -> {
+                            Map<Integer, ItemStack> overflow = player.getInventory().addItem(item.getItem().clone());
+                            overflow.values().forEach(extra -> player.getWorld().dropItemNaturally(player.getLocation(), extra));
+                        });
+                        ShopManager.get().deleteShop(shop.getId());
+                        ShopManagerView.open(player);
+                        player.sendMessage(Util.color("&cDeleted shop and returned any listed items."));
+                        return;
+                    }
                     ShopEditorView.open(player, shop);
                 }
             } catch (IllegalArgumentException ignored) {}

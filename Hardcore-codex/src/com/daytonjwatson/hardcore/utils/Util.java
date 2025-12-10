@@ -10,7 +10,6 @@ import org.bukkit.inventory.meta.BookMeta;
 import org.bukkit.persistence.PersistentDataType;
 
 import com.daytonjwatson.hardcore.HardcorePlugin;
-import com.daytonjwatson.hardcore.config.ConfigValues;
 import com.daytonjwatson.hardcore.shop.PlayerShop;
 
 public class Util {
