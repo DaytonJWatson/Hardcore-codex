@@ -21,6 +21,7 @@ import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
 import com.daytonjwatson.hardcore.HardcorePlugin;
+import com.daytonjwatson.hardcore.managers.AdminManager;
 import com.daytonjwatson.hardcore.managers.AdminLogManager;
 import com.daytonjwatson.hardcore.utils.Util;
 import com.daytonjwatson.hardcore.views.AdminGui;
@@ -76,6 +77,12 @@ public class AdminGuiListener implements Listener {
     private boolean handleClicks(InventoryClickEvent event, String title) {
         if (!(event.getWhoClicked() instanceof Player player)) {
             return false;
+        }
+
+        if (!hasAdminAccess(player)) {
+            player.sendMessage(Util.color("&cYou must be a Hardcore admin to use this menu."));
+            player.closeInventory();
+            return true;
         }
 
         if (!title.equals(AdminGui.MAIN_TITLE) && !title.startsWith(AdminGui.PLAYER_LIST_TITLE)
@@ -159,7 +166,9 @@ public class AdminGuiListener implements Listener {
                 AdminGui.openAuctionMenu(player);
                 return true;
             case "bank tools":
-                AdminGui.openPlayerList(player, 0);
+                prompt(player, new PendingChat(PendingType.PLAYER_SEARCH, null, "bank"),
+                        "&6Admin &8» &7Type the player to manage bank tools, or &ccancel&7.");
+                player.closeInventory();
                 return true;
             case "add admin":
                 prompt(player, new PendingChat(PendingType.ADD_ADMIN, null, null),
@@ -511,6 +520,12 @@ public class AdminGuiListener implements Listener {
             return;
         }
 
+        if (!hasAdminAccess(player)) {
+            pendingInputs.remove(player.getUniqueId());
+            player.sendMessage(Util.color("&cYou are no longer allowed to perform admin actions."));
+            return;
+        }
+
         event.setCancelled(true);
         String message = event.getMessage().trim();
         if (message.equalsIgnoreCase("cancel")) {
@@ -710,5 +725,9 @@ public class AdminGuiListener implements Listener {
 
     private void runCommand(Player player, String command) {
         Bukkit.getScheduler().runTask(HardcorePlugin.getInstance(), () -> player.performCommand(command));
+    }
+
+    private boolean hasAdminAccess(Player player) {
+        return player.hasPermission("hardcore.admin") || player.isOp() || AdminManager.isAdmin(player);
     }
 }
