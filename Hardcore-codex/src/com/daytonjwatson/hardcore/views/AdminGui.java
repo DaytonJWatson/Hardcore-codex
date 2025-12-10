@@ -469,9 +469,9 @@ public final class AdminGui {
                 List.of("&7Use chat commands for power users.", "&8/ admin auction list|cancel"));
         ItemStack back = item(Material.ARROW, "&cBack", List.of("&7Return to admin panel."));
 
-        menu.setItem(10, listAll);
-        menu.setItem(12, listPlayer);
-        menu.setItem(14, commands);
+        menu.setItem(11, listAll);
+        menu.setItem(13, listPlayer);
+        menu.setItem(15, commands);
         menu.setItem(22, back);
 
         viewer.openInventory(menu);
