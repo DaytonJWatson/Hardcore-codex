@@ -33,12 +33,11 @@ import com.daytonjwatson.hardcore.managers.PlayerIpManager;
 import com.daytonjwatson.hardcore.auction.AuctionListing;
 import com.daytonjwatson.hardcore.utils.MessageStyler;
 import com.daytonjwatson.hardcore.utils.Util;
-import com.daytonjwatson.hardcore.views.AdminGui;
 
 public class AdminCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> BASE_SUBCOMMANDS = Arrays.asList(
-            "gui", "help", "add", "remove", "list", "ban", "unban", "kick", "mute", "unmute", "warn",
+            "help", "add", "remove", "list", "ban", "unban", "kick", "mute", "unmute", "warn",
             "freeze", "unfreeze", "clearchat", "status", "info", "invsee", "endersee", "tp",
             "tphere", "heal", "feed", "log", "auction", "bank");
 
@@ -64,10 +63,6 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         }
 
         String sub = args[0].toLowerCase(Locale.ROOT);
-        if (sub.equals("gui")) {
-            handleGui(sender, fullCommand, canUseAdminTools);
-            return true;
-        }
         if (sub.equals("add")) {
             handleAdd(sender, args, isOp);
             return true;
@@ -201,24 +196,6 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         } else {
             sender.sendMessage(Util.color("&e" + targetName + " &cis already an admin."));
         }
-    }
-
-    private void handleGui(CommandSender sender, String fullCommand, boolean canUseAdminTools) {
-        if (!canUseAdminTools) {
-            AdminLogManager.log(sender, fullCommand, false);
-            sender.sendMessage(Util.color("&cYou must be a Hardcore admin to use this command."));
-            return;
-        }
-
-        if (!(sender instanceof Player player)) {
-            AdminLogManager.log(sender, fullCommand, false);
-            sender.sendMessage(Util.color("&cOnly in-game admins can use the admin GUI."));
-            return;
-        }
-
-        AdminLogManager.log(sender, fullCommand, true);
-        AdminGui.open(player);
-        player.sendMessage(Util.color("&aOpened the admin control panel. Click items to paste commands."));
     }
 
     private void handleRemove(CommandSender sender, String[] args) {
@@ -889,7 +866,6 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     private void sendAdminHelp(CommandSender sender, String label) {
         MessageStyler.sendPanel(sender, "Hardcore Admin Help",
                 "&6Core",
-                " &e/" + label + " gui &7- open clickable admin menu",
                 " &e/" + label + " list &7- show admins",
                 " &e/" + label + " status <player> &7- flags",
                 " &e/" + label + " log [admin] [limit] &7- recent actions",
