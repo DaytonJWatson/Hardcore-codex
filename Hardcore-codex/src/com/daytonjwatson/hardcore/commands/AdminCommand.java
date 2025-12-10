@@ -52,6 +52,22 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
         String fullCommand = "/" + label + (args.length > 0 ? " " + String.join(" ", args) : "");
 
+        if (args.length == 1 && args[0].equalsIgnoreCase("gui")) {
+            if (!canUseAdminTools && !isOp) {
+                AdminLogManager.log(sender, fullCommand, false);
+                sender.sendMessage(Util.color("&cYou must be a Hardcore admin to use this command."));
+                return true;
+            }
+
+            if (sender instanceof Player player) {
+                AdminLogManager.log(sender, fullCommand, true);
+                AdminGui.openMain(player);
+            } else {
+                sender.sendMessage(Util.color("&cOnly in-game admins can use the GUI."));
+            }
+            return true;
+        }
+
         if (args.length == 0) {
             if (sender instanceof Player player && canUseAdminTools) {
                 AdminLogManager.log(sender, fullCommand + " gui", true);
