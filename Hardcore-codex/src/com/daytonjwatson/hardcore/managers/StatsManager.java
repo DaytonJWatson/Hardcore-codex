@@ -36,6 +36,8 @@ public class StatsManager {
     private final Map<UUID, Long> firstJoin = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lastDeath = new ConcurrentHashMap<>();
     private final Map<UUID, String> lastDeathCause = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> lifePlaytime = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> sessionStart = new ConcurrentHashMap<>();
 
     // Bandit tracking
     private final Set<UUID> bandits = ConcurrentHashMap.newKeySet();
@@ -107,6 +109,7 @@ public class StatsManager {
                     long fj = statsConfig.getLong(base + "first-join", 0L);
                     long ld = statsConfig.getLong(base + "last-death", 0L);
                     String dc = statsConfig.getString(base + "last-death-cause", "");
+                    long lt = statsConfig.getLong(base + "life-playtime", 0L);
 
                     int bk  = statsConfig.getInt(base + "bandit-kills", 0);
                     boolean isBandit = statsConfig.getBoolean(base + "bandit", false);
@@ -123,6 +126,7 @@ public class StatsManager {
                     if (fj > 0) firstJoin.put(uuid, fj);
                     if (ld > 0) lastDeath.put(uuid, ld);
                     if (dc != null && !dc.isEmpty()) lastDeathCause.put(uuid, dc);
+                    if (lt > 0) lifePlaytime.put(uuid, lt);
 
                     if (bk > 0) banditKills.put(uuid, bk);
                     if (isBandit) bandits.add(uuid);
@@ -156,6 +160,7 @@ public class StatsManager {
             statsConfig.set(base + "first-join", firstJoin.getOrDefault(uuid, 0L));
             statsConfig.set(base + "last-death", lastDeath.getOrDefault(uuid, 0L));
             statsConfig.set(base + "last-death-cause", lastDeathCause.getOrDefault(uuid, ""));
+            statsConfig.set(base + "life-playtime", lifePlaytime.getOrDefault(uuid, 0L));
 
             statsConfig.set(base + "bandit-kills", banditKills.getOrDefault(uuid, 0));
             statsConfig.set(base + "bandit", bandits.contains(uuid));
@@ -188,12 +193,17 @@ public class StatsManager {
             firstJoin.putIfAbsent(uuid, now);
         }
 
+        sessionStart.put(uuid, now);
+        lifePlaytime.putIfAbsent(uuid, 0L);
+
         scheduleSave();
     }
 
     public void handleDeath(Player victim, Player killer, String deathCause) {
         UUID vUuid = victim.getUniqueId();
         long now = System.currentTimeMillis();
+
+        recordSessionTime(vUuid, now);
 
         totalDeaths.incrementAndGet();
 
@@ -323,20 +333,20 @@ public class StatsManager {
 
     /**
      * Life length:
-     *  - if dead: lastDeath - firstJoin
-     *  - if alive: now - firstJoin
+     *  - if dead: total tracked playtime for the life
+     *  - if alive: tracked playtime + current session duration
      */
     public long getLifeLengthMillis(UUID uuid, boolean isAlive) {
-        long fj = getFirstJoin(uuid);
-        if (fj == 0L) return 0L;
+        long total = lifePlaytime.getOrDefault(uuid, 0L);
 
-        if (!isAlive) {
-            long ld = getLastDeath(uuid);
-            if (ld == 0L) return 0L;
-            return Math.max(0L, ld - fj);
-        } else {
-            return Math.max(0L, System.currentTimeMillis() - fj);
+        if (isAlive) {
+            Long sessionStartTime = sessionStart.get(uuid);
+            if (sessionStartTime != null) {
+                total += Math.max(0L, System.currentTimeMillis() - sessionStartTime);
+            }
         }
+
+        return total;
     }
 
     public boolean isBandit(UUID uuid) {
@@ -373,5 +383,19 @@ public class StatsManager {
             saveData();
             saveScheduled = false;
         }, saveDelayTicks);
+    }
+
+    public void handleQuit(Player player) {
+        UUID uuid = player.getUniqueId();
+        recordSessionTime(uuid, System.currentTimeMillis());
+        scheduleSave();
+    }
+
+    private void recordSessionTime(UUID uuid, long now) {
+        Long sessionStartTime = sessionStart.remove(uuid);
+        if (sessionStartTime != null) {
+            long duration = Math.max(0L, now - sessionStartTime);
+            lifePlaytime.merge(uuid, duration, Long::sum);
+        }
     }
 }
