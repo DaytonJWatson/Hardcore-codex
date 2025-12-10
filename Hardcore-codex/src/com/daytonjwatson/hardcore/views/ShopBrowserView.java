@@ -29,7 +29,12 @@ public final class ShopBrowserView {
 
     public static void open(Player player, int page) {
         ShopManager manager = ShopManager.get();
-        List<PlayerShop> shops = manager.getSortedShops();
+        List<PlayerShop> shops = new ArrayList<>();
+        for (PlayerShop shop : manager.getSortedShops()) {
+            if (!shop.getStock().isEmpty()) {
+                shops.add(shop);
+            }
+        }
         int totalPages = Math.max(1, (int) Math.ceil(shops.size() / (double) PAGE_SIZE));
         int current = Math.max(0, Math.min(page, totalPages - 1));
 
@@ -47,6 +52,10 @@ public final class ShopBrowserView {
             ItemMeta meta = icon.getItemMeta();
             if (meta != null) {
                 List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
+                lore.add(Util.color("&7Description:"));
+                for (String line : wrapLore(shop.getDescription(), 35)) {
+                    lore.add(Util.color("&f" + line));
+                }
                 lore.add(Util.color("&7Owner: &f" + Util.resolveShopOwnerName(shop)));
                 lore.add(Util.color("&7Status: " + (shop.isOpen() ? "&aOpen" : "&cClosed")));
                 lore.add(Util.color("&7Listings: &f" + shop.getStock().size() + "&7/27"));
@@ -117,5 +126,31 @@ public final class ShopBrowserView {
             item.setItemMeta(meta);
         }
         return item;
+    }
+
+    private static List<String> wrapLore(String text, int lineLength) {
+        List<String> lines = new ArrayList<>();
+        if (text == null || text.isBlank()) {
+            lines.add("");
+            return lines;
+        }
+
+        String[] words = ChatColor.stripColor(text).split(" ");
+        StringBuilder current = new StringBuilder();
+        for (String word : words) {
+            if (current.length() + word.length() + 1 > lineLength) {
+                lines.add(current.toString());
+                current = new StringBuilder(word);
+            } else {
+                if (current.length() > 0) {
+                    current.append(' ');
+                }
+                current.append(word);
+            }
+        }
+        if (current.length() > 0) {
+            lines.add(current.toString());
+        }
+        return lines;
     }
 }
