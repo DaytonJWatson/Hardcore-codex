@@ -24,6 +24,8 @@ import org.bukkit.persistence.PersistentDataType;
 import com.daytonjwatson.hardcore.HardcorePlugin;
 import com.daytonjwatson.hardcore.managers.AdminLogManager;
 import com.daytonjwatson.hardcore.managers.AdminManager;
+import com.daytonjwatson.hardcore.managers.AuctionHouseManager;
+import com.daytonjwatson.hardcore.managers.BankManager;
 import com.daytonjwatson.hardcore.utils.Util;
 import com.daytonjwatson.hardcore.views.AdminGui;
 
@@ -42,6 +44,10 @@ public class AdminGuiListener implements Listener {
             "admin_reason");
     private static final org.bukkit.NamespacedKey FILTER_KEY = new org.bukkit.NamespacedKey(HardcorePlugin.getInstance(),
             "admin_filter");
+    private static final org.bukkit.NamespacedKey STATUS_FILTER_KEY = new org.bukkit.NamespacedKey(
+            HardcorePlugin.getInstance(), "admin_status_filter");
+    private static final org.bukkit.NamespacedKey LISTING_KEY = new org.bukkit.NamespacedKey(HardcorePlugin.getInstance(),
+            "admin_listing_id");
 
     private enum PendingType {
         BAN_REASON,
@@ -85,7 +91,11 @@ public class AdminGuiListener implements Listener {
                 && !title.equals(Util.color("&4&lAdmin &8| &7Choose Reason"))
                 && !title.equals(Util.color("&4&lAdmin &8| &7Choose Amount"))
                 && !title.equals(Util.color("&4&lAdmin &8| &7Bank Tools"))
+                && !title.startsWith(Util.color("&4&lAdmin &8| &7Bank &ePlayer"))
+                && !title.equals(Util.color("&4&lAdmin &8| &7Bank &eHistory"))
                 && !title.equals(Util.color("&4&lAdmin &8| &7Auction Tools"))
+                && !title.startsWith(Util.color("&4&lAdmin &8| &7Auction Sellers"))
+                && !title.equals(Util.color("&4&lAdmin &8| &7Auction Listings"))
                 && !title.equals(AdminGui.LOG_TITLE)) {
             return false;
         }
@@ -137,8 +147,24 @@ public class AdminGuiListener implements Listener {
             return handleBankClick(player, current, plainName);
         }
 
+        if (title.startsWith(Util.color("&4&lAdmin &8| &7Bank &ePlayer"))) {
+            return handleBankPlayerClick(player, current, plainName);
+        }
+
+        if (title.equals(Util.color("&4&lAdmin &8| &7Bank &eHistory"))) {
+            return handleBankHistoryClick(player, current, plainName);
+        }
+
         if (title.equals(Util.color("&4&lAdmin &8| &7Auction Tools"))) {
-            return handleAuctionClick(player, plainName);
+            return handleAuctionClick(player, current, plainName);
+        }
+
+        if (title.startsWith(Util.color("&4&lAdmin &8| &7Auction Sellers"))) {
+            return handleAuctionSellerClick(player, current, plainName);
+        }
+
+        if (title.equals(Util.color("&4&lAdmin &8| &7Auction Listings"))) {
+            return handleAuctionListingClick(player, current, plainName);
         }
 
         return false;
@@ -154,11 +180,17 @@ public class AdminGuiListener implements Listener {
                         "&6Admin &8» &7Type the announcement to broadcast, or &ccancel&7.");
                 player.closeInventory();
                 return true;
-            case "admin list":
-                player.performCommand("admin list");
+            case "switch to survival":
+            case "switch to spectator":
+                org.bukkit.GameMode next = player.getGameMode() == org.bukkit.GameMode.SPECTATOR
+                        ? org.bukkit.GameMode.SURVIVAL
+                        : org.bukkit.GameMode.SPECTATOR;
+                player.setGameMode(next);
+                player.sendMessage(Util.color("&6Admin &8» &7Gamemode set to &e" + next.name().toLowerCase()));
+                AdminGui.openMain(player);
                 return true;
             case "recent admin log":
-                AdminGui.openAdminLog(player, null, 0);
+                AdminGui.openAdminLog(player, null, null, 0);
                 return true;
             case "clear chat":
                 player.performCommand("admin clearchat");
@@ -167,9 +199,7 @@ public class AdminGuiListener implements Listener {
                 AdminGui.openAuctionMenu(player);
                 return true;
             case "bank tools":
-                prompt(player, new PendingChat(PendingType.PLAYER_SEARCH, null, "bank"),
-                        "&6Admin &8» &7Type the player to manage bank tools, or &ccancel&7.");
-                player.closeInventory();
+                AdminGui.openBankPlayerList(player, 0);
                 return true;
             case "add admin":
                 prompt(player, new PendingChat(PendingType.ADD_ADMIN, null, null),
@@ -225,6 +255,7 @@ public class AdminGuiListener implements Listener {
     private boolean handleLogClick(Player player, ItemStack current, String plainName) {
         ItemMeta meta = current.getItemMeta();
         String filter = getString(meta, FILTER_KEY);
+        Boolean statusFilter = getStatus(meta);
 
         if (plainName.equalsIgnoreCase("Back")) {
             AdminGui.openMain(player);
@@ -233,19 +264,25 @@ public class AdminGuiListener implements Listener {
 
         if (plainName.toLowerCase().contains("previous")) {
             Integer page = getInt(meta, "admin_page");
-            AdminGui.openAdminLog(player, filter, page == null ? 0 : page);
+            AdminGui.openAdminLog(player, filter, statusFilter, page == null ? 0 : page);
             return true;
         }
 
         if (plainName.toLowerCase().contains("next")) {
             Integer page = getInt(meta, "admin_page");
-            AdminGui.openAdminLog(player, filter, page == null ? 0 : page);
+            AdminGui.openAdminLog(player, filter, statusFilter, page == null ? 0 : page);
             return true;
         }
 
         if (current.getType() == org.bukkit.Material.HOPPER) {
             String nextFilter = cycleFilter(filter);
-            AdminGui.openAdminLog(player, nextFilter, 0);
+            AdminGui.openAdminLog(player, nextFilter, statusFilter, 0);
+            return true;
+        }
+
+        if (current.getType() == org.bukkit.Material.REPEATER) {
+            Boolean nextStatus = cycleStatus(statusFilter);
+            AdminGui.openAdminLog(player, filter, nextStatus, 0);
             return true;
         }
 
@@ -315,7 +352,7 @@ public class AdminGuiListener implements Listener {
                 AdminGui.openBankMenu(player, target);
                 return true;
             case "auctions":
-                player.performCommand("admin auction list " + name);
+                AdminGui.openAuctionListings(player, target.getUniqueId(), 0);
                 return true;
             case "back":
                 ItemMeta meta = current.getItemMeta();
@@ -482,28 +519,37 @@ public class AdminGuiListener implements Listener {
             case "set balance":
                 AdminGui.openAmountMenu(player, target, "set");
                 return true;
+            case "recent transactions":
+                AdminGui.openBankTransactions(player, target, 0);
+                return true;
+            case "suspicious activity":
+                sendBankSummary(player, target);
+                player.closeInventory();
+                return true;
             case "back":
-                AdminGui.openPlayerActions(player, target);
+                Integer page = getInt(current.getItemMeta(), "admin_page");
+                if (page != null) {
+                    AdminGui.openBankPlayerList(player, page);
+                } else {
+                    AdminGui.openPlayerActions(player, target);
+                }
                 return true;
             default:
                 return false;
         }
     }
 
-    private boolean handleAuctionClick(Player player, String plainName) {
+    private boolean handleAuctionClick(Player player, ItemStack current, String plainName) {
         switch (plainName.toLowerCase()) {
-            case "list all":
-                player.performCommand("admin auction list");
+            case "view all listings":
+                AdminGui.openAuctionListings(player, null, 0);
                 return true;
-            case "list by player":
-                prompt(player, new PendingChat(PendingType.LIST_PLAYER_AUCTIONS, null, null),
-                        "&6Admin &8» &7Type a player name to filter auctions, or &ccancel&7.");
-                player.closeInventory();
+            case "filter by seller":
+                AdminGui.openAuctionSellerList(player, 0);
                 return true;
-            case "cancel listing":
-                prompt(player, new PendingChat(PendingType.AUCTION_CANCEL, null, null),
-                        "&6Admin &8» &7Type the listing id and optional reason, or &ccancel&7.");
+            case "command shortcuts":
                 player.closeInventory();
+                player.sendMessage(Util.color("&6Admin &8» &7Use &e/admin auction list &7or &e/admin auction cancel <id> [reason]&7."));
                 return true;
             case "back":
                 AdminGui.openMain(player);
@@ -511,6 +557,154 @@ public class AdminGuiListener implements Listener {
             default:
                 return false;
         }
+    }
+
+    private boolean handleBankPlayerClick(Player player, ItemStack current, String plainName) {
+        ItemMeta meta = current.getItemMeta();
+        if (plainName.equalsIgnoreCase("Back")) {
+            AdminGui.openMain(player);
+            return true;
+        }
+
+        if (plainName.toLowerCase().contains("previous")) {
+            Integer page = getInt(meta, "admin_page");
+            AdminGui.openBankPlayerList(player, page == null ? 0 : page);
+            return true;
+        }
+
+        if (plainName.toLowerCase().contains("next")) {
+            Integer page = getInt(meta, "admin_page");
+            AdminGui.openBankPlayerList(player, page == null ? 0 : page);
+            return true;
+        }
+
+        if (current.getType() == org.bukkit.Material.COMPASS) {
+            prompt(player, new PendingChat(PendingType.PLAYER_SEARCH, null, "bank"),
+                    "&6Admin &8» &7Type the player to manage bank tools, or &ccancel&7.");
+            player.closeInventory();
+            return true;
+        }
+
+        if (meta != null && meta.getPersistentDataContainer().has(TARGET_KEY, PersistentDataType.STRING)) {
+            String id = meta.getPersistentDataContainer().get(TARGET_KEY, PersistentDataType.STRING);
+            Integer page = getInt(meta, "admin_page");
+            if (id != null) {
+                OfflinePlayer target = Bukkit.getOfflinePlayer(UUID.fromString(id));
+                AdminGui.openBankMenu(player, target, page);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean handleBankHistoryClick(Player player, ItemStack current, String plainName) {
+        ItemMeta meta = current.getItemMeta();
+        OfflinePlayer target = getTarget(current);
+        if (target == null) {
+            return false;
+        }
+
+        if (plainName.equalsIgnoreCase("Back")) {
+            Integer page = getInt(meta, "admin_page");
+            AdminGui.openBankMenu(player, target, page);
+            return true;
+        }
+
+        if (plainName.toLowerCase().contains("previous")) {
+            Integer page = getInt(meta, "admin_page");
+            AdminGui.openBankTransactions(player, target, page == null ? 0 : page);
+            return true;
+        }
+
+        if (plainName.toLowerCase().contains("next")) {
+            Integer page = getInt(meta, "admin_page");
+            AdminGui.openBankTransactions(player, target, page == null ? 0 : page);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean handleAuctionSellerClick(Player player, ItemStack current, String plainName) {
+        ItemMeta meta = current.getItemMeta();
+        if (plainName.equalsIgnoreCase("Back")) {
+            AdminGui.openAuctionMenu(player);
+            return true;
+        }
+
+        if (plainName.toLowerCase().contains("previous")) {
+            Integer page = getInt(meta, "admin_page");
+            AdminGui.openAuctionSellerList(player, page == null ? 0 : page);
+            return true;
+        }
+
+        if (plainName.toLowerCase().contains("next")) {
+            Integer page = getInt(meta, "admin_page");
+            AdminGui.openAuctionSellerList(player, page == null ? 0 : page);
+            return true;
+        }
+
+        if (meta != null && meta.getPersistentDataContainer().has(TARGET_KEY, PersistentDataType.STRING)) {
+            String id = meta.getPersistentDataContainer().get(TARGET_KEY, PersistentDataType.STRING);
+            if (id != null) {
+                AdminGui.openAuctionListings(player, UUID.fromString(id), 0);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean handleAuctionListingClick(Player player, ItemStack current, String plainName) {
+        ItemMeta meta = current.getItemMeta();
+        UUID sellerFilter = null;
+        Integer page = null;
+        if (meta != null) {
+            String target = meta.getPersistentDataContainer().get(TARGET_KEY, PersistentDataType.STRING);
+            if (target != null) {
+                sellerFilter = UUID.fromString(target);
+            }
+            page = getInt(meta, "admin_page");
+        }
+
+        if (plainName.equalsIgnoreCase("Back")) {
+            if (sellerFilter != null) {
+                AdminGui.openAuctionSellerList(player, page == null ? 0 : page);
+            } else {
+                AdminGui.openAuctionMenu(player);
+            }
+            return true;
+        }
+
+        if (plainName.toLowerCase().contains("previous")) {
+            AdminGui.openAuctionListings(player, sellerFilter, page == null ? 0 : page);
+            return true;
+        }
+
+        if (plainName.toLowerCase().contains("next")) {
+            AdminGui.openAuctionListings(player, sellerFilter, page == null ? 0 : page);
+            return true;
+        }
+
+        if (meta != null && meta.getPersistentDataContainer().has(LISTING_KEY, PersistentDataType.STRING)) {
+            String rawId = meta.getPersistentDataContainer().get(LISTING_KEY, PersistentDataType.STRING);
+            if (rawId != null) {
+                UUID id = UUID.fromString(rawId);
+                AuctionHouseManager manager = AuctionHouseManager.get();
+                if (manager == null) {
+                    player.sendMessage(Util.color("&cThe auction house is not initialized."));
+                    return true;
+                }
+                boolean cancelled = manager.cancelListing(id, player.getName(), "Removed via admin GUI.");
+                if (cancelled) {
+                    player.sendMessage(Util.color("&aCancelled auction listing &f" + id + "&a."));
+                } else {
+                    player.sendMessage(Util.color("&cThat listing no longer exists."));
+                }
+                AdminGui.openAuctionListings(player, sellerFilter, page == null ? 0 : page);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     @EventHandler
@@ -621,6 +815,20 @@ public class AdminGuiListener implements Listener {
         runCommand(player, "admin auction cancel " + parts[0] + " " + reason);
     }
 
+    private void sendBankSummary(Player player, OfflinePlayer target) {
+        List<String> transactions = BankManager.get().getTransactions(target.getUniqueId());
+        double net5 = netChange(transactions, 5);
+        double net15 = netChange(transactions, 15);
+        double peakDeposit = peakMagnitude(transactions, 20, true);
+        double peakWithdraw = peakMagnitude(transactions, 20, false);
+
+        player.sendMessage(Util.color("&6Bank &8» &7Audit for &e" + safeName(target)));
+        player.sendMessage(Util.color("&7Net last 5: " + formatCurrency(net5)));
+        player.sendMessage(Util.color("&7Net last 15: " + formatCurrency(net15)));
+        player.sendMessage(Util.color("&7Largest deposit (last 20): " + formatCurrency(peakDeposit)));
+        player.sendMessage(Util.color("&7Largest withdraw (last 20): " + formatCurrency(-peakWithdraw)));
+    }
+
     private void handleCustomTimed(Player player, OfflinePlayer target, String message, String verb) {
         String[] parts = message.split(" ", 2);
         if (parts.length < 2) {
@@ -629,6 +837,64 @@ public class AdminGuiListener implements Listener {
         }
         runCommand(player, "admin " + verb + " " + safeName(target) + " " + parts[0] + " " + parts[1]);
         pendingInputs.remove(player.getUniqueId());
+    }
+
+    private double netChange(List<String> transactions, int limit) {
+        double total = 0;
+        int count = Math.min(limit, transactions.size());
+        for (int i = 0; i < count; i++) {
+            total += parseAmount(transactions.get(i));
+        }
+        return total;
+    }
+
+    private double peakMagnitude(List<String> transactions, int limit, boolean deposit) {
+        double peak = 0;
+        int count = Math.min(limit, transactions.size());
+        for (int i = 0; i < count; i++) {
+            double amount = parseAmount(transactions.get(i));
+            if (deposit) {
+                if (amount > peak) {
+                    peak = amount;
+                }
+            } else {
+                if (amount < peak) {
+                    peak = amount;
+                }
+            }
+        }
+        return peak;
+    }
+
+    private double parseAmount(String entry) {
+        int bracket = entry.indexOf(']');
+        if (bracket == -1 || bracket + 2 >= entry.length()) {
+            return 0;
+        }
+
+        String body = entry.substring(bracket + 2).trim();
+        if (body.isEmpty()) {
+            return 0;
+        }
+
+        int sign = body.startsWith("-") ? -1 : 1;
+        String digits = body.substring(1).replaceAll("[^0-9.]", "");
+        try {
+            return sign * Double.parseDouble(digits);
+        } catch (NumberFormatException ex) {
+            return 0;
+        }
+    }
+
+    private String formatCurrency(double amount) {
+        String formatted = BankManager.get().formatCurrency(Math.abs(amount));
+        if (amount > 0) {
+            return Util.color("&a+" + formatted);
+        }
+        if (amount < 0) {
+            return Util.color("&c-" + formatted);
+        }
+        return Util.color("&7" + formatted);
     }
 
     private boolean handleAmount(Player player, OfflinePlayer target, String message, String action) {
@@ -697,11 +963,36 @@ public class AdminGuiListener implements Listener {
         return meta.getPersistentDataContainer().get(namespacedKey, PersistentDataType.INTEGER);
     }
 
+    private Integer getInt(ItemMeta meta, NamespacedKey key) {
+        if (meta == null) {
+            return null;
+        }
+        return meta.getPersistentDataContainer().get(key, PersistentDataType.INTEGER);
+    }
+
     private String getString(ItemMeta meta, NamespacedKey key) {
         if (meta == null) {
             return null;
         }
         return meta.getPersistentDataContainer().get(key, PersistentDataType.STRING);
+    }
+
+    private Boolean getStatus(ItemMeta meta) {
+        Integer stored = getInt(meta, STATUS_FILTER_KEY);
+        if (stored == null) {
+            return null;
+        }
+        return stored > 0;
+    }
+
+    private Boolean cycleStatus(Boolean current) {
+        if (current == null) {
+            return Boolean.TRUE;
+        }
+        if (current) {
+            return Boolean.FALSE;
+        }
+        return null;
     }
 
     private String cycleFilter(String current) {

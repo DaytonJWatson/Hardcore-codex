@@ -89,7 +89,7 @@ public final class AdminLogManager {
         return results;
     }
 
-    public static synchronized List<LogEntry> getRecentEntries(int limit, String actorFilter) {
+    public static synchronized List<LogEntry> getRecentEntries(int limit, String actorFilter, Boolean allowedOnly) {
         if (config == null) {
             return List.of();
         }
@@ -105,6 +105,10 @@ public final class AdminLogManager {
             }
 
             if (actorFilter != null && !parsed.actor.equalsIgnoreCase(actorFilter)) {
+                continue;
+            }
+
+            if (allowedOnly != null && parsed.status.equalsIgnoreCase("ALLOWED") != allowedOnly) {
                 continue;
             }
 
