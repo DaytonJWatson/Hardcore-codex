@@ -82,7 +82,13 @@ public final class JobsGui {
         lore.add(" ");
         lore.add("&eClick to accept option " + optionNumber + "!");
 
-        Material icon = definition.getType() == JobType.KILL_MOB ? Material.IRON_SWORD : Material.CHEST;
+        Material icon = switch (definition.getType()) {
+            case KILL_MOB -> Material.IRON_SWORD;
+            case COLLECT_ITEM -> Material.CHEST;
+            case MINE_BLOCK -> Material.DIAMOND_PICKAXE;
+            case FISH_ITEM -> Material.FISHING_ROD;
+            case CRAFT_ITEM -> Material.CRAFTING_TABLE;
+        };
         return item(icon, "&6" + definition.getDisplayName(), lore);
     }
 

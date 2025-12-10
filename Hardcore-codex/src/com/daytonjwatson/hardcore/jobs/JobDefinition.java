@@ -65,4 +65,16 @@ public class JobDefinition {
     public boolean matches(Material material) {
         return type == JobType.COLLECT_ITEM && material.name().equalsIgnoreCase(target);
     }
+
+    public boolean matchesMine(Material material) {
+        return type == JobType.MINE_BLOCK && material.name().equalsIgnoreCase(target);
+    }
+
+    public boolean matchesFish(Material material) {
+        return type == JobType.FISH_ITEM && material.name().equalsIgnoreCase(target);
+    }
+
+    public boolean matchesCraft(Material material) {
+        return type == JobType.CRAFT_ITEM && material.name().equalsIgnoreCase(target);
+    }
 }

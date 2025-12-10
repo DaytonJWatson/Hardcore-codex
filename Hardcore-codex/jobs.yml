@@ -36,3 +36,30 @@ jobs:
     reward: 750.0
     description:
       - "Cool the nether furnace by slaying blazes."
+  diamond_miner:
+    name: "&bShiny Prospector"
+    type: MINE_BLOCK
+    target: DIAMOND_ORE
+    amount: 8
+    difficulty: 2.0
+    reward: 900.0
+    description:
+      - "Mine diamonds for the guild armorer."
+  master_fisher:
+    name: "&3River Supplier"
+    type: FISH_ITEM
+    target: SALMON
+    amount: 12
+    difficulty: 1.4
+    reward: 420.0
+    description:
+      - "Catch salmon for the town feast."
+  baker:
+    name: "&eVillage Baker"
+    type: CRAFT_ITEM
+    target: BREAD
+    amount: 24
+    difficulty: 1.1
+    reward: 360.0
+    description:
+      - "Bake fresh bread for the market."

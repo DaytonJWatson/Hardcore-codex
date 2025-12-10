@@ -7,11 +7,12 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 
-import com.daytonjwatson.hardcore.jobs.JobDefinition;
 import com.daytonjwatson.hardcore.jobs.JobsManager;
 import com.daytonjwatson.hardcore.utils.Util;
 import com.daytonjwatson.hardcore.views.JobsGui;
@@ -40,7 +41,30 @@ public class JobsListener implements Listener {
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
         Material type = event.getBlock().getType();
-        JobsManager.get().handleCollection(player, type, 1);
+        JobsManager.get().handleMine(player, type, 1);
+    }
+
+    @EventHandler
+    public void onPlayerFish(PlayerFishEvent event) {
+        if (!(event.getState() == PlayerFishEvent.State.CAUGHT_FISH)) {
+            return;
+        }
+        if (!(event.getCaught() instanceof org.bukkit.entity.Item item)) {
+            return;
+        }
+
+        Player player = event.getPlayer();
+        ItemStack stack = item.getItemStack();
+        JobsManager.get().handleFish(player, stack.getType(), stack.getAmount());
+    }
+
+    @EventHandler
+    public void onCraftItem(CraftItemEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player)) {
+            return;
+        }
+        ItemStack result = event.getRecipe().getResult();
+        JobsManager.get().handleCraft(player, result.getType(), result.getAmount());
     }
 
     @EventHandler

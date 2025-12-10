@@ -112,6 +112,30 @@ public class JobsManager {
         incrementProgress(player, active, amount);
     }
 
+    public void handleMine(Player player, Material material, int amount) {
+        ActiveJob active = activeJobs.get(player.getUniqueId());
+        if (active == null || !active.getJob().matchesMine(material)) {
+            return;
+        }
+        incrementProgress(player, active, amount);
+    }
+
+    public void handleFish(Player player, Material material, int amount) {
+        ActiveJob active = activeJobs.get(player.getUniqueId());
+        if (active == null || !active.getJob().matchesFish(material)) {
+            return;
+        }
+        incrementProgress(player, active, amount);
+    }
+
+    public void handleCraft(Player player, Material material, int amount) {
+        ActiveJob active = activeJobs.get(player.getUniqueId());
+        if (active == null || !active.getJob().matchesCraft(material)) {
+            return;
+        }
+        incrementProgress(player, active, amount);
+    }
+
     private void incrementProgress(Player player, ActiveJob active, int amount) {
         int previous = active.getProgress();
         int updated = active.addProgress(amount);
@@ -250,7 +274,7 @@ public class JobsManager {
         try {
             return switch (type) {
                 case KILL_MOB -> EntityType.valueOf(target) != null;
-                case COLLECT_ITEM -> Material.valueOf(target) != null;
+                case COLLECT_ITEM, MINE_BLOCK, FISH_ITEM, CRAFT_ITEM -> Material.valueOf(target) != null;
             };
         } catch (Exception ex) {
             return false;
