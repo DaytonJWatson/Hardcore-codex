@@ -18,6 +18,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
+import com.daytonjwatson.hardcore.HardcorePlugin;
 import com.daytonjwatson.hardcore.managers.ShopManager;
 import com.daytonjwatson.hardcore.shop.PlayerShop;
 import com.daytonjwatson.hardcore.utils.Util;
@@ -67,7 +68,19 @@ public class ShopListener implements Listener {
             return;
         }
 
-        ShopManager.get().dispatchPurchaseSummary(player, ShopManager.get().consumeViewingShop(player.getUniqueId()));
+        UUID viewerId = player.getUniqueId();
+        UUID shopId = ShopManager.get().consumeViewingShop(viewerId);
+        if (shopId == null) {
+            return;
+        }
+
+        HardcorePlugin plugin = HardcorePlugin.getInstance();
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            if (ShopManager.get().isViewingShop(viewerId, shopId)) {
+                return;
+            }
+            ShopManager.get().dispatchPurchaseSummary(player, shopId);
+        }, 2L);
     }
 
     private void handleBrowser(InventoryClickEvent event, Player player) {

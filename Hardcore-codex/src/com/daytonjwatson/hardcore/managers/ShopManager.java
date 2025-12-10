@@ -250,6 +250,11 @@ public class ShopManager {
         return activeShopViews.remove(viewer);
     }
 
+    public boolean isViewingShop(UUID viewer, UUID shopId) {
+        UUID viewing = activeShopViews.get(viewer);
+        return viewing != null && viewing.equals(shopId);
+    }
+
     public boolean processPurchase(Player buyer, UUID shopId, int slot, boolean buyStack) {
         PlayerShop shop = shops.get(shopId);
         if (shop == null || !shop.isOpen()) {
