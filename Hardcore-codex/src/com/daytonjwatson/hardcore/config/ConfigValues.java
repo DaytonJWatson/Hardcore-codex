@@ -263,6 +263,14 @@ public final class ConfigValues {
         return colorizedList("content.help.lines");
     }
 
+    public static String discordTitle() {
+        return config.getString("content.discord.title", "Hardcore Discord");
+    }
+
+    public static List<String> discordLines() {
+        return colorizedList("content.discord.lines");
+    }
+
     public static String rulesTitle() {
         return config.getString("content.rules.title", "Server Rules");
     }

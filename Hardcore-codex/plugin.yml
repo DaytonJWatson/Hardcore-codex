@@ -7,6 +7,8 @@ main: com.daytonjwatson.hardcore.HardcorePlugin
 commands:
   guide:
     description: Opens the Bandits & Heroes guide.
+  discord:
+    description: Shares the Hardcore Discord invite.
   help:
     description: Lists available Hardcore commands.
   rules:

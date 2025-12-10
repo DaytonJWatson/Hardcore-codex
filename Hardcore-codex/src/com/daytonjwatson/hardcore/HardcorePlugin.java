@@ -6,6 +6,7 @@ import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.daytonjwatson.hardcore.commands.BanditTrackerCommand;
+import com.daytonjwatson.hardcore.commands.DiscordCommand;
 import com.daytonjwatson.hardcore.commands.GuideCommand;
 import com.daytonjwatson.hardcore.commands.HelpCommand;
 import com.daytonjwatson.hardcore.commands.AdminCommand;
@@ -95,6 +96,7 @@ public class HardcorePlugin extends JavaPlugin {
 
     private void registerCommands() {
         registerCommand("guide", new GuideCommand());
+        registerCommand("discord", new DiscordCommand());
         registerCommand("help", new HelpCommand());
         registerCommand("rules", new RulesCommand());
         AdminCommand adminCommand = new AdminCommand();
