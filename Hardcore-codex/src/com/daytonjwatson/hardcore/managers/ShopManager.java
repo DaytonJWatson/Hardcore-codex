@@ -285,8 +285,9 @@ public class ShopManager {
         save();
         buyer.sendMessage(Util.color("&aPurchased &f" + purchaseAmount + "x &e" + Util.plainName(purchase)
                 + " &afor &f" + bank.formatCurrency(price) + "&a."));
-        notifyOwner(shop, Util.color("&e" + buyer.getName() + " &asold &f" + purchaseAmount + "x &e"
-                + Util.plainName(purchase) + " &afor &f" + bank.formatCurrency(price) + "&a."));
+        notifyOwner(shop, Util.color("&e" + buyer.getName() + " &apurchased &f" + purchaseAmount + "x &e"
+                + Util.plainName(purchase) + " &afor &f" + bank.formatCurrency(price) + " &afrom your shop &e"
+                + shop.getName() + "&a."));
         if (remaining <= 0) {
             notifyOwner(shop, Util.color("&c" + Util.plainName(purchase) + " sold out in your shop."));
         }
