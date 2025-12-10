@@ -24,6 +24,7 @@ import com.daytonjwatson.hardcore.listeners.PlayerQuitListener;
 import com.daytonjwatson.hardcore.listeners.BanditTrackerListener;
 import com.daytonjwatson.hardcore.listeners.FreezeListener;
 import com.daytonjwatson.hardcore.listeners.BankGuiListener;
+import com.daytonjwatson.hardcore.listeners.JobsListener;
 import com.daytonjwatson.hardcore.managers.BanditTrackerManager;
 import com.daytonjwatson.hardcore.managers.AdminManager;
 import com.daytonjwatson.hardcore.managers.AdminLogManager;
@@ -37,6 +38,8 @@ import com.daytonjwatson.hardcore.listeners.PlayerLoginListener;
 import com.daytonjwatson.hardcore.managers.AuctionHouseManager;
 import com.daytonjwatson.hardcore.listeners.AuctionHouseListener;
 import com.daytonjwatson.hardcore.managers.PlayerIpManager;
+import com.daytonjwatson.hardcore.jobs.JobsManager;
+import com.daytonjwatson.hardcore.commands.JobsCommand;
 
 public class HardcorePlugin extends JavaPlugin {
 
@@ -61,6 +64,7 @@ public class HardcorePlugin extends JavaPlugin {
         BankTradeManager.init();
         AuctionHouseManager.init(this);
         PlayerIpManager.init(this);
+        JobsManager.init(this);
 
         // Initialize stats system (loads stats.yml, etc.)
         StatsManager.init(this);
@@ -87,6 +91,7 @@ public class HardcorePlugin extends JavaPlugin {
         if (BankManager.get() != null) {
             BankManager.get().save();
         }
+        JobsManager.get().save();
         if (AuctionHouseManager.get() != null) {
             AuctionHouseManager.get().save();
         }
@@ -112,6 +117,10 @@ public class HardcorePlugin extends JavaPlugin {
         registerTabCompleter("bank", bankCommand);
         registerCommand("pay", bankCommand);
         registerTabCompleter("pay", bankCommand);
+
+        JobsCommand jobsCommand = new JobsCommand();
+        registerCommand("jobs", jobsCommand);
+        registerTabCompleter("jobs", jobsCommand);
 
         AuctionHouseCommand auctionCommand = new AuctionHouseCommand();
         registerCommand("auction", auctionCommand);
@@ -155,5 +164,6 @@ public class HardcorePlugin extends JavaPlugin {
         pm.registerEvents(new AdminGuiListener(), this);
         pm.registerEvents(new BankGuiListener(), this);
         pm.registerEvents(new AuctionHouseListener(), this);
+        pm.registerEvents(new JobsListener(), this);
     }
 }

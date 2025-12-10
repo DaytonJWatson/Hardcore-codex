@@ -1,0 +1,38 @@
+jobs:
+  zombie_hunter:
+    name: "&2Zombie Hunter"
+    type: KILL_MOB
+    target: ZOMBIE
+    amount: 15
+    difficulty: 1.0
+    reward: 250.0
+    description:
+      - "Cull the undead threat."
+      - "Slay 15 zombies."
+  spider_silk:
+    name: "&dSilk Collector"
+    type: COLLECT_ITEM
+    target: STRING
+    amount: 48
+    difficulty: 1.2
+    reward: 325.0
+    description:
+      - "Gather string for the fletcher."
+  ender_eyes:
+    name: "&5Ender Research"
+    type: COLLECT_ITEM
+    target: ENDER_EYE
+    amount: 6
+    difficulty: 2.0
+    reward: 650.0
+    description:
+      - "Secure eyes of ender for experiments."
+  blaze_bane:
+    name: "&6Blaze Bane"
+    type: KILL_MOB
+    target: BLAZE
+    amount: 10
+    difficulty: 2.2
+    reward: 750.0
+    description:
+      - "Cool the nether furnace by slaying blazes."
