@@ -1,5 +1,7 @@
 package com.daytonjwatson.hardcore.listeners;
 
+import java.net.InetSocketAddress;
+
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerLoginEvent;
@@ -12,7 +14,8 @@ public class PlayerLoginListener implements Listener {
 
     @EventHandler
     public void onPlayerLogin(PlayerLoginEvent event) {
-        PlayerIpManager.recordLogin(event.getPlayer());
+        PlayerIpManager.recordLogin(event.getPlayer(), event.getAddress() == null ? null
+                : new InetSocketAddress(event.getAddress(), event.getPlayer().getPort()));
 
         if (!BanManager.isBanned(event.getPlayer().getUniqueId())) {
             return;
