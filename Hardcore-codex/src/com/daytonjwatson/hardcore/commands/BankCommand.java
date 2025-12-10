@@ -135,8 +135,8 @@ public class BankCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-        if (amount <= 0) {
-            sender.sendMessage(Util.color("&cAmount must be positive."));
+        if (amount < 0.01) {
+            sender.sendMessage(Util.color("&cAmount must be at least $0.01."));
             return;
         }
 
