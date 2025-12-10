@@ -145,6 +145,10 @@ public final class AdminGui {
     }
 
     public static void openPlayerActions(Player viewer, OfflinePlayer target) {
+        openPlayerActions(viewer, target, 0);
+    }
+
+    public static void openPlayerActions(Player viewer, OfflinePlayer target, int page) {
         String title = PLAYER_ACTION_TITLE.replace("%player%", target.getName() == null ? "Unknown" : target.getName());
         Inventory menu = Bukkit.createInventory(null, 54, title);
 
@@ -175,7 +179,12 @@ public final class AdminGui {
         ItemStack auctions = actionItem(Material.GOLD_INGOT, "&6Auctions", uuid,
                 List.of("&7List their active auctions."));
 
-        ItemStack back = item(Material.BARRIER, "&cBack", List.of("&7Return to player list."));
+        ItemStack back = actionItem(Material.BARRIER, "&cBack", uuid, List.of("&7Return to player list."));
+        ItemMeta backMeta = back.getItemMeta();
+        if (backMeta != null) {
+            backMeta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, page);
+            back.setItemMeta(backMeta);
+        }
 
         menu.setItem(10, info);
         menu.setItem(11, status);

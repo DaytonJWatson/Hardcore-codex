@@ -188,9 +188,10 @@ public class AdminGuiListener implements Listener {
 
         if (meta != null && meta.getPersistentDataContainer().has(TARGET_KEY, PersistentDataType.STRING)) {
             String targetId = meta.getPersistentDataContainer().get(TARGET_KEY, PersistentDataType.STRING);
+            Integer page = getInt(meta, "admin_page");
             if (targetId != null) {
                 OfflinePlayer target = Bukkit.getOfflinePlayer(UUID.fromString(targetId));
-                AdminGui.openPlayerActions(player, target);
+                AdminGui.openPlayerActions(player, target, page == null ? 0 : page);
                 return true;
             }
         }
@@ -264,7 +265,9 @@ public class AdminGuiListener implements Listener {
                 player.performCommand("admin auction list " + name);
                 return true;
             case "back":
-                AdminGui.openPlayerList(player, 0);
+                ItemMeta meta = current.getItemMeta();
+                Integer page = getInt(meta, "admin_page");
+                AdminGui.openPlayerList(player, page == null ? 0 : page);
                 return true;
             default:
                 return false;
