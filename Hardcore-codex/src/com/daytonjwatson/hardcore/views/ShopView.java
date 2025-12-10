@@ -40,11 +40,15 @@ public final class ShopView {
             ShopItem entry = shop.getStock().get(i);
             if (entry == null) continue;
             ItemStack display = entry.getItem();
+            int amount = display.getAmount();
+            double pricePerItem = entry.getPrice() / Math.max(1, amount);
             ItemMeta meta = display.getItemMeta();
             if (meta != null) {
                 List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
-                lore.add(Util.color("&7Price: &f" + bank.formatCurrency(entry.getPrice())));
-                lore.add(Util.color("&8Left-click to purchase."));
+                lore.add(Util.color("&7Stack Price: &f" + bank.formatCurrency(entry.getPrice())));
+                lore.add(Util.color("&7Single Price: &f" + bank.formatCurrency(pricePerItem)));
+                lore.add(Util.color("&8Left-click to buy 1."));
+                lore.add(Util.color("&8Right-click to buy the stack."));
                 meta.setLore(lore);
                 meta.getPersistentDataContainer().set(SHOP_KEY, PersistentDataType.STRING, shop.getId().toString());
                 meta.getPersistentDataContainer().set(ITEM_SLOT, PersistentDataType.INTEGER, i);

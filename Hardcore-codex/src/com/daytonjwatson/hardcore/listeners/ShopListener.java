@@ -128,7 +128,13 @@ public class ShopListener implements Listener {
             return;
         }
 
-        ShopManager.get().processPurchase(player, shop.getId(), slot);
+        ClickType click = event.getClick();
+        boolean buyStack = click.isRightClick();
+        if (!click.isLeftClick() && !buyStack) {
+            return;
+        }
+
+        ShopManager.get().processPurchase(player, shop.getId(), slot, buyStack);
         ShopView.open(player, shop);
     }
 
