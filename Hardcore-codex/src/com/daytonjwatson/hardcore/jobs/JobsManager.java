@@ -193,8 +193,9 @@ public class JobsManager {
     }
 
     private void setProgressIfHigher(Player player, ActiveJob active, double newProgress) {
+        double previous = active.getProgress();
         double clamped = Math.min(active.getGoalAmount(), newProgress);
-        if (clamped <= active.getProgress()) {
+        if (clamped <= previous) {
             return;
         }
         active.setProgress(clamped);
@@ -204,10 +205,20 @@ public class JobsManager {
             reward(player, job);
             activeJobs.remove(player.getUniqueId());
         } else {
-            player.sendMessage(Util.color("&6Job Progress &8» &7" + formatNumber(clamped) + "/" +
-                    formatNumber(active.getGoalAmount()) + " completed."));
+            boolean isTravelDistance = job.getType() == JobType.TRAVEL_DISTANCE;
+            if (!isTravelDistance || reachedNextQuarter(previous, clamped, active.getGoalAmount())) {
+                player.sendMessage(Util.color("&6Job Progress &8» &7" + formatNumber(clamped) + "/" +
+                        formatNumber(active.getGoalAmount()) + " completed."));
+            }
         }
         saveActiveJobs();
+    }
+
+    private boolean reachedNextQuarter(double previous, double current, double goal) {
+        double divisor = goal <= 0 ? 1 : goal;
+        int previousQuarter = (int) Math.floor((previous / divisor) * 4);
+        int currentQuarter = (int) Math.floor((current / divisor) * 4);
+        return currentQuarter > previousQuarter;
     }
 
     private void reward(Player player, JobDefinition job) {
