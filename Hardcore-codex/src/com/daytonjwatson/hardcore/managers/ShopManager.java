@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -49,6 +50,8 @@ public class ShopManager {
     private final Map<UUID, UUID> pendingDescription = new HashMap<>();
     private final Map<UUID, PendingItem> pendingItemAdds = new HashMap<>();
     private final Map<UUID, UUID> pendingPriceUpdate = new HashMap<>();
+    private final Map<UUID, Map<UUID, PurchaseSummary>> pendingOwnerSummaries = new HashMap<>();
+    private final Map<UUID, UUID> activeShopViews = new HashMap<>();
     private static final UUID LEGACY_SERVER_OWNER = UUID.nameUUIDFromBytes("hardcore-server-shop".getBytes());
 
     private ShopManager(HardcorePlugin plugin) {
@@ -239,6 +242,14 @@ public class ShopManager {
 
     public record PendingItem(UUID shopId, ItemStack item) {}
 
+    public void setViewingShop(UUID viewer, UUID shopId) {
+        activeShopViews.put(viewer, shopId);
+    }
+
+    public UUID consumeViewingShop(UUID viewer) {
+        return activeShopViews.remove(viewer);
+    }
+
     public boolean processPurchase(Player buyer, UUID shopId, int slot, boolean buyStack) {
         PlayerShop shop = shops.get(shopId);
         if (shop == null || !shop.isOpen()) {
@@ -285,22 +296,84 @@ public class ShopManager {
         save();
         buyer.sendMessage(Util.color("&aPurchased &f" + purchaseAmount + "x &e" + Util.plainName(purchase)
                 + " &afor &f" + bank.formatCurrency(price) + "&a."));
-        notifyOwner(shop, Util.color("&e" + buyer.getName() + " &apurchased &f" + purchaseAmount + "x &e"
-                + Util.plainName(purchase) + " &afor &f" + bank.formatCurrency(price) + " &afrom your shop &e"
-                + shop.getName() + "&a."));
-        if (remaining <= 0) {
-            notifyOwner(shop, Util.color("&c" + Util.plainName(purchase) + " sold out in your shop."));
-        }
+        recordSaleForSummary(buyer.getUniqueId(), shop, purchaseAmount, price,
+                remaining <= 0 ? Util.plainName(purchase) : null);
         return true;
     }
 
-    private void notifyOwner(PlayerShop shop, String message) {
-        if (!shop.isNotificationsEnabled()) {
+    private void recordSaleForSummary(UUID buyer, PlayerShop shop, int amount, double price, String soldOutItem) {
+        if (shop == null) {
             return;
         }
+        Map<UUID, PurchaseSummary> summaries = pendingOwnerSummaries.computeIfAbsent(buyer,
+                id -> new HashMap<>());
+        PurchaseSummary summary = summaries.computeIfAbsent(shop.getId(), id -> new PurchaseSummary());
+        summary.addSale(amount, price, soldOutItem);
+    }
+
+    public void dispatchPurchaseSummary(Player buyer, UUID shopId) {
+        if (buyer == null || shopId == null) {
+            return;
+        }
+        Map<UUID, PurchaseSummary> summaries = pendingOwnerSummaries.get(buyer.getUniqueId());
+        if (summaries == null) {
+            return;
+        }
+        PurchaseSummary summary = summaries.remove(shopId);
+        if (summaries.isEmpty()) {
+            pendingOwnerSummaries.remove(buyer.getUniqueId());
+        }
+        if (summary == null) {
+            return;
+        }
+
+        PlayerShop shop = shops.get(shopId);
+        if (shop == null || !shop.isNotificationsEnabled()) {
+            return;
+        }
+
         Player owner = Bukkit.getPlayer(shop.getOwner());
-        if (owner != null && owner.isOnline()) {
-            owner.sendMessage(message);
+        if (owner == null || !owner.isOnline()) {
+            return;
+        }
+
+        BankManager bank = BankManager.get();
+        StringBuilder message = new StringBuilder(Util.color("&e" + buyer.getName() + " &apurchased &f"
+                + summary.getTotalItems() + " &aitems for &f" + bank.formatCurrency(summary.getTotalRevenue())
+                + " &afrom your shop &e" + shop.getName() + "&a."));
+
+        Optional<String> soldOutList = summary.getSoldOutItems();
+        soldOutList.ifPresent(items -> message.append(Util.color(" &cSold out: &f" + items + "&c.")));
+        owner.sendMessage(message.toString());
+    }
+
+    private static class PurchaseSummary {
+
+        private int totalItems;
+        private double totalRevenue;
+        private final List<String> soldOutItems = new ArrayList<>();
+
+        void addSale(int amount, double price, String soldOutItem) {
+            totalItems += amount;
+            totalRevenue += price;
+            if (soldOutItem != null) {
+                soldOutItems.add(soldOutItem);
+            }
+        }
+
+        int getTotalItems() {
+            return totalItems;
+        }
+
+        double getTotalRevenue() {
+            return totalRevenue;
+        }
+
+        Optional<String> getSoldOutItems() {
+            if (soldOutItems.isEmpty()) {
+                return Optional.empty();
+            }
+            return Optional.of(String.join(", ", soldOutItems));
         }
     }
 

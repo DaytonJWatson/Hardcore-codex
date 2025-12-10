@@ -15,6 +15,7 @@ import org.bukkit.persistence.PersistentDataType;
 
 import com.daytonjwatson.hardcore.HardcorePlugin;
 import com.daytonjwatson.hardcore.managers.BankManager;
+import com.daytonjwatson.hardcore.managers.ShopManager;
 import com.daytonjwatson.hardcore.shop.PlayerShop;
 import com.daytonjwatson.hardcore.shop.ShopItem;
 import com.daytonjwatson.hardcore.utils.Util;
@@ -29,6 +30,7 @@ public final class ShopView {
 
     public static void open(Player viewer, PlayerShop shop) {
         Inventory menu = Bukkit.createInventory(null, 54, TITLE_PREFIX + ChatColor.stripColor(shop.getName()));
+        ShopManager.get().setViewingShop(viewer.getUniqueId(), shop.getId());
         ItemStack filler = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
         for (int i = 0; i < menu.getSize(); i++) {
             menu.setItem(i, filler);
