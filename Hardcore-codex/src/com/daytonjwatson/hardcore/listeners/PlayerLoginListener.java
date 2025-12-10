@@ -1,5 +1,7 @@
 package com.daytonjwatson.hardcore.listeners;
 
+import java.net.InetSocketAddress;
+
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerLoginEvent;
