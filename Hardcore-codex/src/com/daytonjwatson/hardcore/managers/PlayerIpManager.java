@@ -49,18 +49,15 @@ public final class PlayerIpManager {
     }
 
     public static void recordLogin(Player player, SocketAddress address) {
-        if (config == null || address == null) {
-            return;
-        }
-
-        InetAddress inetAddress = null;
         if (address instanceof InetSocketAddress inetSocketAddress) {
-            inetAddress = inetSocketAddress.getAddress();
-        } else if (address instanceof InetAddress directInetAddress) {
-            inetAddress = directInetAddress;
+            recordLogin(player, inetSocketAddress.getAddress());
+        } else if (address instanceof InetAddress inetAddress) {
+            recordLogin(player, inetAddress);
         }
+    }
 
-        if (inetAddress == null) {
+    public static void recordLogin(Player player, InetAddress inetAddress) {
+        if (config == null || inetAddress == null) {
             return;
         }
 
