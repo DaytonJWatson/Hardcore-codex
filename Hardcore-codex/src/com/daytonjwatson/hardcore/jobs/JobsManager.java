@@ -101,6 +101,7 @@ public class JobsManager {
         Location start = definition.getType() == JobType.TRAVEL_DISTANCE ? player.getLocation().clone() : null;
         ActiveJob active = new ActiveJob(definition, offer.getAmount(), 0, start, slotIndex);
         activeJobs.put(player.getUniqueId(), active);
+        startCooldownForSlot(player.getUniqueId(), slotIndex);
         offeredJobs.remove(player.getUniqueId());
         saveActiveJobs();
         player.sendMessage(Util.color("&aAccepted job '&f" + definition.getDisplayName() + "&a'. Good luck!"));
@@ -111,7 +112,6 @@ public class JobsManager {
     public void abandonJob(Player player) {
         ActiveJob active = activeJobs.remove(player.getUniqueId());
         if (active != null) {
-            startCooldownForSlot(player.getUniqueId(), active.getSelectedSlot());
             saveActiveJobs();
         }
         player.sendMessage(Util.color("&eYou abandoned your active job."));
@@ -274,7 +274,6 @@ public class JobsManager {
     }
 
     private void finalizeJob(Player player, ActiveJob active) {
-        startCooldownForSlot(player.getUniqueId(), active.getSelectedSlot());
         activeJobs.remove(player.getUniqueId());
         saveActiveJobs();
     }
