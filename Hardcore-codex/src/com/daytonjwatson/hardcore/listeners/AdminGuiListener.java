@@ -202,11 +202,19 @@ public class AdminGuiListener implements Listener {
                 AdminGui.openBankPlayerList(player, 0);
                 return true;
             case "add admin":
+                if (!player.isOp()) {
+                    player.sendMessage(Util.color("&cYou must be an operator to add admins."));
+                    return true;
+                }
                 prompt(player, new PendingChat(PendingType.ADD_ADMIN, null, null),
                         "&6Admin &8» &7Type the player to add as Hardcore admin, or &ccancel&7.");
                 player.closeInventory();
                 return true;
             case "remove admin":
+                if (!player.isOp()) {
+                    player.sendMessage(Util.color("&cYou must be an operator to remove admins."));
+                    return true;
+                }
                 prompt(player, new PendingChat(PendingType.REMOVE_ADMIN, null, null),
                         "&6Admin &8» &7Type the admin to remove, or &ccancel&7.");
                 player.closeInventory();
