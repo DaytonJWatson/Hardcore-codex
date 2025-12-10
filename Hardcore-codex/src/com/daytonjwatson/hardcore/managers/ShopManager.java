@@ -237,7 +237,7 @@ public class ShopManager {
 
     public record PendingItem(UUID shopId, ItemStack item) {}
 
-    public boolean processPurchase(Player buyer, UUID shopId, int slot) {
+    public boolean processPurchase(Player buyer, UUID shopId, int slot, boolean buyStack) {
         PlayerShop shop = shops.get(shopId);
         if (shop == null || !shop.isOpen()) {
             buyer.sendMessage(Util.color("&cThat shop is no longer available."));
@@ -250,7 +250,17 @@ public class ShopManager {
         }
 
         ItemStack item = listing.getItem();
-        double price = listing.getPrice();
+        int availableAmount = item.getAmount();
+        if (availableAmount <= 0) {
+            shop.getStock().remove(slot);
+            save();
+            buyer.sendMessage(Util.color("&cThat item is no longer available."));
+            return false;
+        }
+
+        int purchaseAmount = buyStack ? availableAmount : 1;
+        double pricePerItem = listing.getPrice() / availableAmount;
+        double price = pricePerItem * purchaseAmount;
         BankManager bank = BankManager.get();
         if (!bank.withdraw(buyer.getUniqueId(), price, "Purchase from shop: " + shop.getName())) {
             buyer.sendMessage(Util.color("&cYou cannot afford that. Cost: " + bank.formatCurrency(price)));
@@ -258,11 +268,20 @@ public class ShopManager {
         }
 
         bank.deposit(shop.getOwner(), price, "Sale in shop: " + buyer.getName());
-        buyer.getInventory().addItem(item);
+        ItemStack purchase = item.clone();
+        purchase.setAmount(purchaseAmount);
+        buyer.getInventory().addItem(purchase);
 
-        shop.getStock().remove(slot);
+        int remaining = availableAmount - purchaseAmount;
+        if (remaining <= 0) {
+            shop.getStock().remove(slot);
+        } else {
+            ItemStack remainingItem = item.clone();
+            remainingItem.setAmount(remaining);
+            shop.getStock().put(slot, new ShopItem(remainingItem, pricePerItem * remaining));
+        }
         save();
-        buyer.sendMessage(Util.color("&aPurchased &f" + item.getAmount() + "x &e" + Util.plainName(item)
+        buyer.sendMessage(Util.color("&aPurchased &f" + purchaseAmount + "x &e" + Util.plainName(purchase)
                 + " &afor &f" + bank.formatCurrency(price) + "&a."));
         return true;
     }
