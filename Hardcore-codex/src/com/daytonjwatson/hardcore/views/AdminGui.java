@@ -16,6 +16,7 @@ import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
 
 import com.daytonjwatson.hardcore.HardcorePlugin;
+import com.daytonjwatson.hardcore.managers.AdminLogManager;
 import com.daytonjwatson.hardcore.managers.BanManager;
 import com.daytonjwatson.hardcore.managers.FreezeManager;
 import com.daytonjwatson.hardcore.managers.MuteManager;
@@ -31,6 +32,8 @@ public final class AdminGui {
     private static final String AMOUNT_TITLE = Util.color("&4&lAdmin &8| &7Choose Amount");
     private static final String BANK_TITLE = Util.color("&4&lAdmin &8| &7Bank Tools");
     private static final String AUCTION_TITLE = Util.color("&4&lAdmin &8| &7Auction Tools");
+    public static final String LOG_TITLE = Util.color("&4&lAdmin &8| &7Admin Log");
+    private static final int LOG_PAGE_SIZE = 45;
 
     private static final org.bukkit.NamespacedKey TARGET_KEY = new org.bukkit.NamespacedKey(HardcorePlugin.getInstance(),
             "admin_target");
@@ -40,6 +43,8 @@ public final class AdminGui {
             "admin_duration");
     private static final org.bukkit.NamespacedKey PAGE_KEY = new org.bukkit.NamespacedKey(HardcorePlugin.getInstance(),
             "admin_page");
+    private static final org.bukkit.NamespacedKey FILTER_KEY = new org.bukkit.NamespacedKey(HardcorePlugin.getInstance(),
+            "admin_filter");
 
     private AdminGui() {
     }
@@ -213,6 +218,79 @@ public final class AdminGui {
         menu.setItem(33, auctions);
 
         menu.setItem(49, back);
+
+        viewer.openInventory(menu);
+    }
+
+    public static void openAdminLog(Player viewer, String actorFilter, int page) {
+        Inventory menu = Bukkit.createInventory(null, 54, LOG_TITLE);
+        ItemStack filler = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
+        for (int i = 0; i < menu.getSize(); i++) {
+            menu.setItem(i, filler);
+        }
+
+        int start = page * LOG_PAGE_SIZE;
+        List<AdminLogManager.LogEntry> entries = AdminLogManager.getRecentEntries(LOG_PAGE_SIZE * (page + 1) + 1,
+                actorFilter);
+        int end = Math.min(entries.size(), start + LOG_PAGE_SIZE);
+
+        if (start >= entries.size()) {
+            ItemStack empty = item(Material.BARRIER, "&eNo admin log entries", List.of("&7No activity to display."));
+            menu.setItem(22, empty);
+        } else {
+            for (int slot = 0, idx = start; idx < end; slot++, idx++) {
+                AdminLogManager.LogEntry entry = entries.get(idx);
+                ItemStack logItem = new ItemStack(entry.allowed() ? Material.LIME_DYE : Material.RED_DYE);
+                ItemMeta meta = logItem.getItemMeta();
+                if (meta != null) {
+                    meta.setDisplayName(Util.color("&e" + entry.actor() + " &8- &7" + entry.readableTime()));
+                    meta.setLore(List.of(Util.color("&7Status: " + (entry.allowed() ? "&aALLOWED" : "&cDENIED")),
+                            Util.color("&7Command:"), Util.color("&f" + entry.command())));
+                    logItem.setItemMeta(meta);
+                }
+                menu.setItem(slot, logItem);
+            }
+        }
+
+        ItemStack back = item(Material.BARRIER, "&cBack", List.of("&7Return to admin panel."));
+        menu.setItem(45, back);
+
+        ItemStack filter = item(Material.HOPPER, "&bFilter: " + (actorFilter == null ? "&fAll" : "&e" + actorFilter),
+                List.of("&7Click to change filter."));
+        ItemMeta filterMeta = filter.getItemMeta();
+        if (filterMeta != null) {
+            if (actorFilter != null) {
+                filterMeta.getPersistentDataContainer().set(FILTER_KEY, PersistentDataType.STRING, actorFilter);
+            }
+            filter.setItemMeta(filterMeta);
+        }
+        menu.setItem(46, filter);
+
+        if (page > 0) {
+            ItemStack prev = item(Material.ARROW, "&ePrevious Page", List.of("&7Go to page " + page));
+            ItemMeta meta = prev.getItemMeta();
+            if (meta != null) {
+                meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, Math.max(0, page - 1));
+                if (actorFilter != null) {
+                    meta.getPersistentDataContainer().set(FILTER_KEY, PersistentDataType.STRING, actorFilter);
+                }
+                prev.setItemMeta(meta);
+            }
+            menu.setItem(48, prev);
+        }
+
+        if (entries.size() > end) {
+            ItemStack next = item(Material.ARROW, "&eNext Page", List.of("&7Go to page " + (page + 2)));
+            ItemMeta meta = next.getItemMeta();
+            if (meta != null) {
+                meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, page + 1);
+                if (actorFilter != null) {
+                    meta.getPersistentDataContainer().set(FILTER_KEY, PersistentDataType.STRING, actorFilter);
+                }
+                next.setItemMeta(meta);
+            }
+            menu.setItem(50, next);
+        }
 
         viewer.openInventory(menu);
     }

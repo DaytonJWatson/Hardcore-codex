@@ -1,6 +1,8 @@
 package com.daytonjwatson.hardcore.listeners;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -19,6 +21,7 @@ import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
 import com.daytonjwatson.hardcore.HardcorePlugin;
+import com.daytonjwatson.hardcore.managers.AdminLogManager;
 import com.daytonjwatson.hardcore.utils.Util;
 import com.daytonjwatson.hardcore.views.AdminGui;
 
@@ -35,6 +38,8 @@ public class AdminGuiListener implements Listener {
             "admin_duration");
     private static final org.bukkit.NamespacedKey REASON_KEY = new org.bukkit.NamespacedKey(HardcorePlugin.getInstance(),
             "admin_reason");
+    private static final org.bukkit.NamespacedKey FILTER_KEY = new org.bukkit.NamespacedKey(HardcorePlugin.getInstance(),
+            "admin_filter");
 
     private enum PendingType {
         BAN_REASON,
@@ -77,7 +82,8 @@ public class AdminGuiListener implements Listener {
                 && !title.equals(Util.color("&4&lAdmin &8| &7Choose Reason"))
                 && !title.equals(Util.color("&4&lAdmin &8| &7Choose Amount"))
                 && !title.equals(Util.color("&4&lAdmin &8| &7Bank Tools"))
-                && !title.equals(Util.color("&4&lAdmin &8| &7Auction Tools"))) {
+                && !title.equals(Util.color("&4&lAdmin &8| &7Auction Tools"))
+                && !title.equals(AdminGui.LOG_TITLE)) {
             return false;
         }
 
@@ -96,6 +102,10 @@ public class AdminGuiListener implements Listener {
 
         if (title.startsWith(AdminGui.PLAYER_LIST_TITLE)) {
             return handlePlayerListClick(player, current, plainName);
+        }
+
+        if (title.equals(AdminGui.LOG_TITLE)) {
+            return handleLogClick(player, current, plainName);
         }
 
         if (title.contains("Manage")) {
@@ -137,7 +147,7 @@ public class AdminGuiListener implements Listener {
                 player.performCommand("admin list");
                 return true;
             case "recent admin log":
-                player.performCommand("admin log");
+                AdminGui.openAdminLog(player, null, 0);
                 return true;
             case "clear chat":
                 player.performCommand("admin clearchat");
@@ -194,6 +204,36 @@ public class AdminGuiListener implements Listener {
                 AdminGui.openPlayerActions(player, target, page == null ? 0 : page);
                 return true;
             }
+        }
+
+        return false;
+    }
+
+    private boolean handleLogClick(Player player, ItemStack current, String plainName) {
+        ItemMeta meta = current.getItemMeta();
+        String filter = getString(meta, FILTER_KEY);
+
+        if (plainName.equalsIgnoreCase("Back")) {
+            AdminGui.openMain(player);
+            return true;
+        }
+
+        if (plainName.toLowerCase().contains("previous")) {
+            Integer page = getInt(meta, "admin_page");
+            AdminGui.openAdminLog(player, filter, page == null ? 0 : page);
+            return true;
+        }
+
+        if (plainName.toLowerCase().contains("next")) {
+            Integer page = getInt(meta, "admin_page");
+            AdminGui.openAdminLog(player, filter, page == null ? 0 : page);
+            return true;
+        }
+
+        if (current.getType() == org.bukkit.Material.HOPPER) {
+            String nextFilter = cycleFilter(filter);
+            AdminGui.openAdminLog(player, nextFilter, 0);
+            return true;
         }
 
         return false;
@@ -618,6 +658,29 @@ public class AdminGuiListener implements Listener {
         NamespacedKey namespacedKey = "admin_page".equals(key) ? PAGE_KEY
                 : new NamespacedKey(HardcorePlugin.getInstance(), key);
         return meta.getPersistentDataContainer().get(namespacedKey, PersistentDataType.INTEGER);
+    }
+
+    private String getString(ItemMeta meta, NamespacedKey key) {
+        if (meta == null) {
+            return null;
+        }
+        return meta.getPersistentDataContainer().get(key, PersistentDataType.STRING);
+    }
+
+    private String cycleFilter(String current) {
+        List<String> actors = new ArrayList<>(AdminLogManager.getKnownActors());
+        actors.sort(String.CASE_INSENSITIVE_ORDER);
+
+        if (actors.isEmpty()) {
+            return null;
+        }
+
+        actors.add(0, "All");
+        String active = current == null ? "All" : current;
+        int index = actors.indexOf(active);
+        int nextIndex = (index + 1) % actors.size();
+        String next = actors.get(nextIndex);
+        return "All".equalsIgnoreCase(next) ? null : next;
     }
 
     private void prompt(Player player, PendingChat pending, String message) {
