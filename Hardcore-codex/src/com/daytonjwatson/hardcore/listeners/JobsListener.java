@@ -106,11 +106,13 @@ public class JobsListener implements Listener {
             return;
         }
         ItemStack result = event.getRecipe().getResult();
-        int amountCrafted = result.getAmount();
+        int amountCrafted;
         if (event.isShiftClick()) {
             amountCrafted = calculateShiftCraftAmount(event.getInventory(), result);
         } else if (event.getCurrentItem() != null && event.getCurrentItem().getType() == result.getType()) {
             amountCrafted = event.getCurrentItem().getAmount();
+        } else {
+            amountCrafted = result.getAmount();
         }
 
         JobsManager jobs = JobsManager.get();
