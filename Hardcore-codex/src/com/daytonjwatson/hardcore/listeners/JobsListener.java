@@ -1,11 +1,13 @@
 package com.daytonjwatson.hardcore.listeners;
 
 import org.bukkit.Material;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityBreedEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
@@ -15,6 +17,8 @@ import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.event.inventory.FurnaceExtractEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerFishEvent;
+import org.bukkit.event.player.PlayerBucketEmptyEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.inventory.CraftingInventory;
@@ -78,6 +82,47 @@ public class JobsListener implements Listener {
         Player player = event.getPlayer();
         Material type = event.getBlockPlaced().getType();
         JobsManager.get().handlePlace(player, type, 1);
+    }
+
+    @EventHandler
+    public void onBucketEmpty(PlayerBucketEmptyEvent event) {
+        Player player = event.getPlayer();
+        Block targetBlock = event.getBlockClicked().getRelative(event.getBlockFace());
+        Material placed = targetBlock.getType();
+        JobsManager.get().handlePlace(player, placed, 1);
+    }
+
+    @EventHandler
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) {
+            return;
+        }
+        ItemStack item = event.getItem();
+        if (item == null || !item.getType().name().endsWith("_HOE")) {
+            return;
+        }
+        Block clicked = event.getClickedBlock();
+        if (clicked == null) {
+            return;
+        }
+
+        Material original = clicked.getType();
+        if (original != Material.DIRT && original != Material.GRASS_BLOCK && original != Material.DIRT_PATH
+                && original != Material.ROOTED_DIRT) {
+            return;
+        }
+
+        HardcorePlugin plugin = HardcorePlugin.getInstance();
+        Runnable check = () -> {
+            if (clicked.getType() == Material.FARMLAND) {
+                JobsManager.get().handlePlace(event.getPlayer(), Material.FARMLAND, 1);
+            }
+        };
+        if (plugin != null) {
+            plugin.getServer().getScheduler().runTask(plugin, check);
+        } else {
+            check.run();
+        }
     }
 
     @EventHandler

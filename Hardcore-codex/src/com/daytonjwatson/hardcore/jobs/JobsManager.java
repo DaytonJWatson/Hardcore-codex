@@ -409,17 +409,32 @@ public class JobsManager {
 
         Object targetValue = data.containsKey("target") ? data.get("target") : "";
         String target = String.valueOf(targetValue);
+        List<String> aliases = new ArrayList<>();
+        Object aliasValue = data.get("aliases");
+        if (aliasValue instanceof List<?> list) {
+            for (Object value : list) {
+                if (value != null) {
+                    aliases.add(String.valueOf(value));
+                }
+            }
+        }
         int minAmount = Math.max(1, readInt(data.get("amount-min"), readInt(data.get("amount"), 1)));
         int maxAmount = Math.max(minAmount, readInt(data.get("amount-max"), minAmount));
         Object consumeValue = data.containsKey("consume-items") ? data.get("consume-items") : false;
         boolean consumeItems = Boolean.parseBoolean(String.valueOf(consumeValue));
 
-        if (!isValidTarget(type, target.toUpperCase(Locale.ROOT))) {
+        List<String> allTargets = new ArrayList<>();
+        allTargets.add(target.toUpperCase(Locale.ROOT));
+        for (String alias : aliases) {
+            allTargets.add(alias.toUpperCase(Locale.ROOT));
+        }
+
+        if (!isValidTarget(type, allTargets)) {
             plugin.getLogger().warning("Invalid target '" + target + "' for job '" + jobId + "'. Skipping objective.");
             return null;
         }
 
-        return new JobObjective(type, target, minAmount, maxAmount, consumeItems);
+        return new JobObjective(type, target, aliases, minAmount, maxAmount, consumeItems);
     }
 
     private int readInt(Object raw, int defaultValue) {
@@ -482,11 +497,18 @@ public class JobsManager {
                 JobType type = JobType.fromString(node.getString("type"));
                 if (type != null) {
                     String target = node.getString("target", "").toUpperCase(Locale.ROOT);
+                    List<String> aliases = new ArrayList<>();
+                    for (String alias : node.getStringList("aliases")) {
+                        aliases.add(alias.toUpperCase(Locale.ROOT));
+                    }
                     int minAmount = Math.max(1, node.getInt("amount-min", node.getInt("amount", 1)));
                     int maxAmount = Math.max(minAmount, node.getInt("amount-max", minAmount));
                     boolean consumeItems = node.getBoolean("consume-items", false);
-                    if (isValidTarget(type, target)) {
-                        objectives.add(new JobObjective(type, target, minAmount, maxAmount, consumeItems));
+                    List<String> allTargets = new ArrayList<>();
+                    allTargets.add(target);
+                    allTargets.addAll(aliases);
+                    if (isValidTarget(type, allTargets)) {
+                        objectives.add(new JobObjective(type, target, aliases, minAmount, maxAmount, consumeItems));
                     }
                 }
             }
@@ -572,16 +594,22 @@ public class JobsManager {
         }
     }
 
-    private boolean isValidTarget(JobType type, String target) {
+    private boolean isValidTarget(JobType type, java.util.Collection<String> targets) {
         try {
-            return switch (type) {
-                case KILL_MOB -> EntityType.valueOf(target) != null;
-                case COLLECT_ITEM, MINE_BLOCK, FISH_ITEM, CRAFT_ITEM, PLACE_BLOCK, SMELT_ITEM, ENCHANT_ITEM ->
-                        Material.valueOf(target) != null;
-                case BREED_ANIMAL, TAME_ENTITY -> EntityType.valueOf(target) != null;
-                case TRAVEL_BIOME -> Biome.valueOf(target) != null;
-                case TRAVEL_DISTANCE -> true;
-            };
+            for (String target : targets) {
+                boolean valid = switch (type) {
+                    case KILL_MOB -> EntityType.valueOf(target) != null;
+                    case COLLECT_ITEM, MINE_BLOCK, FISH_ITEM, CRAFT_ITEM, PLACE_BLOCK, SMELT_ITEM, ENCHANT_ITEM ->
+                            Material.valueOf(target) != null;
+                    case BREED_ANIMAL, TAME_ENTITY -> EntityType.valueOf(target) != null;
+                    case TRAVEL_BIOME -> Biome.valueOf(target) != null;
+                    case TRAVEL_DISTANCE -> true;
+                };
+                if (valid) {
+                    return true;
+                }
+            }
+            return false;
         } catch (Exception ex) {
             return false;
         }

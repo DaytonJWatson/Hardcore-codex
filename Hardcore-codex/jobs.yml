@@ -172,3 +172,21 @@ jobs:
       - type: PLACE_BLOCK
         target: TORCH
         amount: 32
+  village_farm_upgrade:
+    name: "&aVillage Farm Upgrade"
+    difficulty: 2.3
+    reward: 1400.0
+    description:
+      - "Expand and irrigate the communal fields."
+    ordered: true
+    objectives:
+      - type: PLACE_BLOCK
+        target: FARMLAND
+        amount: 96
+      - type: PLACE_BLOCK
+        target: WATER
+        aliases: [WATER_BUCKET]
+        amount: 8
+      - type: PLACE_BLOCK
+        target: WHEAT
+        amount: 96
