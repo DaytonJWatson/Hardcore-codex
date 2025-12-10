@@ -63,3 +63,40 @@ jobs:
     reward: 360.0
     description:
       - "Bake fresh bread for the market."
+  desert_explorer:
+    name: "&6Desert Explorer"
+    type: TRAVEL_BIOME
+    target: DESERT
+    amount: 1
+    difficulty: 1.3
+    reward: 400.0
+    description:
+      - "Chart the dunes and report back."
+      - "Reach a desert biome."
+  glacial_scout:
+    name: "&bGlacial Scout"
+    type: TRAVEL_BIOME
+    target: FROZEN_PEAKS
+    amount: 1
+    difficulty: 2.5
+    reward: 900.0
+    description:
+      - "Brave the cold and survey the cliffs."
+  long_trek:
+    name: "&aLong Trek"
+    type: TRAVEL_DISTANCE
+    target: HORIZON
+    amount: 500
+    difficulty: 1.8
+    reward: 750.0
+    description:
+      - "Travel 500 blocks from where you accepted the job."
+  endless_path:
+    name: "&dEndless Path"
+    type: TRAVEL_DISTANCE
+    target: BEYOND
+    amount: 1500
+    difficulty: 3.0
+    reward: 1800.0
+    description:
+      - "Journey far to prove your endurance."

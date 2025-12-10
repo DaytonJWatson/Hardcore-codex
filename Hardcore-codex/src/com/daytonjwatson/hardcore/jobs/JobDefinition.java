@@ -2,6 +2,7 @@ package com.daytonjwatson.hardcore.jobs;
 
 import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
+import org.bukkit.block.Biome;
 
 public class JobDefinition {
 
@@ -76,5 +77,9 @@ public class JobDefinition {
 
     public boolean matchesCraft(Material material) {
         return type == JobType.CRAFT_ITEM && material.name().equalsIgnoreCase(target);
+    }
+
+    public boolean matchesBiome(Biome biome) {
+        return type == JobType.TRAVEL_BIOME && biome.name().equalsIgnoreCase(target);
     }
 }

@@ -5,7 +5,9 @@ public enum JobType {
     COLLECT_ITEM,
     MINE_BLOCK,
     FISH_ITEM,
-    CRAFT_ITEM;
+    CRAFT_ITEM,
+    TRAVEL_BIOME,
+    TRAVEL_DISTANCE;
 
     public static JobType fromString(String raw) {
         for (JobType type : values()) {

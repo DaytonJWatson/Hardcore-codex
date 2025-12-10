@@ -75,7 +75,7 @@ public final class JobsGui {
             lore.add("&7" + line);
         }
         lore.add(" ");
-        lore.add("&fGoal: &e" + definition.getAmount() + "x &f" + definition.getTarget());
+        lore.add("&fGoal: &e" + formatNumber(definition.getAmount()) + "x &f" + definition.getTarget());
         lore.add("&fType: &6" + definition.getType().name().replace('_', ' '));
         lore.add("&fDifficulty: &c" + definition.getDifficulty());
         lore.add("&fReward: &a" + definition.getReward());
@@ -88,6 +88,8 @@ public final class JobsGui {
             case MINE_BLOCK -> Material.DIAMOND_PICKAXE;
             case FISH_ITEM -> Material.FISHING_ROD;
             case CRAFT_ITEM -> Material.CRAFTING_TABLE;
+            case TRAVEL_BIOME -> Material.COMPASS;
+            case TRAVEL_DISTANCE -> Material.ELYTRA;
         };
         return item(icon, "&6" + definition.getDisplayName(), lore);
     }
@@ -95,7 +97,7 @@ public final class JobsGui {
     private static ItemStack activeJobItem(ActiveJob active) {
         JobDefinition job = active.getJob();
         List<String> lore = new ArrayList<>();
-        lore.add("&7Progress: &f" + active.getProgress() + "/" + job.getAmount());
+        lore.add("&7Progress: &f" + formatNumber(active.getProgress()) + "/" + formatNumber(job.getAmount()));
         lore.add("&7Target: &f" + job.getTarget());
         lore.add("&7Reward: &a" + job.getReward());
         return item(Material.NETHER_STAR, "&bActive: " + job.getDisplayName(), lore);
@@ -115,5 +117,12 @@ public final class JobsGui {
             item.setItemMeta(meta);
         }
         return item;
+    }
+
+    private static String formatNumber(double value) {
+        if (value % 1 == 0) {
+            return Integer.toString((int) value);
+        }
+        return String.format(java.util.Locale.US, "%.1f", value);
     }
 }

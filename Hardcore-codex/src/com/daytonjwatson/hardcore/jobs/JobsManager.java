@@ -13,7 +13,10 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.block.Biome;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -81,7 +84,8 @@ public class JobsManager {
     }
 
     public void assignJob(Player player, JobDefinition definition) {
-        ActiveJob active = new ActiveJob(definition, 0);
+        Location start = definition.getType() == JobType.TRAVEL_DISTANCE ? player.getLocation().clone() : null;
+        ActiveJob active = new ActiveJob(definition, 0, start);
         activeJobs.put(player.getUniqueId(), active);
         offeredJobs.remove(player.getUniqueId());
         saveActiveJobs();
@@ -136,9 +140,42 @@ public class JobsManager {
         incrementProgress(player, active, amount);
     }
 
-    private void incrementProgress(Player player, ActiveJob active, int amount) {
-        int previous = active.getProgress();
-        int updated = active.addProgress(amount);
+    public void handleTravel(Player player, Location from, Location to) {
+        ActiveJob active = activeJobs.get(player.getUniqueId());
+        if (active == null) {
+            return;
+        }
+
+        JobDefinition job = active.getJob();
+        switch (job.getType()) {
+            case TRAVEL_BIOME -> {
+                Biome biome = to.getBlock().getBiome();
+                if (job.matchesBiome(biome)) {
+                    setProgressIfHigher(player, active, job.getAmount());
+                }
+            }
+            case TRAVEL_DISTANCE -> {
+                Location start = active.getStartLocation();
+                if (start == null) {
+                    start = from.clone();
+                    active.setStartLocation(start);
+                }
+
+                if (start.getWorld() == null || to.getWorld() == null || !start.getWorld().equals(to.getWorld())) {
+                    return;
+                }
+
+                double distance = start.distance(to);
+                setProgressIfHigher(player, active, distance);
+            }
+            default -> {
+            }
+        }
+    }
+
+    private void incrementProgress(Player player, ActiveJob active, double amount) {
+        double previous = active.getProgress();
+        double updated = active.addProgress(amount);
         if (updated == previous) {
             return;
         }
@@ -148,7 +185,26 @@ public class JobsManager {
             reward(player, job);
             activeJobs.remove(player.getUniqueId());
         } else {
-            player.sendMessage(Util.color("&6Job Progress &8» &7" + updated + "/" + job.getAmount() + " completed."));
+            player.sendMessage(Util.color("&6Job Progress &8» &7" + formatNumber(updated) + "/" +
+                    formatNumber(job.getAmount()) + " completed."));
+        }
+        saveActiveJobs();
+    }
+
+    private void setProgressIfHigher(Player player, ActiveJob active, double newProgress) {
+        double clamped = Math.min(active.getJob().getAmount(), newProgress);
+        if (clamped <= active.getProgress()) {
+            return;
+        }
+        active.setProgress(clamped);
+
+        JobDefinition job = active.getJob();
+        if (active.isComplete()) {
+            reward(player, job);
+            activeJobs.remove(player.getUniqueId());
+        } else {
+            player.sendMessage(Util.color("&6Job Progress &8» &7" + formatNumber(clamped) + "/" +
+                    formatNumber(job.getAmount()) + " completed."));
         }
         saveActiveJobs();
     }
@@ -237,10 +293,11 @@ public class JobsManager {
             try {
                 UUID uuid = UUID.fromString(key);
                 String jobId = playerConfig.getString("players." + key + ".job");
-                int progress = playerConfig.getInt("players." + key + ".progress", 0);
+                double progress = playerConfig.getDouble("players." + key + ".progress", 0);
+                Location start = readLocation(playerConfig, "players." + key + ".start");
                 JobDefinition definition = jobPool.get(jobId);
                 if (definition != null) {
-                    activeJobs.put(uuid, new ActiveJob(definition, progress));
+                    activeJobs.put(uuid, new ActiveJob(definition, progress, start));
                 }
             } catch (IllegalArgumentException ignored) {
             }
@@ -253,6 +310,7 @@ public class JobsManager {
             String base = "players." + entry.getKey() + ".";
             playerConfig.set(base + "job", entry.getValue().getJob().getId());
             playerConfig.set(base + "progress", entry.getValue().getProgress());
+            writeLocation(entry.getValue().getStartLocation(), base + "start");
         }
         try {
             playerConfig.save(playerDataFile);
@@ -275,6 +333,8 @@ public class JobsManager {
             return switch (type) {
                 case KILL_MOB -> EntityType.valueOf(target) != null;
                 case COLLECT_ITEM, MINE_BLOCK, FISH_ITEM, CRAFT_ITEM -> Material.valueOf(target) != null;
+                case TRAVEL_BIOME -> Biome.valueOf(target) != null;
+                case TRAVEL_DISTANCE -> true;
             };
         } catch (Exception ex) {
             return false;
@@ -312,5 +372,34 @@ public class JobsManager {
                     job.getDisplayName() + " &7(" + job.getTarget() + " x" + job.getAmount() + ")"));
         }
         MessageStyler.sendPanel(player, "Job Offers", lines.toArray(new String[0]));
+    }
+
+    private void writeLocation(Location location, String path) {
+        if (location == null) {
+            playerConfig.set(path, null);
+            return;
+        }
+        playerConfig.set(path + ".world", location.getWorld().getName());
+        playerConfig.set(path + ".x", location.getX());
+        playerConfig.set(path + ".y", location.getY());
+        playerConfig.set(path + ".z", location.getZ());
+    }
+
+    private Location readLocation(FileConfiguration config, String path) {
+        String worldName = config.getString(path + ".world");
+        if (worldName == null) {
+            return null;
+        }
+        double x = config.getDouble(path + ".x");
+        double y = config.getDouble(path + ".y");
+        double z = config.getDouble(path + ".z");
+        return new Location(Bukkit.getWorld(worldName), x, y, z);
+    }
+
+    private String formatNumber(double value) {
+        if (value % 1 == 0) {
+            return Integer.toString((int) value);
+        }
+        return String.format(Locale.US, "%.1f", value);
     }
 }

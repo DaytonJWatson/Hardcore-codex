@@ -102,9 +102,16 @@ public class JobsCommand implements CommandExecutor, TabCompleter {
         JobDefinition def = active.getJob();
         MessageStyler.sendPanel(player, "Active Job",
                 "&f" + def.getDisplayName(),
-                "&7Progress: &f" + active.getProgress() + "/" + def.getAmount(),
+                "&7Progress: &f" + formatNumber(active.getProgress()) + "/" + formatNumber(def.getAmount()),
                 "&7Target: &f" + def.getTarget(),
                 "&7Reward: &a" + def.getReward());
+    }
+
+    private String formatNumber(double value) {
+        if (value % 1 == 0) {
+            return Integer.toString((int) value);
+        }
+        return String.format(java.util.Locale.US, "%.1f", value);
     }
 
     @Override
