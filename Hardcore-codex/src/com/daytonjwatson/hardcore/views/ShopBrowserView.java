@@ -17,6 +17,7 @@ import com.daytonjwatson.hardcore.HardcorePlugin;
 import com.daytonjwatson.hardcore.managers.ShopManager;
 import com.daytonjwatson.hardcore.shop.PlayerShop;
 import com.daytonjwatson.hardcore.utils.Util;
+import com.daytonjwatson.hardcore.views.ShopManagerView;
 
 public final class ShopBrowserView {
 
@@ -66,6 +67,9 @@ public final class ShopBrowserView {
     private static void addNavigation(Inventory menu, int currentPage, int totalPages) {
         ItemStack close = item(Material.BARRIER, "&cClose", List.of("&7Close the shop browser."));
         menu.setItem(49, close);
+
+        ItemStack manage = item(Material.CHEST, "&aManage Your Shops", List.of("&7Open your personal shop manager."));
+        menu.setItem(48, manage);
 
         ItemStack indicator = item(Material.NAME_TAG, "&ePage " + (currentPage + 1) + " of " + totalPages,
                 List.of("&7Browse every shop on the server."));

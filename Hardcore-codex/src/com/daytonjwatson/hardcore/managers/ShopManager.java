@@ -49,13 +49,13 @@ public class ShopManager {
     private final Map<UUID, UUID> pendingDescription = new HashMap<>();
     private final Map<UUID, PendingItem> pendingItemAdds = new HashMap<>();
     private final Map<UUID, UUID> pendingPriceUpdate = new HashMap<>();
+    private static final UUID LEGACY_SERVER_OWNER = UUID.nameUUIDFromBytes("hardcore-server-shop".getBytes());
 
     private ShopManager(HardcorePlugin plugin) {
         this.plugin = plugin;
         this.dataFile = new File(plugin.getDataFolder(), "shops.yml");
         this.data = YamlConfiguration.loadConfiguration(dataFile);
         load();
-        ensureDefaultShop();
     }
 
     public List<PlayerShop> getShops() {
@@ -141,6 +141,9 @@ public class ShopManager {
             try {
                 UUID id = UUID.fromString(key);
                 UUID owner = UUID.fromString(section.getString(key + ".owner"));
+                if (LEGACY_SERVER_OWNER.equals(owner)) {
+                    continue;
+                }
                 String name = section.getString(key + ".name", "Shop");
                 String description = section.getString(key + ".description", "Wares");
                 boolean open = section.getBoolean(key + ".open", true);
@@ -162,45 +165,6 @@ public class ShopManager {
                 shops.put(id, shop);
             } catch (IllegalArgumentException ignored) {
             }
-        }
-    }
-
-    private void ensureDefaultShop() {
-        if (!ConfigValues.serverShopEnabled()) {
-            return;
-        }
-
-        for (PlayerShop shop : shops.values()) {
-            if (shop.getOwner().equals(ConfigValues.serverShopOwner())) {
-                refreshServerShop(shop);
-                save();
-                return;
-            }
-        }
-
-        UUID owner = ConfigValues.serverShopOwner();
-        PlayerShop shop = new PlayerShop(UUID.randomUUID(), owner, Util.color(ConfigValues.serverShopName()),
-                Util.color(ConfigValues.serverShopDescription()),
-                new ItemStack(ConfigValues.serverShopIcon()), true);
-
-        refreshServerShop(shop);
-
-        shops.put(shop.getId(), shop);
-        save();
-    }
-
-    private void refreshServerShop(PlayerShop shop) {
-        shop.setName(Util.color(ConfigValues.serverShopName()));
-        shop.setDescription(Util.color(ConfigValues.serverShopDescription()));
-        shop.setIcon(new ItemStack(ConfigValues.serverShopIcon()));
-        shop.setOpen(true);
-        shop.clearStock();
-
-        int slot = 0;
-        for (ConfigValues.ServerShopItem entry : ConfigValues.serverShopItems()) {
-            if (slot >= 27) break;
-            ItemStack stack = new ItemStack(entry.material(), entry.amount());
-            shop.setItem(slot++, new ShopItem(stack, entry.price()));
         }
     }
 
@@ -296,11 +260,8 @@ public class ShopManager {
         bank.deposit(shop.getOwner(), price, "Sale in shop: " + buyer.getName());
         buyer.getInventory().addItem(item);
 
-        boolean serverShop = shop.getOwner().equals(ConfigValues.serverShopOwner());
-        if (!serverShop) {
-            shop.getStock().remove(slot);
-            save();
-        }
+        shop.getStock().remove(slot);
+        save();
         buyer.sendMessage(Util.color("&aPurchased &f" + item.getAmount() + "x &e" + Util.plainName(item)
                 + " &afor &f" + bank.formatCurrency(price) + "&a."));
         return true;

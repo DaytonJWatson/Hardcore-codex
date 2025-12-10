@@ -10,7 +10,6 @@ import org.bukkit.inventory.meta.BookMeta;
 import org.bukkit.persistence.PersistentDataType;
 
 import com.daytonjwatson.hardcore.HardcorePlugin;
-import com.daytonjwatson.hardcore.config.ConfigValues;
 import com.daytonjwatson.hardcore.shop.PlayerShop;
 
 public class Util {
@@ -108,10 +107,6 @@ public class Util {
     }
 
     public static String resolveShopOwnerName(PlayerShop shop) {
-        if (shop.getOwner().equals(ConfigValues.serverShopOwner())) {
-            return ConfigValues.serverShopOwnerName();
-        }
-
         OfflinePlayer owner = shop.getOwnerPlayer();
         String name = owner.getName();
         return name == null ? "Unknown" : name;

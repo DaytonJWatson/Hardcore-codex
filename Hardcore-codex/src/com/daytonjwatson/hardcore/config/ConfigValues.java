@@ -156,54 +156,6 @@ public final class ConfigValues {
         return config.getInt("shops.max-per-player", 5);
     }
 
-    public static boolean serverShopEnabled() {
-        return config.getBoolean("shops.default-server-shop.enabled", true);
-    }
-
-    public static String serverShopOwnerName() {
-        return config.getString("shops.default-server-shop.owner-name", "HardcoreSMP");
-    }
-
-    public static String serverShopName() {
-        return config.getString("shops.default-server-shop.name", "Server Shop");
-    }
-
-    public static String serverShopDescription() {
-        return config.getString("shops.default-server-shop.description", "Starter items to begin your adventure.");
-    }
-
-    public static Material serverShopIcon() {
-        String raw = config.getString("shops.default-server-shop.icon", "CHEST");
-        try {
-            return Material.valueOf(raw.toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException ex) {
-            return Material.CHEST;
-        }
-    }
-
-    public static UUID serverShopOwner() {
-        return UUID.nameUUIDFromBytes("hardcore-server-shop".getBytes());
-    }
-
-    public static List<ServerShopItem> serverShopItems() {
-        List<ServerShopItem> list = new ArrayList<>();
-        ConfigurationSection section = config.getConfigurationSection("shops.default-server-shop.items");
-        if (section == null) return list;
-        for (String key : section.getKeys(false)) {
-            String path = "shops.default-server-shop.items." + key + ".";
-            String materialName = config.getString(path + "material", "STONE");
-            int amount = config.getInt(path + "amount", 1);
-            double price = config.getDouble(path + "price", 10.0);
-            try {
-                Material mat = Material.valueOf(materialName.toUpperCase(Locale.ROOT));
-                list.add(new ServerShopItem(mat, amount, price));
-            } catch (IllegalArgumentException ignored) {}
-        }
-        return list;
-    }
-
-    public record ServerShopItem(Material material, int amount, double price) {}
-
     public static List<String> deathMessages(String key, List<String> defaults) {
         List<String> configured = config.getStringList("deaths.messages." + key);
         return configured.isEmpty() ? defaults : configured;

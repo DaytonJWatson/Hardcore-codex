@@ -80,6 +80,10 @@ public class ShopListener implements Listener {
         }
 
         String name = meta.getDisplayName();
+        if (name != null && ChatColor.stripColor(name).equalsIgnoreCase("Manage Your Shops")) {
+            ShopManagerView.open(player);
+            return;
+        }
         if (name != null && ChatColor.stripColor(name).equalsIgnoreCase("Close")) {
             player.closeInventory();
         }
@@ -165,6 +169,11 @@ public class ShopListener implements Listener {
         ItemStack clicked = event.getCurrentItem();
         if (clicked == null || clicked.getItemMeta() == null) return;
         ItemMeta meta = clicked.getItemMeta();
+        String name = meta.getDisplayName();
+        if (name != null && ChatColor.stripColor(name).equalsIgnoreCase("Back")) {
+            ShopManagerView.open(player);
+            return;
+        }
         String idRaw = meta.getPersistentDataContainer().get(ShopEditorView.shopKey(), PersistentDataType.STRING);
         String action = meta.getPersistentDataContainer().get(ShopEditorView.actionKey(), PersistentDataType.STRING);
         if (idRaw == null || action == null) return;
@@ -176,12 +185,6 @@ public class ShopListener implements Listener {
             return;
         }
         if (shop == null) return;
-
-        String name = meta.getDisplayName();
-        if (name != null && ChatColor.stripColor(name).equalsIgnoreCase("Back")) {
-            ShopManagerView.open(player);
-            return;
-        }
 
         switch (action) {
             case "rename" -> {
