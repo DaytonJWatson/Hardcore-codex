@@ -682,11 +682,6 @@ public class AdminGuiListener implements Listener {
             return online;
         }
 
-        OfflinePlayer cached = Bukkit.getOfflinePlayerIfCached(name);
-        if (cached != null) {
-            return cached;
-        }
-
         return Arrays.stream(Bukkit.getOfflinePlayers())
                 .filter(player -> player.getName() != null && player.getName().equalsIgnoreCase(name))
                 .findFirst()
