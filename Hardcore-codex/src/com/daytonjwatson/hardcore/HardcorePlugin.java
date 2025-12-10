@@ -34,6 +34,7 @@ import com.daytonjwatson.hardcore.managers.BankTradeManager;
 import com.daytonjwatson.hardcore.listeners.PlayerLoginListener;
 import com.daytonjwatson.hardcore.managers.AuctionHouseManager;
 import com.daytonjwatson.hardcore.listeners.AuctionHouseListener;
+import com.daytonjwatson.hardcore.managers.PlayerIpManager;
 
 public class HardcorePlugin extends JavaPlugin {
 
@@ -57,6 +58,7 @@ public class HardcorePlugin extends JavaPlugin {
         BankManager.init(this);
         BankTradeManager.init();
         AuctionHouseManager.init(this);
+        PlayerIpManager.init(this);
 
         // Initialize stats system (loads stats.yml, etc.)
         StatsManager.init(this);
@@ -86,6 +88,7 @@ public class HardcorePlugin extends JavaPlugin {
         if (AuctionHouseManager.get() != null) {
             AuctionHouseManager.get().save();
         }
+        PlayerIpManager.save();
 
         instance = null;
     }
