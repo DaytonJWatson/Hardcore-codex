@@ -3,6 +3,7 @@ package com.daytonjwatson.hardcore.config;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
