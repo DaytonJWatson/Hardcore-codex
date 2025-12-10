@@ -27,6 +27,8 @@ public final class AdminGui {
     public static final String PLAYER_LIST_TITLE = Util.color("&4&lAdmin &8| &7Online Players");
     private static final String PLAYER_ACTION_TITLE = Util.color("&4&lAdmin &8| &7Manage &e%player%");
     private static final String DURATION_TITLE = Util.color("&4&lAdmin &8| &7Choose Duration");
+    private static final String REASON_TITLE = Util.color("&4&lAdmin &8| &7Choose Reason");
+    private static final String AMOUNT_TITLE = Util.color("&4&lAdmin &8| &7Choose Amount");
     private static final String BANK_TITLE = Util.color("&4&lAdmin &8| &7Bank Tools");
     private static final String AUCTION_TITLE = Util.color("&4&lAdmin &8| &7Auction Tools");
 
@@ -34,6 +36,8 @@ public final class AdminGui {
             "admin_target");
     private static final org.bukkit.NamespacedKey ACTION_KEY = new org.bukkit.NamespacedKey(HardcorePlugin.getInstance(),
             "admin_action");
+    private static final org.bukkit.NamespacedKey DURATION_KEY = new org.bukkit.NamespacedKey(HardcorePlugin.getInstance(),
+            "admin_duration");
     private static final org.bukkit.NamespacedKey PAGE_KEY = new org.bukkit.NamespacedKey(HardcorePlugin.getInstance(),
             "admin_page");
 
@@ -239,9 +243,10 @@ public final class AdminGui {
         String uuid = target.getUniqueId().toString();
         ItemStack balance = actionItem(Material.PAPER, "&fView Balance", uuid,
                 List.of("&7Check current balance."));
-        ItemStack deposit = actionItem(Material.EMERALD, "&aDeposit", uuid, List.of("&7Add funds."));
-        ItemStack withdraw = actionItem(Material.REDSTONE, "&cWithdraw", uuid, List.of("&7Remove funds."));
-        ItemStack set = actionItem(Material.NAME_TAG, "&eSet Balance", uuid, List.of("&7Set to exact amount."));
+        ItemStack deposit = actionItem(Material.EMERALD, "&aDeposit", uuid, List.of("&7Add funds via preset amounts."));
+        ItemStack withdraw = actionItem(Material.REDSTONE, "&cWithdraw", uuid,
+                List.of("&7Remove funds via preset amounts."));
+        ItemStack set = actionItem(Material.NAME_TAG, "&eSet Balance", uuid, List.of("&7Set to amount via presets."));
         ItemStack back = actionItem(Material.BARRIER, "&cBack", uuid, List.of("&7Return to player."));
 
         menu.setItem(10, balance);
@@ -280,10 +285,62 @@ public final class AdminGui {
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.getPersistentDataContainer().set(TARGET_KEY, PersistentDataType.STRING, target.getUniqueId().toString());
-            meta.getPersistentDataContainer().set(ACTION_KEY, PersistentDataType.STRING, key);
+            meta.getPersistentDataContainer().set(DURATION_KEY, PersistentDataType.STRING, key);
             item.setItemMeta(meta);
         }
         return item;
+    }
+
+    public static void openReasonMenu(Player viewer, OfflinePlayer target, String action, String durationKey) {
+        Inventory menu = Bukkit.createInventory(null, 27, REASON_TITLE);
+        ItemStack filler = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
+        for (int i = 0; i < menu.getSize(); i++) {
+            menu.setItem(i, filler);
+        }
+
+        ItemStack spam = reasonItem(Material.PAPER, "Spam/Advertising", target, action, durationKey,
+                "Spamming or advertising");
+        ItemStack harassment = reasonItem(Material.BOOK, "Harassment", target, action, durationKey, "Harassment");
+        ItemStack cheating = reasonItem(Material.BARRIER, "Cheating", target, action, durationKey,
+                "Cheating or unfair advantage");
+        ItemStack griefing = reasonItem(Material.FLINT_AND_STEEL, "Griefing", target, action, durationKey,
+                "Griefing");
+        ItemStack other = reasonItem(Material.WRITABLE_BOOK, "Custom Reason", target, action, durationKey,
+                "custom");
+        ItemStack back = actionItem(Material.BARRIER, "&cBack", target.getUniqueId().toString(), List.of("&7Return."));
+
+        menu.setItem(10, spam);
+        menu.setItem(11, harassment);
+        menu.setItem(12, cheating);
+        menu.setItem(14, griefing);
+        menu.setItem(15, other);
+        menu.setItem(22, back);
+
+        viewer.openInventory(menu);
+    }
+
+    public static void openAmountMenu(Player viewer, OfflinePlayer target, String action) {
+        Inventory menu = Bukkit.createInventory(null, 27, AMOUNT_TITLE);
+        ItemStack filler = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
+        for (int i = 0; i < menu.getSize(); i++) {
+            menu.setItem(i, filler);
+        }
+
+        ItemStack amount10 = amountItem(Material.COAL, "10", target, action);
+        ItemStack amount100 = amountItem(Material.IRON_INGOT, "100", target, action);
+        ItemStack amount500 = amountItem(Material.GOLD_INGOT, "500", target, action);
+        ItemStack amount1000 = amountItem(Material.DIAMOND, "1000", target, action);
+        ItemStack custom = amountItem(Material.WRITABLE_BOOK, "Custom", target, action);
+        ItemStack back = actionItem(Material.BARRIER, "&cBack", target.getUniqueId().toString(), List.of("&7Return."));
+
+        menu.setItem(10, amount10);
+        menu.setItem(11, amount100);
+        menu.setItem(12, amount500);
+        menu.setItem(14, amount1000);
+        menu.setItem(15, custom);
+        menu.setItem(22, back);
+
+        viewer.openInventory(menu);
     }
 
     private static ItemStack actionItem(Material material, String name, String targetUuid, List<String> lore) {
@@ -291,6 +348,37 @@ public final class AdminGui {
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.getPersistentDataContainer().set(TARGET_KEY, PersistentDataType.STRING, targetUuid);
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    private static ItemStack reasonItem(Material material, String name, OfflinePlayer target, String action,
+            String duration, String reasonKey) {
+        ItemStack item = actionItem(material, "&e" + name, target.getUniqueId().toString(),
+                List.of("&7Click to confirm."));
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.getPersistentDataContainer().set(ACTION_KEY, PersistentDataType.STRING, action);
+            if (duration != null) {
+                meta.getPersistentDataContainer().set(DURATION_KEY, PersistentDataType.STRING, duration);
+            }
+            meta.getPersistentDataContainer().set(new org.bukkit.NamespacedKey(HardcorePlugin.getInstance(), "admin_reason"),
+                    PersistentDataType.STRING, reasonKey);
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    private static ItemStack amountItem(Material material, String amountLabel, OfflinePlayer target, String action) {
+        ItemStack item = actionItem(material, "&e" + amountLabel, target.getUniqueId().toString(),
+                List.of("&7Adjust balance."));
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.getPersistentDataContainer().set(ACTION_KEY, PersistentDataType.STRING, action);
+            if (!"custom".equalsIgnoreCase(amountLabel)) {
+                meta.getPersistentDataContainer().set(DURATION_KEY, PersistentDataType.STRING, amountLabel);
+            }
             item.setItemMeta(meta);
         }
         return item;

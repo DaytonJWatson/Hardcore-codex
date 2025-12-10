@@ -25,8 +25,16 @@ import com.daytonjwatson.hardcore.views.AdminGui;
 public class AdminGuiListener implements Listener {
 
     private static final Map<UUID, PendingChat> pendingInputs = new HashMap<>();
-    private static final NamespacedKey TARGET_KEY = new NamespacedKey(HardcorePlugin.getInstance(), "admin_target");
-    private static final NamespacedKey PAGE_KEY = new NamespacedKey(HardcorePlugin.getInstance(), "admin_page");
+    private static final org.bukkit.NamespacedKey TARGET_KEY = new org.bukkit.NamespacedKey(HardcorePlugin.getInstance(),
+            "admin_target");
+    private static final org.bukkit.NamespacedKey PAGE_KEY = new org.bukkit.NamespacedKey(HardcorePlugin.getInstance(),
+            "admin_page");
+    private static final org.bukkit.NamespacedKey ACTION_KEY = new org.bukkit.NamespacedKey(HardcorePlugin.getInstance(),
+            "admin_action");
+    private static final org.bukkit.NamespacedKey DURATION_KEY = new org.bukkit.NamespacedKey(HardcorePlugin.getInstance(),
+            "admin_duration");
+    private static final org.bukkit.NamespacedKey REASON_KEY = new org.bukkit.NamespacedKey(HardcorePlugin.getInstance(),
+            "admin_reason");
 
     private enum PendingType {
         BAN_REASON,
@@ -66,6 +74,8 @@ public class AdminGuiListener implements Listener {
 
         if (!title.equals(AdminGui.MAIN_TITLE) && !title.startsWith(AdminGui.PLAYER_LIST_TITLE)
                 && !title.contains("Manage") && !title.equals(Util.color("&4&lAdmin &8| &7Choose Duration"))
+                && !title.equals(Util.color("&4&lAdmin &8| &7Choose Reason"))
+                && !title.equals(Util.color("&4&lAdmin &8| &7Choose Amount"))
                 && !title.equals(Util.color("&4&lAdmin &8| &7Bank Tools"))
                 && !title.equals(Util.color("&4&lAdmin &8| &7Auction Tools"))) {
             return false;
@@ -96,6 +106,14 @@ public class AdminGuiListener implements Listener {
             return handleDurationClick(player, current, plainName);
         }
 
+        if (title.equals(Util.color("&4&lAdmin &8| &7Choose Reason"))) {
+            return handleReasonClick(player, current, plainName);
+        }
+
+        if (title.equals(Util.color("&4&lAdmin &8| &7Choose Amount"))) {
+            return handleAmountClick(player, current, plainName);
+        }
+
         if (title.equals(Util.color("&4&lAdmin &8| &7Bank Tools"))) {
             return handleBankClick(player, current, plainName);
         }
@@ -113,9 +131,7 @@ public class AdminGuiListener implements Listener {
                 AdminGui.openPlayerList(player, 0);
                 return true;
             case "search player":
-                prompt(player, new PendingChat(PendingType.PLAYER_SEARCH, null, null),
-                        "&6Admin &8» &7Type a player name to open their panel, or &ccancel&7.");
-                player.closeInventory();
+                AdminGui.openPlayerList(player, 0);
                 return true;
             case "admin list":
                 player.performCommand("admin list");
@@ -130,9 +146,7 @@ public class AdminGuiListener implements Listener {
                 AdminGui.openAuctionMenu(player);
                 return true;
             case "bank tools":
-                prompt(player, new PendingChat(PendingType.PLAYER_SEARCH, null, "bank"),
-                        "&6Admin &8» &7Type a player name to open bank tools, or &ccancel&7.");
-                player.closeInventory();
+                AdminGui.openPlayerList(player, 0);
                 return true;
             case "add admin":
                 prompt(player, new PendingChat(PendingType.ADD_ADMIN, null, null),
@@ -206,15 +220,10 @@ public class AdminGuiListener implements Listener {
                 player.performCommand("admin endersee " + name);
                 return true;
             case "warn":
-                prompt(player, new PendingChat(PendingType.WARN_REASON, target, null),
-                        "&6Admin &8» &7Type a warning message for &e" + safeName(target)
-                                + "&7, or &ccancel&7.");
-                player.closeInventory();
+                AdminGui.openReasonMenu(player, target, "warn", null);
                 return true;
             case "kick":
-                prompt(player, new PendingChat(PendingType.KICK_REASON, target, null),
-                        "&6Admin &8» &7Type a kick reason for &e" + safeName(target) + "&7, or &ccancel&7.");
-                player.closeInventory();
+                AdminGui.openReasonMenu(player, target, "kick", null);
                 return true;
             case "mute":
                 pendingInputs.put(player.getUniqueId(), new PendingChat(PendingType.MUTE_REASON, target, null));
@@ -296,12 +305,97 @@ public class AdminGuiListener implements Listener {
         }
 
         if (pendingType == PendingType.BAN_REASON || pendingType == PendingType.MUTE_REASON) {
-            prompt(player, new PendingChat(pendingType, target, duration),
-                    "&6Admin &8» &7Type a reason for &e" + safeName(target) + "&7, or &ccancel&7.");
-            player.closeInventory();
+            AdminGui.openReasonMenu(player, target, pendingType == PendingType.BAN_REASON ? "ban" : "mute", duration);
             return true;
         }
         return false;
+    }
+
+    private boolean handleReasonClick(Player player, ItemStack current, String plainName) {
+        OfflinePlayer target = getTarget(current);
+        if (target == null) {
+            return false;
+        }
+
+        ItemMeta meta = current.getItemMeta();
+        if (meta == null) {
+            return false;
+        }
+
+        if (plainName.equalsIgnoreCase("Back")) {
+            PendingChat pending = pendingInputs.get(player.getUniqueId());
+            if (pending != null && (pending.type() == PendingType.BAN_REASON || pending.type() == PendingType.MUTE_REASON)) {
+                AdminGui.openDurationMenu(player, target, pending.type() == PendingType.BAN_REASON ? "ban" : "mute");
+            } else {
+                AdminGui.openPlayerActions(player, target);
+            }
+            return true;
+        }
+
+        String action = meta.getPersistentDataContainer().get(ACTION_KEY, PersistentDataType.STRING);
+        String duration = meta.getPersistentDataContainer().get(DURATION_KEY, PersistentDataType.STRING);
+        String reasonKey = meta.getPersistentDataContainer().get(REASON_KEY, PersistentDataType.STRING);
+        if (action == null || reasonKey == null) {
+            return false;
+        }
+
+        if ("custom".equalsIgnoreCase(reasonKey)) {
+            PendingType type = switch (action) {
+                case "ban" -> PendingType.BAN_REASON;
+                case "mute" -> PendingType.MUTE_REASON;
+                case "kick" -> PendingType.KICK_REASON;
+                default -> PendingType.WARN_REASON;
+            };
+            prompt(player, new PendingChat(type, target, duration),
+                    "&6Admin &8» &7Type a custom reason for &e" + safeName(target) + "&7, or &ccancel&7.");
+            player.closeInventory();
+            return true;
+        }
+
+        String command = buildTimedCommand(action, target, duration, reasonKey);
+        runCommand(player, command);
+        pendingInputs.remove(player.getUniqueId());
+        player.closeInventory();
+        return true;
+    }
+
+    private boolean handleAmountClick(Player player, ItemStack current, String plainName) {
+        OfflinePlayer target = getTarget(current);
+        if (target == null) {
+            return false;
+        }
+
+        ItemMeta meta = current.getItemMeta();
+        if (meta == null) {
+            return false;
+        }
+
+        if (plainName.equalsIgnoreCase("Back")) {
+            AdminGui.openBankMenu(player, target);
+            return true;
+        }
+
+        String action = meta.getPersistentDataContainer().get(ACTION_KEY, PersistentDataType.STRING);
+        String amountKey = meta.getPersistentDataContainer().get(DURATION_KEY, PersistentDataType.STRING);
+        if (action == null) {
+            return false;
+        }
+
+        if (amountKey == null) {
+            PendingType type = switch (action.toLowerCase()) {
+                case "deposit" -> PendingType.BANK_DEPOSIT;
+                case "withdraw" -> PendingType.BANK_WITHDRAW;
+                default -> PendingType.BANK_SET;
+            };
+            prompt(player, new PendingChat(type, target, null),
+                    "&6Admin &8» &7Type the amount to " + action + " for &e" + safeName(target) + "&7, or &ccancel&7.");
+            player.closeInventory();
+            return true;
+        }
+
+        runCommand(player, "admin bank " + safeName(target) + " " + action + " " + amountKey);
+        player.closeInventory();
+        return true;
     }
 
     private PendingType pendingTypeFromTitle(Player player) {
@@ -324,19 +418,13 @@ public class AdminGuiListener implements Listener {
                 player.performCommand("admin bank " + target.getName() + " balance");
                 return true;
             case "deposit":
-                prompt(player, new PendingChat(PendingType.BANK_DEPOSIT, target, null),
-                        "&6Admin &8» &7Type an amount to deposit into &e" + safeName(target) + "&7, or &ccancel&7.");
-                player.closeInventory();
+                AdminGui.openAmountMenu(player, target, "deposit");
                 return true;
             case "withdraw":
-                prompt(player, new PendingChat(PendingType.BANK_WITHDRAW, target, null),
-                        "&6Admin &8» &7Type an amount to withdraw from &e" + safeName(target) + "&7, or &ccancel&7.");
-                player.closeInventory();
+                AdminGui.openAmountMenu(player, target, "withdraw");
                 return true;
             case "set balance":
-                prompt(player, new PendingChat(PendingType.BANK_SET, target, null),
-                        "&6Admin &8» &7Type the new balance for &e" + safeName(target) + "&7, or &ccancel&7.");
-                player.closeInventory();
+                AdminGui.openAmountMenu(player, target, "set");
                 return true;
             case "back":
                 AdminGui.openPlayerActions(player, target);
