@@ -122,7 +122,7 @@ public final class BankTradeGui {
         menu.setItem(previewSlot, preview);
 
         double[] prices = {0, 100, 500, 1000};
-        int[] slots = {10, 11, 12, 14};
+        int[] slots = {11, 12, 13, 14};
         for (int i = 0; i < prices.length; i++) {
             String label = prices[i] <= 0 ? "&aSend for Free" : "&eCharge " + BankManager.get().formatCurrency(prices[i]);
             ItemStack option = attachPage(amountItem(prices[i], target.getUniqueId(), label), fromPage);
@@ -139,7 +139,7 @@ public final class BankTradeGui {
             customMeta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, fromPage);
             custom.setItemMeta(customMeta);
         }
-        menu.setItem(22, custom);
+        menu.setItem(15, custom);
 
         ItemStack back = attachPage(item(Material.ARROW, "&7Choose different player", List.of("&7Go back to player list")), fromPage);
         menu.setItem(18, back);
