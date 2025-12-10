@@ -56,7 +56,8 @@ public class AdminGuiListener implements Listener {
         LIST_PLAYER_AUCTIONS,
         ADD_ADMIN,
         REMOVE_ADMIN,
-        LOG_FILTER
+        LOG_FILTER,
+        BROADCAST
     }
 
     private record PendingChat(PendingType type, OfflinePlayer target, String extra) {
@@ -140,8 +141,10 @@ public class AdminGuiListener implements Listener {
             case "manage players":
                 AdminGui.openPlayerList(player, 0);
                 return true;
-            case "search player":
-                AdminGui.openPlayerList(player, 0);
+            case "broadcast message":
+                prompt(player, new PendingChat(PendingType.BROADCAST, null, null),
+                        "&6Admin &8» &7Type the announcement to broadcast, or &ccancel&7.");
+                player.closeInventory();
                 return true;
             case "admin list":
                 player.performCommand("admin list");
@@ -576,6 +579,12 @@ public class AdminGuiListener implements Listener {
                 return;
             case LOG_FILTER:
                 runCommand(player, "admin log " + message);
+                pendingInputs.remove(player.getUniqueId());
+                return;
+            case BROADCAST:
+                AdminLogManager.log(player, "/admin broadcast " + message, true);
+                Bukkit.getScheduler().runTask(HardcorePlugin.getInstance(),
+                        () -> Bukkit.broadcastMessage(Util.color("&6[Admin] &f" + message)));
                 pendingInputs.remove(player.getUniqueId());
                 return;
             default:

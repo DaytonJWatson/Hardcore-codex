@@ -55,8 +55,8 @@ public final class AdminGui {
         ItemStack managePlayers = item(Material.PLAYER_HEAD, "&eManage Players",
                 List.of("&7Browse online players and run actions.", "&8Also lets you search offline players."));
 
-        ItemStack searchPlayer = item(Material.BOOK, "&bSearch Player",
-                List.of("&7Type any player name to open their panel."));
+        ItemStack broadcast = item(Material.NOTE_BLOCK, "&dBroadcast Message",
+                List.of("&7Send a server-wide announcement."));
 
         ItemStack adminList = item(Material.PAPER, "&fAdmin List",
                 List.of("&7Show configured Hardcore admins."));
@@ -85,7 +85,7 @@ public final class AdminGui {
         }
 
         menu.setItem(10, managePlayers);
-        menu.setItem(11, searchPlayer);
+        menu.setItem(11, broadcast);
         menu.setItem(12, adminList);
         menu.setItem(13, adminLog);
         menu.setItem(14, clearChat);
