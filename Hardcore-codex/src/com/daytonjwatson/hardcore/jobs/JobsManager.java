@@ -399,17 +399,20 @@ public class JobsManager {
     }
 
     private JobObjective parseObjective(String jobId, Map<?, ?> data) {
-        String rawType = String.valueOf(data.getOrDefault("type", ""));
+        Object typeValue = data.containsKey("type") ? data.get("type") : "";
+        String rawType = String.valueOf(typeValue);
         JobType type = JobType.fromString(rawType);
         if (type == null) {
             plugin.getLogger().warning("Unknown objective type '" + rawType + "' for job '" + jobId + "'. Skipping objective.");
             return null;
         }
 
-        String target = String.valueOf(data.getOrDefault("target", ""));
+        Object targetValue = data.containsKey("target") ? data.get("target") : "";
+        String target = String.valueOf(targetValue);
         int minAmount = Math.max(1, readInt(data.get("amount-min"), readInt(data.get("amount"), 1)));
         int maxAmount = Math.max(minAmount, readInt(data.get("amount-max"), minAmount));
-        boolean consumeItems = Boolean.parseBoolean(String.valueOf(data.getOrDefault("consume-items", false)));
+        Object consumeValue = data.containsKey("consume-items") ? data.get("consume-items") : false;
+        boolean consumeItems = Boolean.parseBoolean(String.valueOf(consumeValue));
 
         if (!isValidTarget(type, target.toUpperCase(Locale.ROOT))) {
             plugin.getLogger().warning("Invalid target '" + target + "' for job '" + jobId + "'. Skipping objective.");
