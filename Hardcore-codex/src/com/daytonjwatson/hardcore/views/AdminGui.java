@@ -31,7 +31,11 @@ public final class AdminGui {
     private static final String REASON_TITLE = Util.color("&4&lAdmin &8| &7Choose Reason");
     private static final String AMOUNT_TITLE = Util.color("&4&lAdmin &8| &7Choose Amount");
     private static final String BANK_TITLE = Util.color("&4&lAdmin &8| &7Bank Tools");
+    private static final String BANK_PLAYER_TITLE = Util.color("&4&lAdmin &8| &7Bank &ePlayer");
+    private static final String BANK_TRANSACTIONS_TITLE = Util.color("&4&lAdmin &8| &7Bank &eHistory");
     private static final String AUCTION_TITLE = Util.color("&4&lAdmin &8| &7Auction Tools");
+    private static final String AUCTION_SELLERS_TITLE = Util.color("&4&lAdmin &8| &7Auction Sellers");
+    private static final String AUCTION_LISTINGS_TITLE = Util.color("&4&lAdmin &8| &7Auction Listings");
     public static final String LOG_TITLE = Util.color("&4&lAdmin &8| &7Admin Log");
     private static final int LOG_PAGE_SIZE = 45;
 
@@ -45,6 +49,10 @@ public final class AdminGui {
             "admin_page");
     private static final org.bukkit.NamespacedKey FILTER_KEY = new org.bukkit.NamespacedKey(HardcorePlugin.getInstance(),
             "admin_filter");
+    private static final org.bukkit.NamespacedKey STATUS_FILTER_KEY = new org.bukkit.NamespacedKey(
+            HardcorePlugin.getInstance(), "admin_status_filter");
+    private static final org.bukkit.NamespacedKey LISTING_KEY = new org.bukkit.NamespacedKey(HardcorePlugin.getInstance(),
+            "admin_listing_id");
 
     private AdminGui() {
     }
@@ -58,8 +66,10 @@ public final class AdminGui {
         ItemStack broadcast = item(Material.NOTE_BLOCK, "&dBroadcast Message",
                 List.of("&7Send a server-wide announcement."));
 
-        ItemStack adminList = item(Material.PAPER, "&fAdmin List",
-                List.of("&7Show configured Hardcore admins."));
+        boolean inSpectator = player.getGameMode() == org.bukkit.GameMode.SPECTATOR;
+        ItemStack gamemode = item(Material.COMPASS, inSpectator ? "&bSwitch to Survival" : "&bSwitch to Spectator",
+                List.of("&7Quickly swap your admin view.",
+                        inSpectator ? "&8Current: Spectator" : "&8Current: Survival"));
 
         ItemStack adminLog = item(Material.OAK_SIGN, "&6Recent Admin Log",
                 List.of("&7View the latest recorded actions."));
@@ -71,7 +81,7 @@ public final class AdminGui {
                 List.of("&7List and cancel auction listings."));
 
         ItemStack bank = item(Material.EMERALD_BLOCK, "&aBank Tools",
-                List.of("&7Check and adjust bank balances."));
+                List.of("&7Check balances, history, and anomalies."));
 
         ItemStack addAdmin = item(Material.LIME_DYE, "&aAdd Admin",
                 List.of("&7Promote a player to Hardcore admin."));
@@ -86,7 +96,7 @@ public final class AdminGui {
 
         menu.setItem(10, managePlayers);
         menu.setItem(11, broadcast);
-        menu.setItem(12, adminList);
+        menu.setItem(12, gamemode);
         menu.setItem(13, adminLog);
         menu.setItem(14, clearChat);
         menu.setItem(15, auction);
@@ -222,7 +232,7 @@ public final class AdminGui {
         viewer.openInventory(menu);
     }
 
-    public static void openAdminLog(Player viewer, String actorFilter, int page) {
+    public static void openAdminLog(Player viewer, String actorFilter, Boolean allowedOnly, int page) {
         Inventory menu = Bukkit.createInventory(null, 54, LOG_TITLE);
         ItemStack filler = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
         for (int i = 0; i < menu.getSize(); i++) {
@@ -231,7 +241,7 @@ public final class AdminGui {
 
         int start = page * LOG_PAGE_SIZE;
         List<AdminLogManager.LogEntry> entries = AdminLogManager.getRecentEntries(LOG_PAGE_SIZE * (page + 1) + 1,
-                actorFilter);
+                actorFilter, allowedOnly);
         int end = Math.min(entries.size(), start + LOG_PAGE_SIZE);
 
         if (start >= entries.size()) {
@@ -262,9 +272,28 @@ public final class AdminGui {
             if (actorFilter != null) {
                 filterMeta.getPersistentDataContainer().set(FILTER_KEY, PersistentDataType.STRING, actorFilter);
             }
+            if (allowedOnly != null) {
+                filterMeta.getPersistentDataContainer().set(STATUS_FILTER_KEY, PersistentDataType.INTEGER,
+                        allowedOnly ? 1 : -1);
+            }
             filter.setItemMeta(filterMeta);
         }
         menu.setItem(46, filter);
+
+        String statusName = allowedOnly == null ? "&fAllowed &7/ &cDenied" : allowedOnly ? "&aAllowed" : "&cDenied";
+        ItemStack status = item(Material.REPEATER, "&bStatus: " + statusName, List.of("&7Toggle allowed/denied view."));
+        ItemMeta statusMeta = status.getItemMeta();
+        if (statusMeta != null) {
+            if (allowedOnly != null) {
+                statusMeta.getPersistentDataContainer().set(STATUS_FILTER_KEY, PersistentDataType.INTEGER,
+                        allowedOnly ? 1 : -1);
+            }
+            if (actorFilter != null) {
+                statusMeta.getPersistentDataContainer().set(FILTER_KEY, PersistentDataType.STRING, actorFilter);
+            }
+            status.setItemMeta(statusMeta);
+        }
+        menu.setItem(47, status);
 
         if (page > 0) {
             ItemStack prev = item(Material.ARROW, "&ePrevious Page", List.of("&7Go to page " + page));
@@ -273,6 +302,10 @@ public final class AdminGui {
                 meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, Math.max(0, page - 1));
                 if (actorFilter != null) {
                     meta.getPersistentDataContainer().set(FILTER_KEY, PersistentDataType.STRING, actorFilter);
+                }
+                if (allowedOnly != null) {
+                    meta.getPersistentDataContainer().set(STATUS_FILTER_KEY, PersistentDataType.INTEGER,
+                            allowedOnly ? 1 : -1);
                 }
                 prev.setItemMeta(meta);
             }
@@ -286,6 +319,10 @@ public final class AdminGui {
                 meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, page + 1);
                 if (actorFilter != null) {
                     meta.getPersistentDataContainer().set(FILTER_KEY, PersistentDataType.STRING, actorFilter);
+                }
+                if (allowedOnly != null) {
+                    meta.getPersistentDataContainer().set(STATUS_FILTER_KEY, PersistentDataType.INTEGER,
+                            allowedOnly ? 1 : -1);
                 }
                 next.setItemMeta(meta);
             }
@@ -320,7 +357,65 @@ public final class AdminGui {
         viewer.openInventory(menu);
     }
 
+    public static void openBankPlayerList(Player viewer, int page) {
+        Inventory menu = Bukkit.createInventory(null, 54, BANK_PLAYER_TITLE + " " + (page + 1));
+        ItemStack filler = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
+        for (int i = 0; i < menu.getSize(); i++) {
+            menu.setItem(i, filler);
+        }
+
+        List<Player> players = new ArrayList<>(Bukkit.getOnlinePlayers());
+        players.sort(java.util.Comparator.comparing(Player::getName, String.CASE_INSENSITIVE_ORDER));
+        int start = page * 45;
+        int end = Math.min(start + 45, players.size());
+        int slot = 0;
+        for (int i = start; i < end; i++) {
+            Player target = players.get(i);
+            ItemStack head = playerHead(target.getUniqueId(), target.getName());
+            ItemMeta meta = head.getItemMeta();
+            if (meta != null) {
+                meta.getPersistentDataContainer().set(TARGET_KEY, PersistentDataType.STRING, target.getUniqueId().toString());
+                meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, page);
+                head.setItemMeta(meta);
+            }
+            menu.setItem(slot++, head);
+        }
+
+        ItemStack back = item(Material.BARRIER, "&cBack", List.of("&7Return to admin panel."));
+        menu.setItem(45, back);
+
+        ItemStack search = item(Material.COMPASS, "&bSearch Player",
+                List.of("&7Search any player by name.", "&8Useful for offline lookups."));
+        menu.setItem(49, search);
+
+        if (start > 0) {
+            ItemStack prev = item(Material.ARROW, "&ePrevious Page", List.of("&7Go to page " + page));
+            ItemMeta meta = prev.getItemMeta();
+            if (meta != null) {
+                meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, Math.max(0, page - 1));
+                prev.setItemMeta(meta);
+            }
+            menu.setItem(48, prev);
+        }
+
+        if (end < players.size()) {
+            ItemStack next = item(Material.ARROW, "&eNext Page", List.of("&7Go to page " + (page + 2)));
+            ItemMeta meta = next.getItemMeta();
+            if (meta != null) {
+                meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, page + 1);
+                next.setItemMeta(meta);
+            }
+            menu.setItem(50, next);
+        }
+
+        viewer.openInventory(menu);
+    }
+
     public static void openBankMenu(Player viewer, OfflinePlayer target) {
+        openBankMenu(viewer, target, null);
+    }
+
+    public static void openBankMenu(Player viewer, OfflinePlayer target, Integer returnPage) {
         Inventory menu = Bukkit.createInventory(null, 27, BANK_TITLE);
         ItemStack filler = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
         for (int i = 0; i < menu.getSize(); i++) {
@@ -328,19 +423,34 @@ public final class AdminGui {
         }
 
         String uuid = target.getUniqueId().toString();
+        double balanceAmount = com.daytonjwatson.hardcore.managers.BankManager.get().getBalance(target.getUniqueId());
         ItemStack balance = actionItem(Material.PAPER, "&fView Balance", uuid,
-                List.of("&7Check current balance."));
+                List.of("&7Check current balance.", "&8" + Util.color("&fCurrent: &a"
+                        + com.daytonjwatson.hardcore.managers.BankManager.get().formatCurrency(balanceAmount))));
         ItemStack deposit = actionItem(Material.EMERALD, "&aDeposit", uuid, List.of("&7Add funds via preset amounts."));
         ItemStack withdraw = actionItem(Material.REDSTONE, "&cWithdraw", uuid,
                 List.of("&7Remove funds via preset amounts."));
         ItemStack set = actionItem(Material.NAME_TAG, "&eSet Balance", uuid, List.of("&7Set to amount via presets."));
+        ItemStack transactions = actionItem(Material.BOOK, "&bRecent Transactions", uuid,
+                List.of("&7Open a log of the latest entries.", "&8Spot suspicious spikes quickly."));
+        ItemStack anomalies = actionItem(Material.SCULK_SENSOR, "&cSuspicious Activity", uuid,
+                List.of("&7Show quick net-change summary.", "&8Look for duping or spikes."));
         ItemStack back = actionItem(Material.BARRIER, "&cBack", uuid, List.of("&7Return to player."));
+        if (returnPage != null) {
+            ItemMeta backMeta = back.getItemMeta();
+            if (backMeta != null) {
+                backMeta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, returnPage);
+                back.setItemMeta(backMeta);
+            }
+        }
 
         menu.setItem(10, balance);
         menu.setItem(12, deposit);
         menu.setItem(14, withdraw);
         menu.setItem(16, set);
-        menu.setItem(22, back);
+        menu.setItem(20, transactions);
+        menu.setItem(22, anomalies);
+        menu.setItem(24, back);
 
         viewer.openInventory(menu);
     }
@@ -352,17 +462,235 @@ public final class AdminGui {
             menu.setItem(i, filler);
         }
 
-        ItemStack listAll = item(Material.GOLD_INGOT, "&eList All", List.of("&7Show all active auctions."));
-        ItemStack listPlayer = item(Material.PLAYER_HEAD, "&bList by Player",
-                List.of("&7Type a player name to filter."));
-        ItemStack cancel = item(Material.BARRIER, "&cCancel Listing",
-                List.of("&7Enter a listing id and optional reason."));
+        ItemStack listAll = item(Material.GOLD_INGOT, "&eView All Listings", List.of("&7Browse every active listing."));
+        ItemStack listPlayer = item(Material.PLAYER_HEAD, "&bFilter by Seller",
+                List.of("&7Pick a seller head to filter."));
+        ItemStack commands = item(Material.OAK_SIGN, "&7Command Shortcuts",
+                List.of("&7Use chat commands for power users.", "&8/ admin auction list|cancel"));
         ItemStack back = item(Material.ARROW, "&cBack", List.of("&7Return to admin panel."));
 
         menu.setItem(10, listAll);
         menu.setItem(12, listPlayer);
-        menu.setItem(14, cancel);
+        menu.setItem(14, commands);
         menu.setItem(22, back);
+
+        viewer.openInventory(menu);
+    }
+
+    public static void openAuctionSellerList(Player viewer, int page) {
+        Inventory menu = Bukkit.createInventory(null, 54, AUCTION_SELLERS_TITLE + " " + (page + 1));
+        ItemStack filler = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
+        for (int i = 0; i < menu.getSize(); i++) {
+            menu.setItem(i, filler);
+        }
+
+        java.util.Map<UUID, Long> counts = new java.util.HashMap<>();
+        com.daytonjwatson.hardcore.managers.AuctionHouseManager.get().getListings()
+                .forEach(listing -> counts.merge(listing.getSeller(), 1L, Long::sum));
+        List<UUID> sellers = new ArrayList<>(counts.keySet());
+        sellers.sort(java.util.Comparator.comparing(uuid -> Bukkit.getOfflinePlayer(uuid).getName(),
+                java.util.Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
+
+        int start = page * 45;
+        int end = Math.min(start + 45, sellers.size());
+        int slot = 0;
+        for (int i = start; i < end; i++) {
+            UUID seller = sellers.get(i);
+            String name = Bukkit.getOfflinePlayer(seller).getName();
+            ItemStack head = playerHead(seller, name == null ? "Unknown" : name);
+            ItemMeta meta = head.getItemMeta();
+            if (meta != null) {
+                meta.getPersistentDataContainer().set(TARGET_KEY, PersistentDataType.STRING, seller.toString());
+                meta.setLore(List.of(Util.color("&7Listings: &f" + counts.getOrDefault(seller, 0L)),
+                        Util.color("&7Click to filter.")));
+                meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, page);
+                head.setItemMeta(meta);
+            }
+            menu.setItem(slot++, head);
+        }
+
+        ItemStack back = item(Material.BARRIER, "&cBack", List.of("&7Return to auction tools."));
+        menu.setItem(45, back);
+
+        if (start > 0) {
+            ItemStack prev = item(Material.ARROW, "&ePrevious Page", List.of("&7Go to page " + page));
+            ItemMeta meta = prev.getItemMeta();
+            if (meta != null) {
+                meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, Math.max(0, page - 1));
+                prev.setItemMeta(meta);
+            }
+            menu.setItem(48, prev);
+        }
+
+        if (end < sellers.size()) {
+            ItemStack next = item(Material.ARROW, "&eNext Page", List.of("&7Go to page " + (page + 2)));
+            ItemMeta meta = next.getItemMeta();
+            if (meta != null) {
+                meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, page + 1);
+                next.setItemMeta(meta);
+            }
+            menu.setItem(50, next);
+        }
+
+        viewer.openInventory(menu);
+    }
+
+    public static void openAuctionListings(Player viewer, UUID sellerFilter, int page) {
+        Inventory menu = Bukkit.createInventory(null, 54, AUCTION_LISTINGS_TITLE);
+        ItemStack filler = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
+        for (int i = 0; i < menu.getSize(); i++) {
+            menu.setItem(i, filler);
+        }
+
+        List<com.daytonjwatson.hardcore.auction.AuctionListing> listings = com.daytonjwatson.hardcore.managers.AuctionHouseManager
+                .get().getListings();
+        if (sellerFilter != null) {
+            listings = listings.stream().filter(l -> sellerFilter.equals(l.getSeller())).toList();
+        }
+
+        listings.sort(java.util.Comparator.comparing(com.daytonjwatson.hardcore.auction.AuctionListing::getExpiresAt));
+        int start = page * 45;
+        int end = Math.min(start + 45, listings.size());
+        int slot = 0;
+        if (listings.isEmpty()) {
+            ItemStack empty = item(Material.BARRIER, "&eNo active listings", List.of("&7Nothing to manage."));
+            menu.setItem(22, empty);
+        } else {
+            for (int i = start; i < end; i++) {
+                com.daytonjwatson.hardcore.auction.AuctionListing listing = listings.get(i);
+                ItemStack item = listing.getItem().clone();
+                ItemMeta meta = item.getItemMeta();
+                if (meta != null) {
+                    String sellerName = listing.getSeller() == null ? "Server"
+                            : Bukkit.getOfflinePlayer(listing.getSeller()).getName();
+                    List<String> lore = new ArrayList<>();
+                    lore.add(Util.color("&7ID: &f" + listing.getId()));
+                    lore.add(Util.color("&7Seller: &f" + (sellerName == null ? "Unknown" : sellerName)));
+                    lore.add(Util.color("&7Qty: &f" + listing.getQuantity()));
+                    lore.add(Util.color("&7Price: &f"
+                            + com.daytonjwatson.hardcore.managers.BankManager.get().formatCurrency(listing.getPricePerItem())));
+                    lore.add(Util.color("&7Expires: &f"
+                            + java.time.Instant.ofEpochMilli(listing.getExpiresAt()).toString()));
+                    lore.add(Util.color("&cClick to cancel listing."));
+                    meta.setLore(lore);
+                    meta.getPersistentDataContainer().set(LISTING_KEY, PersistentDataType.STRING,
+                            listing.getId().toString());
+                    if (sellerFilter != null) {
+                        meta.getPersistentDataContainer().set(TARGET_KEY, PersistentDataType.STRING, sellerFilter.toString());
+                    }
+                    meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, page);
+                    item.setItemMeta(meta);
+                }
+                menu.setItem(slot++, item);
+            }
+        }
+
+        ItemStack back = item(Material.BARRIER, "&cBack", List.of("&7Return to auction filters."));
+        if (sellerFilter != null) {
+            ItemMeta backMeta = back.getItemMeta();
+            if (backMeta != null) {
+                backMeta.getPersistentDataContainer().set(TARGET_KEY, PersistentDataType.STRING, sellerFilter.toString());
+                backMeta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, page);
+                back.setItemMeta(backMeta);
+            }
+        }
+        ItemMeta backMeta = back.getItemMeta();
+        if (backMeta != null) {
+            backMeta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, page);
+            back.setItemMeta(backMeta);
+        }
+        menu.setItem(45, back);
+
+        if (page > 0) {
+            ItemStack prev = item(Material.ARROW, "&ePrevious Page", List.of("&7Go to page " + page));
+            ItemMeta meta = prev.getItemMeta();
+            if (meta != null) {
+                meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, Math.max(0, page - 1));
+                if (sellerFilter != null) {
+                    meta.getPersistentDataContainer().set(TARGET_KEY, PersistentDataType.STRING, sellerFilter.toString());
+                }
+                prev.setItemMeta(meta);
+            }
+            menu.setItem(48, prev);
+        }
+
+        if (end < listings.size()) {
+            ItemStack next = item(Material.ARROW, "&eNext Page", List.of("&7Go to page " + (page + 2)));
+            ItemMeta meta = next.getItemMeta();
+            if (meta != null) {
+                meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, page + 1);
+                if (sellerFilter != null) {
+                    meta.getPersistentDataContainer().set(TARGET_KEY, PersistentDataType.STRING, sellerFilter.toString());
+                }
+                next.setItemMeta(meta);
+            }
+            menu.setItem(50, next);
+        }
+
+        viewer.openInventory(menu);
+    }
+
+    public static void openBankTransactions(Player viewer, OfflinePlayer target, int page) {
+        Inventory menu = Bukkit.createInventory(null, 54, BANK_TRANSACTIONS_TITLE);
+        ItemStack filler = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
+        for (int i = 0; i < menu.getSize(); i++) {
+            menu.setItem(i, filler);
+        }
+
+        List<String> transactions = com.daytonjwatson.hardcore.managers.BankManager.get()
+                .getTransactions(target.getUniqueId());
+        int start = page * 45;
+        int end = Math.min(start + 45, transactions.size());
+        int slot = 0;
+        if (transactions.isEmpty()) {
+            ItemStack empty = item(Material.BARRIER, "&eNo history found", List.of("&7This account has no log yet."));
+            menu.setItem(22, empty);
+        } else {
+            for (int i = start; i < end; i++) {
+                String entry = transactions.get(i);
+                ItemStack book = new ItemStack(Material.PAPER);
+                ItemMeta meta = book.getItemMeta();
+                if (meta != null) {
+                    meta.setDisplayName(Util.color("&eEntry #" + (i + 1)));
+                    meta.setLore(List.of(Util.color("&7" + entry)));
+                    meta.getPersistentDataContainer().set(TARGET_KEY, PersistentDataType.STRING,
+                            target.getUniqueId().toString());
+                    meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, page);
+                    book.setItemMeta(meta);
+                }
+                menu.setItem(slot++, book);
+            }
+        }
+
+        ItemStack back = actionItem(Material.BARRIER, "&cBack", target.getUniqueId().toString(), List.of("&7Return to bank."));
+        ItemMeta backMeta = back.getItemMeta();
+        if (backMeta != null) {
+            backMeta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, page);
+            back.setItemMeta(backMeta);
+        }
+        menu.setItem(45, back);
+
+        if (page > 0) {
+            ItemStack prev = item(Material.ARROW, "&ePrevious Page", List.of("&7Go to page " + page));
+            ItemMeta meta = prev.getItemMeta();
+            if (meta != null) {
+                meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, Math.max(0, page - 1));
+                meta.getPersistentDataContainer().set(TARGET_KEY, PersistentDataType.STRING, target.getUniqueId().toString());
+                prev.setItemMeta(meta);
+            }
+            menu.setItem(48, prev);
+        }
+
+        if (end < transactions.size()) {
+            ItemStack next = item(Material.ARROW, "&eNext Page", List.of("&7Go to page " + (page + 2)));
+            ItemMeta meta = next.getItemMeta();
+            if (meta != null) {
+                meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, page + 1);
+                meta.getPersistentDataContainer().set(TARGET_KEY, PersistentDataType.STRING, target.getUniqueId().toString());
+                next.setItemMeta(meta);
+            }
+            menu.setItem(50, next);
+        }
 
         viewer.openInventory(menu);
     }
