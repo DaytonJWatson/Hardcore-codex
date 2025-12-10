@@ -14,6 +14,8 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.inventory.ItemStack;
 
+import com.daytonjwatson.hardcore.HardcorePlugin;
+import com.daytonjwatson.hardcore.jobs.ActiveJob;
 import com.daytonjwatson.hardcore.jobs.JobOffer;
 import com.daytonjwatson.hardcore.jobs.JobsManager;
 import com.daytonjwatson.hardcore.utils.Util;
@@ -36,14 +38,26 @@ public class JobsListener implements Listener {
             return;
         }
         ItemStack stack = event.getItem().getItemStack();
-        JobsManager.get().handleCollection(player, stack.getType(), stack.getAmount());
+        JobsManager jobs = JobsManager.get();
+        HardcorePlugin plugin = HardcorePlugin.getInstance();
+        if (plugin != null) {
+            plugin.getServer().getScheduler().runTask(plugin,
+                    () -> jobs.handleCollection(player, stack.getType(), stack.getAmount()));
+        } else {
+            jobs.handleCollection(player, stack.getType(), stack.getAmount());
+        }
     }
 
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
         Material type = event.getBlock().getType();
-        JobsManager.get().handleMine(player, type, 1);
+        JobsManager jobs = JobsManager.get();
+        ActiveJob active = jobs.getActiveJob(player.getUniqueId());
+        if (active != null && active.getJob().matchesMine(type) && active.getJob().shouldConsumeItems()) {
+            event.setDropItems(false);
+        }
+        jobs.handleMine(player, type, 1);
     }
 
     @EventHandler
@@ -57,7 +71,14 @@ public class JobsListener implements Listener {
 
         Player player = event.getPlayer();
         ItemStack stack = item.getItemStack();
-        JobsManager.get().handleFish(player, stack.getType(), stack.getAmount());
+        JobsManager jobs = JobsManager.get();
+        HardcorePlugin plugin = HardcorePlugin.getInstance();
+        if (plugin != null) {
+            plugin.getServer().getScheduler().runTask(plugin,
+                    () -> jobs.handleFish(player, stack.getType(), stack.getAmount()));
+        } else {
+            jobs.handleFish(player, stack.getType(), stack.getAmount());
+        }
     }
 
     @EventHandler
@@ -66,7 +87,14 @@ public class JobsListener implements Listener {
             return;
         }
         ItemStack result = event.getRecipe().getResult();
-        JobsManager.get().handleCraft(player, result.getType(), result.getAmount());
+        JobsManager jobs = JobsManager.get();
+        HardcorePlugin plugin = HardcorePlugin.getInstance();
+        if (plugin != null) {
+            plugin.getServer().getScheduler().runTask(plugin,
+                    () -> jobs.handleCraft(player, result.getType(), result.getAmount()));
+        } else {
+            jobs.handleCraft(player, result.getType(), result.getAmount());
+        }
     }
 
     @EventHandler

@@ -15,9 +15,10 @@ public class JobDefinition {
     private final double difficulty;
     private final double reward;
     private final String[] description;
+    private final boolean consumeItems;
 
     public JobDefinition(String id, String displayName, JobType type, String target, int minAmount, int maxAmount, double difficulty,
-                         double reward, String[] description) {
+                         double reward, boolean consumeItems, String[] description) {
         this.id = id;
         this.displayName = displayName;
         this.type = type;
@@ -26,6 +27,7 @@ public class JobDefinition {
         this.maxAmount = maxAmount;
         this.difficulty = difficulty;
         this.reward = reward;
+        this.consumeItems = consumeItems;
         this.description = description;
     }
 
@@ -70,6 +72,10 @@ public class JobDefinition {
 
     public String[] getDescription() {
         return description;
+    }
+
+    public boolean shouldConsumeItems() {
+        return consumeItems;
     }
 
     public boolean matches(EntityType entityType) {

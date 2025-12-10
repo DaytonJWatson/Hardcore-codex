@@ -22,6 +22,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.inventory.ItemStack;
 
 import com.daytonjwatson.hardcore.managers.BankManager;
 import com.daytonjwatson.hardcore.utils.MessageStyler;
@@ -129,7 +130,14 @@ public class JobsManager {
         if (active == null || !active.getJob().matches(material)) {
             return;
         }
-        incrementProgress(player, active, amount);
+        int counted = amount;
+        if (active.getJob().shouldConsumeItems()) {
+            counted = consumeItems(player, material, amount);
+        }
+        if (counted <= 0) {
+            return;
+        }
+        incrementProgress(player, active, counted);
     }
 
     public void handleMine(Player player, Material material, int amount) {
@@ -145,7 +153,14 @@ public class JobsManager {
         if (active == null || !active.getJob().matchesFish(material)) {
             return;
         }
-        incrementProgress(player, active, amount);
+        int counted = amount;
+        if (active.getJob().shouldConsumeItems()) {
+            counted = consumeItems(player, material, amount);
+        }
+        if (counted <= 0) {
+            return;
+        }
+        incrementProgress(player, active, counted);
     }
 
     public void handleCraft(Player player, Material material, int amount) {
@@ -153,7 +168,14 @@ public class JobsManager {
         if (active == null || !active.getJob().matchesCraft(material)) {
             return;
         }
-        incrementProgress(player, active, amount);
+        int counted = amount;
+        if (active.getJob().shouldConsumeItems()) {
+            counted = consumeItems(player, material, amount);
+        }
+        if (counted <= 0) {
+            return;
+        }
+        incrementProgress(player, active, counted);
     }
 
     public void handleTravel(Player player, Location from, Location to) {
@@ -307,6 +329,7 @@ public class JobsManager {
             String name = node.getString("name", id);
             List<String> lore = node.getStringList("description");
             String[] description = lore.toArray(new String[0]);
+            boolean consumeItems = node.getBoolean("consume-items", false);
 
             if (!isValidTarget(type, target)) {
                 plugin.getLogger().warning("Invalid target '" + target + "' for job '" + id + "'. Skipping.");
@@ -314,7 +337,7 @@ public class JobsManager {
             }
 
             JobDefinition definition = new JobDefinition(id, name, type, target, minAmount, maxAmount, difficulty, reward,
-                    description);
+                    consumeItems, description);
             jobPool.put(id, definition);
         }
     }
@@ -551,5 +574,25 @@ public class JobsManager {
             return Integer.toString((int) value);
         }
         return String.format(Locale.US, "%.1f", value);
+    }
+
+    private int consumeItems(Player player, Material material, int requested) {
+        int remaining = Math.max(0, requested);
+        ItemStack[] contents = player.getInventory().getContents();
+        for (int i = 0; i < contents.length && remaining > 0; i++) {
+            ItemStack stack = contents[i];
+            if (stack == null || stack.getType() != material) {
+                continue;
+            }
+
+            int take = Math.min(stack.getAmount(), remaining);
+            stack.setAmount(stack.getAmount() - take);
+            remaining -= take;
+            if (stack.getAmount() <= 0) {
+                contents[i] = null;
+            }
+        }
+        player.getInventory().setContents(contents);
+        return requested - remaining;
     }
 }
