@@ -465,8 +465,9 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
         MessageStyler.sendPanel(sender, target.getName() + " status", lines.toArray(new String[0]));
     }
-
-    private void handleInfo(CommandSender sender, String[] args) {
+    
+	@SuppressWarnings("deprecation")
+	private void handleInfo(CommandSender sender, String[] args) {
         if (args.length < 2) {
             sender.sendMessage(Util.color("&cUsage: /admin info <player>"));
             return;
