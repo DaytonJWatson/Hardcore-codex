@@ -43,6 +43,8 @@ public final class ShopEditorView {
                 List.of("&7Toggle whether players can buy."), "toggle", shop));
         menu.setItem(15, action(Material.CHEST, "&aManage Stock",
                 List.of("&7Add or remove shop listings."), "stock", shop));
+        menu.setItem(20, action(Material.REDSTONE_BLOCK, "&cDelete Shop",
+                List.of("&7Remove this shop and return", "&7all listed items to you."), "delete", shop));
 
         ItemStack back = item(Material.BARRIER, "&cBack", List.of("&7Return to your shops."));
         menu.setItem(22, back);
