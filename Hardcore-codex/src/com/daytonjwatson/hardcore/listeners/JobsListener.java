@@ -12,6 +12,7 @@ import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.EntityTameEvent;
 import org.bukkit.event.enchantment.EnchantItemEvent;
 import org.bukkit.event.inventory.CraftItemEvent;
+import org.bukkit.event.inventory.CraftingInventory;
 import org.bukkit.event.inventory.FurnaceExtractEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerFishEvent;
@@ -105,13 +106,20 @@ public class JobsListener implements Listener {
             return;
         }
         ItemStack result = event.getRecipe().getResult();
+        int amountCrafted = result.getAmount();
+        if (event.isShiftClick()) {
+            amountCrafted = calculateShiftCraftAmount(event.getInventory(), result);
+        } else if (event.getCurrentItem() != null && event.getCurrentItem().getType() == result.getType()) {
+            amountCrafted = event.getCurrentItem().getAmount();
+        }
+
         JobsManager jobs = JobsManager.get();
         HardcorePlugin plugin = HardcorePlugin.getInstance();
         if (plugin != null) {
             plugin.getServer().getScheduler().runTask(plugin,
-                    () -> jobs.handleCraft(player, result.getType(), result.getAmount()));
+                    () -> jobs.handleCraft(player, result.getType(), amountCrafted));
         } else {
-            jobs.handleCraft(player, result.getType(), result.getAmount());
+            jobs.handleCraft(player, result.getType(), amountCrafted);
         }
     }
 
@@ -219,5 +227,20 @@ public class JobsListener implements Listener {
         }
 
         JobsManager.get().handleTravel(event.getPlayer(), event.getFrom(), event.getTo());
+    }
+
+    private int calculateShiftCraftAmount(CraftingInventory inventory, ItemStack result) {
+        ItemStack[] matrix = inventory.getMatrix();
+        int craftsPossible = Integer.MAX_VALUE;
+        for (ItemStack stack : matrix) {
+            if (stack == null || stack.getType() == Material.AIR) {
+                continue;
+            }
+            craftsPossible = Math.min(craftsPossible, stack.getAmount());
+        }
+        if (craftsPossible == Integer.MAX_VALUE) {
+            return result.getAmount();
+        }
+        return result.getAmount() * craftsPossible;
     }
 }
