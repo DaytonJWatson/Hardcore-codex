@@ -6,6 +6,11 @@ public enum JobType {
     MINE_BLOCK,
     FISH_ITEM,
     CRAFT_ITEM,
+    PLACE_BLOCK,
+    SMELT_ITEM,
+    ENCHANT_ITEM,
+    BREED_ANIMAL,
+    TAME_ENTITY,
     TRAVEL_BIOME,
     TRAVEL_DISTANCE;
 

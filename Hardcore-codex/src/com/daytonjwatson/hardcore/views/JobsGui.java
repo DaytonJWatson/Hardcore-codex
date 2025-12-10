@@ -96,6 +96,11 @@ public final class JobsGui {
             case MINE_BLOCK -> Material.DIAMOND_PICKAXE;
             case FISH_ITEM -> Material.FISHING_ROD;
             case CRAFT_ITEM -> Material.CRAFTING_TABLE;
+            case PLACE_BLOCK -> Material.GRASS_BLOCK;
+            case SMELT_ITEM -> Material.BLAST_FURNACE;
+            case ENCHANT_ITEM -> Material.ENCHANTING_TABLE;
+            case BREED_ANIMAL -> Material.WHEAT;
+            case TAME_ENTITY -> Material.LEAD;
             case TRAVEL_BIOME -> Material.COMPASS;
             case TRAVEL_DISTANCE -> Material.ELYTRA;
         };

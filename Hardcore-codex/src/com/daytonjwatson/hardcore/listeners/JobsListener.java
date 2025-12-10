@@ -5,9 +5,14 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.EntityBreedEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.entity.EntityTameEvent;
+import org.bukkit.event.inventory.EnchantItemEvent;
 import org.bukkit.event.inventory.CraftItemEvent;
+import org.bukkit.event.inventory.FurnaceExtractEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -61,6 +66,13 @@ public class JobsListener implements Listener {
     }
 
     @EventHandler
+    public void onBlockPlace(BlockPlaceEvent event) {
+        Player player = event.getPlayer();
+        Material type = event.getBlockPlaced().getType();
+        JobsManager.get().handlePlace(player, type, 1);
+    }
+
+    @EventHandler
     public void onPlayerFish(PlayerFishEvent event) {
         if (!(event.getState() == PlayerFishEvent.State.CAUGHT_FISH)) {
             return;
@@ -82,6 +94,12 @@ public class JobsListener implements Listener {
     }
 
     @EventHandler
+    public void onFurnaceExtract(FurnaceExtractEvent event) {
+        Player player = event.getPlayer();
+        JobsManager.get().handleSmelt(player, event.getItemType(), event.getItemAmount());
+    }
+
+    @EventHandler
     public void onCraftItem(CraftItemEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) {
             return;
@@ -95,6 +113,36 @@ public class JobsListener implements Listener {
         } else {
             jobs.handleCraft(player, result.getType(), result.getAmount());
         }
+    }
+
+    @EventHandler
+    public void onEnchantItem(EnchantItemEvent event) {
+        Player player = event.getEnchanter();
+        ItemStack item = event.getItem();
+        JobsManager jobs = JobsManager.get();
+        HardcorePlugin plugin = HardcorePlugin.getInstance();
+        if (plugin != null) {
+            plugin.getServer().getScheduler().runTask(plugin,
+                    () -> jobs.handleEnchant(player, item.getType()));
+        } else {
+            jobs.handleEnchant(player, item.getType());
+        }
+    }
+
+    @EventHandler
+    public void onEntityBreed(EntityBreedEvent event) {
+        if (!(event.getBreeder() instanceof Player player)) {
+            return;
+        }
+        JobsManager.get().handleBreed(player, event.getEntity().getType());
+    }
+
+    @EventHandler
+    public void onEntityTame(EntityTameEvent event) {
+        if (!(event.getOwner() instanceof Player player)) {
+            return;
+        }
+        JobsManager.get().handleTame(player, event.getEntity().getType());
     }
 
     @EventHandler

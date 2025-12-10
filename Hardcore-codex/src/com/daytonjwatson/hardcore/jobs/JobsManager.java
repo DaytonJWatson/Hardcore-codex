@@ -178,6 +178,46 @@ public class JobsManager {
         incrementProgress(player, active, counted);
     }
 
+    public void handlePlace(Player player, Material material, int amount) {
+        ActiveJob active = activeJobs.get(player.getUniqueId());
+        if (active == null || !active.getJob().matchesPlace(material)) {
+            return;
+        }
+        incrementProgress(player, active, amount);
+    }
+
+    public void handleSmelt(Player player, Material material, int amount) {
+        ActiveJob active = activeJobs.get(player.getUniqueId());
+        if (active == null || !active.getJob().matchesSmelt(material)) {
+            return;
+        }
+        incrementProgress(player, active, amount);
+    }
+
+    public void handleEnchant(Player player, Material material) {
+        ActiveJob active = activeJobs.get(player.getUniqueId());
+        if (active == null || !active.getJob().matchesEnchant(material)) {
+            return;
+        }
+        incrementProgress(player, active, 1);
+    }
+
+    public void handleBreed(Player player, EntityType entityType) {
+        ActiveJob active = activeJobs.get(player.getUniqueId());
+        if (active == null || !active.getJob().matchesBreed(entityType)) {
+            return;
+        }
+        incrementProgress(player, active, 1);
+    }
+
+    public void handleTame(Player player, EntityType entityType) {
+        ActiveJob active = activeJobs.get(player.getUniqueId());
+        if (active == null || !active.getJob().matchesTame(entityType)) {
+            return;
+        }
+        incrementProgress(player, active, 1);
+    }
+
     public void handleTravel(Player player, Location from, Location to) {
         ActiveJob active = activeJobs.get(player.getUniqueId());
         if (active == null) {
@@ -389,7 +429,9 @@ public class JobsManager {
         try {
             return switch (type) {
                 case KILL_MOB -> EntityType.valueOf(target) != null;
-                case COLLECT_ITEM, MINE_BLOCK, FISH_ITEM, CRAFT_ITEM -> Material.valueOf(target) != null;
+                case COLLECT_ITEM, MINE_BLOCK, FISH_ITEM, CRAFT_ITEM, PLACE_BLOCK, SMELT_ITEM, ENCHANT_ITEM ->
+                        Material.valueOf(target) != null;
+                case BREED_ANIMAL, TAME_ENTITY -> EntityType.valueOf(target) != null;
                 case TRAVEL_BIOME -> Biome.valueOf(target) != null;
                 case TRAVEL_DISTANCE -> true;
             };

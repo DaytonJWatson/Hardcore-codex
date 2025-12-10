@@ -78,6 +78,54 @@ jobs:
     reward: 400.0
     description:
       - "Chart the dunes and report back."
+  builder_for_hire:
+    name: "&7Builder for Hire"
+    type: PLACE_BLOCK
+    target: STONE_BRICKS
+    amount-min: 64
+    amount-max: 128
+    difficulty: 1.4
+    reward: 500.0
+    description:
+      - "Lay down bricks for the new keep walls."
+  ironworks:
+    name: "&fIronworks Assistant"
+    type: SMELT_ITEM
+    target: IRON_INGOT
+    amount-min: 24
+    amount-max: 48
+    difficulty: 1.5
+    reward: 520.0
+    description:
+      - "Smelt iron ingots for the forge."
+  arcane_apprentice:
+    name: "&5Arcane Apprentice"
+    type: ENCHANT_ITEM
+    target: DIAMOND_SWORD
+    amount: 2
+    difficulty: 2.2
+    reward: 900.0
+    description:
+      - "Enchant blades for the order."
+  pasture_keeper:
+    name: "&aPasture Keeper"
+    type: BREED_ANIMAL
+    target: COW
+    amount-min: 6
+    amount-max: 12
+    difficulty: 1.2
+    reward: 380.0
+    description:
+      - "Grow the herd for the butcher."
+  beast_whisperer:
+    name: "&9Beast Whisperer"
+    type: TAME_ENTITY
+    target: WOLF
+    amount: 3
+    difficulty: 1.8
+    reward: 620.0
+    description:
+      - "Tame wolves to guard the roads."
       - "Reach a desert biome."
   glacial_scout:
     name: "&bGlacial Scout"

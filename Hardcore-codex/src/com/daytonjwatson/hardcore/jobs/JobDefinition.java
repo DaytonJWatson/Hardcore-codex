@@ -98,6 +98,26 @@ public class JobDefinition {
         return type == JobType.CRAFT_ITEM && material.name().equalsIgnoreCase(target);
     }
 
+    public boolean matchesPlace(Material material) {
+        return type == JobType.PLACE_BLOCK && material.name().equalsIgnoreCase(target);
+    }
+
+    public boolean matchesSmelt(Material material) {
+        return type == JobType.SMELT_ITEM && material.name().equalsIgnoreCase(target);
+    }
+
+    public boolean matchesEnchant(Material material) {
+        return type == JobType.ENCHANT_ITEM && material.name().equalsIgnoreCase(target);
+    }
+
+    public boolean matchesBreed(EntityType entityType) {
+        return type == JobType.BREED_ANIMAL && entityType.name().equalsIgnoreCase(target);
+    }
+
+    public boolean matchesTame(EntityType entityType) {
+        return type == JobType.TAME_ENTITY && entityType.name().equalsIgnoreCase(target);
+    }
+
     public boolean matchesBiome(Biome biome) {
         return type == JobType.TRAVEL_BIOME && biome.name().equalsIgnoreCase(target);
     }
