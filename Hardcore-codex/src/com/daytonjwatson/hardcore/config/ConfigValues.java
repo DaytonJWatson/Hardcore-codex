@@ -1,5 +1,6 @@
 package com.daytonjwatson.hardcore.config;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -144,6 +145,14 @@ public final class ConfigValues {
 
     public static double minEffectiveTotalGap() {
         return config.getDouble("bandits.unfair-kill-requirements.min-effective-total-gap", 3.0);
+    }
+
+    public static double shopCreationCost() {
+        return config.getDouble("shops.creation-cost", 5000.0);
+    }
+
+    public static int maxShopsPerPlayer() {
+        return config.getInt("shops.max-per-player", 5);
     }
 
     public static List<String> deathMessages(String key, List<String> defaults) {

@@ -74,6 +74,10 @@ economy:
   # Prefix shown when displaying currency (supports color codes).
   currency-symbol: "$"
 
+shops:
+  creation-cost: 5000.0
+  max-per-player: 5
+
 ###############################
 # Bandits & Heroes system     #
 ###############################
