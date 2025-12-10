@@ -14,7 +14,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.inventory.ItemStack;
 
-import com.daytonjwatson.hardcore.jobs.JobDefinition;
+import com.daytonjwatson.hardcore.jobs.JobOffer;
 import com.daytonjwatson.hardcore.jobs.JobsManager;
 import com.daytonjwatson.hardcore.utils.Util;
 import com.daytonjwatson.hardcore.views.JobsGui;
@@ -93,7 +93,7 @@ public class JobsListener implements Listener {
                         return;
                     }
 
-                    java.util.List<JobDefinition> offers = jobs.getOfferedJobs(player.getUniqueId());
+                    java.util.List<JobOffer> offers = jobs.getOfferedJobs(player.getUniqueId());
                     if (offers.size() <= i) {
                         player.sendMessage(Util.color("&cThat offer is no longer available."));
                         return;
