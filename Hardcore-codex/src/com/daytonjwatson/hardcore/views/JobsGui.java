@@ -11,9 +11,10 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import com.daytonjwatson.hardcore.jobs.ActiveJob;
+import com.daytonjwatson.hardcore.jobs.ActiveObjective;
 import com.daytonjwatson.hardcore.jobs.JobDefinition;
+import com.daytonjwatson.hardcore.jobs.JobObjective;
 import com.daytonjwatson.hardcore.jobs.JobOffer;
-import com.daytonjwatson.hardcore.jobs.JobType;
 import com.daytonjwatson.hardcore.jobs.JobsManager;
 import com.daytonjwatson.hardcore.utils.Util;
 
@@ -83,27 +84,39 @@ public final class JobsGui {
             lore.add("&7" + line);
         }
         lore.add(" ");
-        lore.add("&fGoal: &e" + formatNumber(offer.getAmount()) + "x &f" + definition.getTarget());
-        lore.add("&fType: &6" + definition.getType().name().replace('_', ' '));
+        for (int i = 0; i < definition.getObjectives().size(); i++) {
+            JobObjective objective = definition.getObjectives().get(i);
+            lore.add("&fObjective " + (i + 1) + ": &e" + formatNumber(offer.getAmount(i)) + "x &f"
+                    + objective.getTarget());
+            lore.add("&7 - Type: &6" + objective.getType().name().replace('_', ' '));
+            if (objective.shouldConsumeItems()) {
+                lore.add("&7 - Consumes items on progress.");
+            }
+        }
+        lore.add("&fOrder: &6" + (definition.isOrdered() ? "Sequential" : "Concurrent"));
         lore.add("&fDifficulty: &c" + definition.getDifficulty());
         lore.add("&fReward: &a" + definition.getReward());
         lore.add(" ");
         lore.add("&eClick to accept option " + optionNumber + "!");
 
-        Material icon = switch (definition.getType()) {
-            case KILL_MOB -> Material.IRON_SWORD;
-            case COLLECT_ITEM -> Material.CHEST;
-            case MINE_BLOCK -> Material.DIAMOND_PICKAXE;
-            case FISH_ITEM -> Material.FISHING_ROD;
-            case CRAFT_ITEM -> Material.CRAFTING_TABLE;
-            case PLACE_BLOCK -> Material.GRASS_BLOCK;
-            case SMELT_ITEM -> Material.BLAST_FURNACE;
-            case ENCHANT_ITEM -> Material.ENCHANTING_TABLE;
-            case BREED_ANIMAL -> Material.WHEAT;
-            case TAME_ENTITY -> Material.LEAD;
-            case TRAVEL_BIOME -> Material.COMPASS;
-            case TRAVEL_DISTANCE -> Material.ELYTRA;
-        };
+        Material icon = Material.WRITABLE_BOOK;
+        JobObjective primary = definition.getPrimaryObjective();
+        if (primary != null) {
+            icon = switch (primary.getType()) {
+                case KILL_MOB -> Material.IRON_SWORD;
+                case COLLECT_ITEM -> Material.CHEST;
+                case MINE_BLOCK -> Material.DIAMOND_PICKAXE;
+                case FISH_ITEM -> Material.FISHING_ROD;
+                case CRAFT_ITEM -> Material.CRAFTING_TABLE;
+                case PLACE_BLOCK -> Material.GRASS_BLOCK;
+                case SMELT_ITEM -> Material.BLAST_FURNACE;
+                case ENCHANT_ITEM -> Material.ENCHANTING_TABLE;
+                case BREED_ANIMAL -> Material.WHEAT;
+                case TAME_ENTITY -> Material.LEAD;
+                case TRAVEL_BIOME -> Material.COMPASS;
+                case TRAVEL_DISTANCE -> Material.ELYTRA;
+            };
+        }
         return item(icon, "&6" + definition.getDisplayName(), lore);
     }
 
@@ -117,8 +130,13 @@ public final class JobsGui {
     private static ItemStack activeJobItem(ActiveJob active) {
         JobDefinition job = active.getJob();
         List<String> lore = new ArrayList<>();
-        lore.add("&7Progress: &f" + formatNumber(active.getProgress()) + "/" + formatNumber(active.getGoalAmount()));
-        lore.add("&7Target: &f" + job.getTarget());
+        int index = 1;
+        for (ActiveObjective objective : active.getObjectives()) {
+            lore.add("&7Obj " + index + ": &f" + formatNumber(objective.getProgress()) + "/"
+                    + formatNumber(objective.getGoalAmount()) + " " + objective.getDefinition().getTarget());
+            index++;
+        }
+        lore.add("&7Order: &f" + (job.isOrdered() ? "Sequential" : "Concurrent"));
         lore.add("&7Reward: &a" + job.getReward());
         return item(Material.NETHER_STAR, "&bActive: " + job.getDisplayName(), lore);
     }

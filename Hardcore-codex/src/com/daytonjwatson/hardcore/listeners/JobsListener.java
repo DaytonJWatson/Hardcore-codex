@@ -60,8 +60,15 @@ public class JobsListener implements Listener {
         Material type = event.getBlock().getType();
         JobsManager jobs = JobsManager.get();
         ActiveJob active = jobs.getActiveJob(player.getUniqueId());
-        if (active != null && active.getJob().matchesMine(type) && active.getJob().shouldConsumeItems()) {
-            event.setDropItems(false);
+        if (active != null) {
+            for (com.daytonjwatson.hardcore.jobs.ActiveObjective objective : active.getPendingObjectives()) {
+                if (objective.getDefinition().getType() == com.daytonjwatson.hardcore.jobs.JobType.MINE_BLOCK
+                        && objective.getDefinition().shouldConsumeItems()
+                        && objective.getDefinition().matches(type)) {
+                    event.setDropItems(false);
+                    break;
+                }
+            }
         }
         jobs.handleMine(player, type, 1);
     }

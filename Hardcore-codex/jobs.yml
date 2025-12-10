@@ -154,3 +154,21 @@ jobs:
     reward: 1800.0
     description:
       - "Journey far to prove your endurance."
+  desert_hunt_builder:
+    name: "&eDesert Expedition"
+    ordered: true
+    difficulty: 2.4
+    reward: 1200.0
+    description:
+      - "Track the dunes, clear threats, and light the way."
+    objectives:
+      - type: TRAVEL_BIOME
+        target: DESERT
+        amount: 1
+      - type: KILL_MOB
+        target: HUSK
+        amount-min: 8
+        amount-max: 16
+      - type: PLACE_BLOCK
+        target: TORCH
+        amount: 32

@@ -11,6 +11,7 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
 import com.daytonjwatson.hardcore.jobs.ActiveJob;
+import com.daytonjwatson.hardcore.jobs.ActiveObjective;
 import com.daytonjwatson.hardcore.jobs.JobDefinition;
 import com.daytonjwatson.hardcore.jobs.JobOffer;
 import com.daytonjwatson.hardcore.jobs.JobsManager;
@@ -114,11 +115,17 @@ public class JobsCommand implements CommandExecutor, TabCompleter {
         }
 
         JobDefinition def = active.getJob();
-        MessageStyler.sendPanel(player, "Active Job",
-                "&f" + def.getDisplayName(),
-                "&7Progress: &f" + formatNumber(active.getProgress()) + "/" + formatNumber(active.getGoalAmount()),
-                "&7Target: &f" + def.getTarget(),
-                "&7Reward: &a" + def.getReward());
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        lines.add("&f" + def.getDisplayName());
+        int index = 1;
+        for (ActiveObjective objective : active.getObjectives()) {
+            lines.add("&7Obj " + index + ": &f" + formatNumber(objective.getProgress()) + "/"
+                    + formatNumber(objective.getGoalAmount()) + " " + objective.getDefinition().getTarget());
+            index++;
+        }
+        lines.add("&7Order: &f" + (def.isOrdered() ? "Sequential" : "Concurrent"));
+        lines.add("&7Reward: &a" + def.getReward());
+        MessageStyler.sendPanel(player, "Active Job", lines.toArray(new String[0]));
     }
 
     private String formatNumber(double value) {

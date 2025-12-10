@@ -3,42 +3,21 @@ package com.daytonjwatson.hardcore.jobs;
 public class ActiveJob {
 
     private final JobDefinition job;
-    private final int goalAmount;
-    private double progress;
+    private final java.util.List<ActiveObjective> objectives;
     private final int selectedSlot;
-    private org.bukkit.Location startLocation;
 
-    public ActiveJob(JobDefinition job, int goalAmount, double progress) {
-        this(job, goalAmount, progress, null, -1);
-    }
-
-    public ActiveJob(JobDefinition job, int goalAmount, double progress, org.bukkit.Location startLocation,
-            int selectedSlot) {
+    public ActiveJob(JobDefinition job, java.util.List<ActiveObjective> objectives, int selectedSlot) {
         this.job = job;
-        this.goalAmount = goalAmount;
-        this.progress = progress;
+        this.objectives = objectives;
         this.selectedSlot = selectedSlot;
-        this.startLocation = startLocation;
     }
 
     public JobDefinition getJob() {
         return job;
     }
 
-    public int getGoalAmount() {
-        return goalAmount;
-    }
-
-    public double getProgress() {
-        return progress;
-    }
-
-    public org.bukkit.Location getStartLocation() {
-        return startLocation;
-    }
-
-    public void setStartLocation(org.bukkit.Location startLocation) {
-        this.startLocation = startLocation;
+    public java.util.List<ActiveObjective> getObjectives() {
+        return java.util.Collections.unmodifiableList(objectives);
     }
 
     public int getSelectedSlot() {
@@ -46,15 +25,24 @@ public class ActiveJob {
     }
 
     public boolean isComplete() {
-        return progress >= goalAmount;
+        for (ActiveObjective objective : objectives) {
+            if (!objective.isComplete()) {
+                return false;
+            }
+        }
+        return true;
     }
 
-    public double addProgress(double amount) {
-        progress = Math.min(goalAmount, progress + amount);
-        return progress;
-    }
-
-    public void setProgress(double progress) {
-        this.progress = Math.min(goalAmount, progress);
+    public java.util.List<ActiveObjective> getPendingObjectives() {
+        java.util.List<ActiveObjective> pending = new java.util.ArrayList<>();
+        for (ActiveObjective objective : objectives) {
+            if (!objective.isComplete()) {
+                pending.add(objective);
+                if (job.isOrdered()) {
+                    break;
+                }
+            }
+        }
+        return pending;
     }
 }
