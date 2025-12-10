@@ -2,7 +2,9 @@ package com.daytonjwatson.hardcore.managers;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -46,17 +48,18 @@ public final class PlayerIpManager {
         }
     }
 
-    public static void recordLogin(Player player) {
-        if (config == null) {
+    public static void recordLogin(Player player, SocketAddress address) {
+        if (address instanceof InetSocketAddress inetSocketAddress) {
+            recordLogin(player, inetSocketAddress.getAddress());
+        }
+    }
+
+    public static void recordLogin(Player player, InetAddress inetAddress) {
+        if (config == null || inetAddress == null) {
             return;
         }
 
-        InetSocketAddress address = player.getAddress();
-        if (address == null || address.getAddress() == null) {
-            return;
-        }
-
-        String ip = address.getAddress().getHostAddress();
+        String ip = inetAddress.getHostAddress();
         UUID uuid = player.getUniqueId();
         String node = PLAYERS_NODE + "." + uuid;
 

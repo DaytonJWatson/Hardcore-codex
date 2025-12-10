@@ -12,7 +12,7 @@ public class PlayerLoginListener implements Listener {
 
     @EventHandler
     public void onPlayerLogin(PlayerLoginEvent event) {
-        PlayerIpManager.recordLogin(event.getPlayer());
+        PlayerIpManager.recordLogin(event.getPlayer(), event.getAddress());
 
         if (!BanManager.isBanned(event.getPlayer().getUniqueId())) {
             return;
