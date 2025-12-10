@@ -197,6 +197,14 @@ content:
       - "&c/auction &7- Buy items or browse the auction house"
       - "&4Play cautiously. You only get one life."
 
+  discord:
+    title: "Hardcore Discord"
+    lines:
+      - "&7Join the community and stay updated."
+      - "&bInvite: &fhttps://discord.gg/hardcore"
+      - "&7Channels for trading, allies, and announcements."
+      - "&7Enable notifications to catch wipe news and events."
+
   rules:
     title: "Server Rules"
     lines:
