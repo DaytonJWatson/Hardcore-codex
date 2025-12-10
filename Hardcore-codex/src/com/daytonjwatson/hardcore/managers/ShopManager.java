@@ -95,7 +95,7 @@ public class ShopManager {
 
         UUID id = UUID.randomUUID();
         PlayerShop shop = new PlayerShop(id, player.getUniqueId(), Util.color(player.getName() + "'s Shop"),
-                Util.color("Browse my wares!"), new ItemStack(Material.CHEST), true);
+                Util.color("Browse my wares!"), new ItemStack(Material.CHEST), true, true);
         shops.put(id, shop);
         save();
         player.sendMessage(Util.color("&aShop created! Use the manager to customize it."));
@@ -116,6 +116,7 @@ public class ShopManager {
             data.set(base + "description", shop.getDescription());
             data.set(base + "open", shop.isOpen());
             data.set(base + "icon", shop.getIcon());
+            data.set(base + "notifications", shop.isNotificationsEnabled());
 
             Map<Integer, ShopItem> stock = shop.getStock();
             for (Map.Entry<Integer, ShopItem> entry : stock.entrySet()) {
@@ -147,9 +148,10 @@ public class ShopManager {
                 String name = section.getString(key + ".name", "Shop");
                 String description = section.getString(key + ".description", "Wares");
                 boolean open = section.getBoolean(key + ".open", true);
+                boolean notificationsEnabled = section.getBoolean(key + ".notifications", true);
                 ItemStack icon = section.getItemStack(key + ".icon", new ItemStack(Material.CHEST));
 
-                PlayerShop shop = new PlayerShop(id, owner, name, description, icon, open);
+                PlayerShop shop = new PlayerShop(id, owner, name, description, icon, open, notificationsEnabled);
                 ConfigurationSection items = section.getConfigurationSection(key + ".items");
                 if (items != null) {
                     for (String slotKey : items.getKeys(false)) {
@@ -283,7 +285,23 @@ public class ShopManager {
         save();
         buyer.sendMessage(Util.color("&aPurchased &f" + purchaseAmount + "x &e" + Util.plainName(purchase)
                 + " &afor &f" + bank.formatCurrency(price) + "&a."));
+        notifyOwner(shop, Util.color("&e" + buyer.getName() + " &apurchased &f" + purchaseAmount + "x &e"
+                + Util.plainName(purchase) + " &afor &f" + bank.formatCurrency(price) + " &afrom your shop &e"
+                + shop.getName() + "&a."));
+        if (remaining <= 0) {
+            notifyOwner(shop, Util.color("&c" + Util.plainName(purchase) + " sold out in your shop."));
+        }
         return true;
+    }
+
+    private void notifyOwner(PlayerShop shop, String message) {
+        if (!shop.isNotificationsEnabled()) {
+            return;
+        }
+        Player owner = Bukkit.getPlayer(shop.getOwner());
+        if (owner != null && owner.isOnline()) {
+            owner.sendMessage(message);
+        }
     }
 
     public boolean addItemToShop(PlayerShop shop, ItemStack item, double price) {

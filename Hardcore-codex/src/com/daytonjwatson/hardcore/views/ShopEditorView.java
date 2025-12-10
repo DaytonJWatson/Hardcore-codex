@@ -43,6 +43,9 @@ public final class ShopEditorView {
                 List.of("&7Toggle whether players can buy."), "toggle", shop));
         menu.setItem(15, action(Material.CHEST, "&aManage Stock",
                 List.of("&7Add or remove shop listings."), "stock", shop));
+        menu.setItem(21, action(shop.isNotificationsEnabled() ? Material.BELL : Material.NOTE_BLOCK,
+                shop.isNotificationsEnabled() ? "&aNotifications Enabled" : "&cNotifications Disabled",
+                List.of("&7Alerts you when items sell", "&7or sell out."), "notifications", shop));
         menu.setItem(20, action(Material.REDSTONE_BLOCK, "&cDelete Shop",
                 List.of("&7Remove this shop and return", "&7all listed items to you."), "delete", shop));
 
