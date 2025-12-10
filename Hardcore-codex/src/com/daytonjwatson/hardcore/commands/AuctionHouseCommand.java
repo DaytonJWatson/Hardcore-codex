@@ -72,8 +72,8 @@ public class AuctionHouseCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-        if (price <= 0 || quantity <= 0) {
-            player.sendMessage(Util.color("&cPrice and quantity must be greater than zero."));
+        if (price < 0.01 || quantity <= 0) {
+            player.sendMessage(Util.color("&cPrice must be at least $0.01 and quantity must be greater than zero."));
             return;
         }
 

@@ -355,8 +355,8 @@ public class BankGuiListener implements Listener {
             return;
         }
 
-        if (amount <= 0) {
-            player.sendMessage(Util.color("&cAmount must be positive. Type another amount or 'cancel'."));
+        if (amount < 0.01) {
+            player.sendMessage(Util.color("&cAmount must be at least $0.01. Type another amount or 'cancel'."));
             return;
         }
 

@@ -95,12 +95,14 @@ public final class BankTradeGui {
             menu.setItem(i, filler);
         }
 
+        int previewSlot = 4;
+
         if (hand == null || hand.getType().isAir()) {
             ItemStack warning = item(Material.BARRIER, "&cNo item held", List.of(
                     "&7Hold the item you want to trade in your main hand.",
                     "&7Re-open this menu once you're ready."
             ));
-            menu.setItem(13, warning);
+            menu.setItem(previewSlot, warning);
             ItemStack back = attachPage(item(Material.ARROW, "&7Choose different player", List.of("&7Return to player list")), fromPage);
             menu.setItem(18, back);
             sender.openInventory(menu);
@@ -117,7 +119,7 @@ public final class BankTradeGui {
             previewMeta.setLore(lore);
             preview.setItemMeta(previewMeta);
         }
-        menu.setItem(13, preview);
+        menu.setItem(previewSlot, preview);
 
         double[] prices = {0, 100, 500, 1000};
         int[] slots = {10, 11, 12, 14};
