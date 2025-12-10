@@ -16,6 +16,7 @@ import com.daytonjwatson.hardcore.commands.BankCommand;
 import com.daytonjwatson.hardcore.commands.AuctionHouseCommand;
 import com.daytonjwatson.hardcore.config.Config;
 import com.daytonjwatson.hardcore.config.ConfigValues;
+import com.daytonjwatson.hardcore.listeners.AdminGuiListener;
 import com.daytonjwatson.hardcore.listeners.PlayerChatListener;
 import com.daytonjwatson.hardcore.listeners.PlayerDeathListener;
 import com.daytonjwatson.hardcore.listeners.PlayerJoinListener;
@@ -151,6 +152,7 @@ public class HardcorePlugin extends JavaPlugin {
         pm.registerEvents(new PlayerQuitListener(), this);
         pm.registerEvents(new BanditTrackerListener(), this);
         pm.registerEvents(new FreezeListener(), this);
+        pm.registerEvents(new AdminGuiListener(), this);
         pm.registerEvents(new BankGuiListener(), this);
         pm.registerEvents(new AuctionHouseListener(), this);
     }

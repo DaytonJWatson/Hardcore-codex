@@ -5,7 +5,9 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
@@ -87,6 +89,50 @@ public final class AdminLogManager {
         return results;
     }
 
+    public static synchronized List<LogEntry> getRecentEntries(int limit, String actorFilter) {
+        if (config == null) {
+            return List.of();
+        }
+
+        List<String> logs = config.getStringList(LOG_NODE);
+        List<LogEntry> results = new ArrayList<>();
+
+        for (int i = logs.size() - 1; i >= 0 && results.size() < limit; i--) {
+            String entry = logs.get(i);
+            ParsedLog parsed = parse(entry);
+            if (parsed == null) {
+                continue;
+            }
+
+            if (actorFilter != null && !parsed.actor.equalsIgnoreCase(actorFilter)) {
+                continue;
+            }
+
+            results.add(new LogEntry(parsed.timestamp, parsed.status.equalsIgnoreCase("ALLOWED"), parsed.actor,
+                    parsed.command));
+        }
+
+        return results;
+    }
+
+    public static synchronized List<String> getKnownActors() {
+        if (config == null) {
+            return List.of();
+        }
+
+        List<String> logs = config.getStringList(LOG_NODE);
+        Set<String> actors = new LinkedHashSet<>();
+
+        for (int i = logs.size() - 1; i >= 0; i--) {
+            ParsedLog parsed = parse(logs.get(i));
+            if (parsed != null) {
+                actors.add(parsed.actor);
+            }
+        }
+
+        return new ArrayList<>(actors);
+    }
+
     private static ParsedLog parse(String raw) {
         try {
             int firstSpace = raw.indexOf(' ');
@@ -107,6 +153,12 @@ public final class AdminLogManager {
             return new ParsedLog(timestamp, status, actor, command);
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    public record LogEntry(LocalDateTime timestamp, boolean allowed, String actor, String command) {
+        public String readableTime() {
+            return timestamp.format(READABLE_FORMAT);
         }
     }
 
