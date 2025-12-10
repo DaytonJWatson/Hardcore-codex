@@ -17,6 +17,20 @@ public class Util {
         return ChatColor.translateAlternateColorCodes('&', string);
     }
 
+    public static String plainName(ItemStack item) {
+        if (item == null) {
+            return "";
+        }
+        String display = null;
+        if (item.hasItemMeta() && item.getItemMeta() != null) {
+            display = item.getItemMeta().getDisplayName();
+        }
+        if (display != null && !display.isBlank()) {
+            return ChatColor.stripColor(display);
+        }
+        return formatMaterialName(item.getType());
+    }
+
     private static final NamespacedKey GUIDE_KEY = new NamespacedKey(HardcorePlugin.getInstance(),
             "guide_book_received");
 
