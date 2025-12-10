@@ -1,6 +1,7 @@
 package com.daytonjwatson.hardcore.listeners;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -647,8 +648,8 @@ public class AdminGuiListener implements Listener {
     }
 
     private void openTargetFromSearch(Player player, String name, String extra) {
-        OfflinePlayer target = Bukkit.getOfflinePlayer(name);
-        if (target.getName() == null) {
+        OfflinePlayer target = findPlayerByName(name);
+        if (target == null || target.getName() == null) {
             player.sendMessage(Util.color("&cCould not find player &f" + name + "&c."));
             return;
         }
@@ -673,6 +674,23 @@ public class AdminGuiListener implements Listener {
             return null;
         }
         return Bukkit.getOfflinePlayer(UUID.fromString(id));
+    }
+
+    private OfflinePlayer findPlayerByName(String name) {
+        Player online = Bukkit.getPlayerExact(name);
+        if (online != null) {
+            return online;
+        }
+
+        OfflinePlayer cached = Bukkit.getOfflinePlayerIfCached(name);
+        if (cached != null) {
+            return cached;
+        }
+
+        return Arrays.stream(Bukkit.getOfflinePlayers())
+                .filter(player -> player.getName() != null && player.getName().equalsIgnoreCase(name))
+                .findFirst()
+                .orElse(null);
     }
 
     private Integer getInt(ItemMeta meta, String key) {
