@@ -51,8 +51,6 @@ public final class PlayerIpManager {
     public static void recordLogin(Player player, SocketAddress address) {
         if (address instanceof InetSocketAddress inetSocketAddress) {
             recordLogin(player, inetSocketAddress.getAddress());
-        } else if (address instanceof InetAddress inetAddress) {
-            recordLogin(player, inetAddress);
         }
     }
 
