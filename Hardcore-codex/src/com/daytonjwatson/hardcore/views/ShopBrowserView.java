@@ -7,7 +7,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -48,8 +47,7 @@ public final class ShopBrowserView {
             ItemMeta meta = icon.getItemMeta();
             if (meta != null) {
                 List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
-                OfflinePlayer owner = shop.getOwnerPlayer();
-                lore.add(Util.color("&7Owner: &f" + (owner.getName() == null ? "Unknown" : owner.getName())));
+                lore.add(Util.color("&7Owner: &f" + Util.resolveShopOwnerName(shop)));
                 lore.add(Util.color("&7Status: " + (shop.isOpen() ? "&aOpen" : "&cClosed")));
                 lore.add(Util.color("&7Listings: &f" + shop.getStock().size() + "&7/27"));
                 lore.add(Util.color("&8Click to view this shop."));

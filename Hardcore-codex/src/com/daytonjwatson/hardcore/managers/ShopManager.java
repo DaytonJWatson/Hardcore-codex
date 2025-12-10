@@ -172,6 +172,8 @@ public class ShopManager {
 
         for (PlayerShop shop : shops.values()) {
             if (shop.getOwner().equals(ConfigValues.serverShopOwner())) {
+                refreshServerShop(shop);
+                save();
                 return;
             }
         }
@@ -181,15 +183,25 @@ public class ShopManager {
                 Util.color(ConfigValues.serverShopDescription()),
                 new ItemStack(ConfigValues.serverShopIcon()), true);
 
+        refreshServerShop(shop);
+
+        shops.put(shop.getId(), shop);
+        save();
+    }
+
+    private void refreshServerShop(PlayerShop shop) {
+        shop.setName(Util.color(ConfigValues.serverShopName()));
+        shop.setDescription(Util.color(ConfigValues.serverShopDescription()));
+        shop.setIcon(new ItemStack(ConfigValues.serverShopIcon()));
+        shop.setOpen(true);
+        shop.clearStock();
+
         int slot = 0;
         for (ConfigValues.ServerShopItem entry : ConfigValues.serverShopItems()) {
             if (slot >= 27) break;
             ItemStack stack = new ItemStack(entry.material(), entry.amount());
             shop.setItem(slot++, new ShopItem(stack, entry.price()));
         }
-
-        shops.put(shop.getId(), shop);
-        save();
     }
 
     public void setPendingPurchase(UUID player, UUID shop) {
@@ -283,8 +295,12 @@ public class ShopManager {
 
         bank.deposit(shop.getOwner(), price, "Sale in shop: " + buyer.getName());
         buyer.getInventory().addItem(item);
-        shop.getStock().remove(slot);
-        save();
+
+        boolean serverShop = shop.getOwner().equals(ConfigValues.serverShopOwner());
+        if (!serverShop) {
+            shop.getStock().remove(slot);
+            save();
+        }
         buyer.sendMessage(Util.color("&aPurchased &f" + item.getAmount() + "x &e" + Util.plainName(item)
                 + " &afor &f" + bank.formatCurrency(price) + "&a."));
         return true;

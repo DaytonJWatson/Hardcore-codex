@@ -3,6 +3,7 @@ package com.daytonjwatson.hardcore.utils;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BookMeta;
@@ -10,6 +11,7 @@ import org.bukkit.persistence.PersistentDataType;
 
 import com.daytonjwatson.hardcore.HardcorePlugin;
 import com.daytonjwatson.hardcore.config.ConfigValues;
+import com.daytonjwatson.hardcore.shop.PlayerShop;
 
 public class Util {
 	
@@ -103,5 +105,15 @@ public class Util {
             }
         }
         return builder.toString();
+    }
+
+    public static String resolveShopOwnerName(PlayerShop shop) {
+        if (shop.getOwner().equals(ConfigValues.serverShopOwner())) {
+            return ConfigValues.serverShopOwnerName();
+        }
+
+        OfflinePlayer owner = shop.getOwnerPlayer();
+        String name = owner.getName();
+        return name == null ? "Unknown" : name;
     }
 }

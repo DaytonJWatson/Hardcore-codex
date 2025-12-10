@@ -7,7 +7,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -55,9 +54,8 @@ public final class ShopView {
             menu.setItem(slot++, display);
         }
 
-        OfflinePlayer owner = shop.getOwnerPlayer();
         ItemStack info = item(Material.BOOK, "&eShop Info", List.of(
-                "&7Owner: &f" + (owner.getName() == null ? "Unknown" : owner.getName()),
+                "&7Owner: &f" + Util.resolveShopOwnerName(shop),
                 "&7Listings: &f" + shop.getStock().size(),
                 "&7Status: " + (shop.isOpen() ? "&aOpen" : "&cClosed"),
                 "&8" + ChatColor.stripColor(shop.getDescription())

@@ -160,6 +160,10 @@ public final class ConfigValues {
         return config.getBoolean("shops.default-server-shop.enabled", true);
     }
 
+    public static String serverShopOwnerName() {
+        return config.getString("shops.default-server-shop.owner-name", "HardcoreSMP");
+    }
+
     public static String serverShopName() {
         return config.getString("shops.default-server-shop.name", "Server Shop");
     }
