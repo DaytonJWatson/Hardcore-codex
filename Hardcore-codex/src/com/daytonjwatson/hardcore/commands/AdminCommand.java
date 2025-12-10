@@ -44,16 +44,15 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        boolean bootstrapAllowed = !AdminManager.hasAdmins()
-                && (sender.hasPermission("hardcore.admin") || sender.isOp() || sender instanceof ConsoleCommandSender);
-        boolean isAdmin = AdminManager.isAdmin(sender);
+        boolean hasAdminAccess = hasAdminAccess(sender);
+        boolean bootstrapAllowed = !AdminManager.hasAdmins() && hasAdminAccess;
+        boolean canUseAdminTools = bootstrapAllowed || hasAdminAccess;
         boolean isOp = sender.isOp() || sender instanceof ConsoleCommandSender;
-        boolean canUseAdminTools = bootstrapAllowed || isAdmin;
 
         String fullCommand = "/" + label + (args.length > 0 ? " " + String.join(" ", args) : "");
 
         if (args.length == 1 && args[0].equalsIgnoreCase("gui")) {
-            if (!canUseAdminTools && !isOp) {
+            if (!canUseAdminTools) {
                 AdminLogManager.log(sender, fullCommand, false);
                 sender.sendMessage(Util.color("&cYou must be a Hardcore admin to use this command."));
                 return true;
@@ -74,7 +73,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 AdminGui.openMain(player);
                 return true;
             }
-            if (!canUseAdminTools && !isOp) {
+            if (!canUseAdminTools) {
                 AdminLogManager.log(sender, fullCommand, false);
                 sender.sendMessage(Util.color("&cYou must be a Hardcore admin to use this command."));
                 return true;
@@ -85,7 +84,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args[0].equalsIgnoreCase("help")) {
-            if (!canUseAdminTools && !isOp) {
+            if (!canUseAdminTools) {
                 AdminLogManager.log(sender, fullCommand, false);
                 sender.sendMessage(Util.color("&cYou must be a Hardcore admin to use this command."));
                 return true;
@@ -1105,5 +1104,17 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         UUID offlineUuid = UUID
                 .nameUUIDFromBytes(("OfflinePlayer:" + name.toLowerCase(Locale.ROOT)).getBytes(StandardCharsets.UTF_8));
         return Bukkit.getOfflinePlayer(offlineUuid);
+    }
+
+    private boolean hasAdminAccess(CommandSender sender) {
+        if (sender instanceof ConsoleCommandSender) {
+            return true;
+        }
+
+        if (sender instanceof Player player) {
+            return player.hasPermission("hardcore.admin") || player.isOp() || AdminManager.isAdmin(player);
+        }
+
+        return false;
     }
 }
