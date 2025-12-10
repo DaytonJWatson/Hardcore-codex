@@ -31,17 +31,17 @@ public final class ShopEditorView {
             menu.setItem(i, filler);
         }
 
-        menu.setItem(10, action(Material.NAME_TAG, "&eRename Shop",
+        menu.setItem(11, action(Material.NAME_TAG, "&eRename Shop",
                 List.of("&7Current: &f" + shop.getName(), "&8Click to enter a new name."), "rename", shop));
-        menu.setItem(11, action(Material.WRITABLE_BOOK, "&eEdit Description",
+        menu.setItem(12, action(Material.WRITABLE_BOOK, "&eEdit Description",
                 List.of("&7Current:", "&f" + shop.getDescription(), "&8Click to type a new description."), "description",
                 shop));
-        menu.setItem(12, action(Material.ITEM_FRAME, "&eSet Display Item",
+        menu.setItem(13, action(Material.ITEM_FRAME, "&eSet Display Item",
                 List.of("&7Use the item in your hand.", "&8Click to update the icon."), "icon", shop));
-        menu.setItem(13, action(shop.isOpen() ? Material.LIME_DYE : Material.GRAY_DYE,
+        menu.setItem(14, action(shop.isOpen() ? Material.LIME_DYE : Material.GRAY_DYE,
                 shop.isOpen() ? "&aOpen Shop" : "&cClosed Shop",
                 List.of("&7Toggle whether players can buy."), "toggle", shop));
-        menu.setItem(14, action(Material.CHEST, "&aManage Stock",
+        menu.setItem(15, action(Material.CHEST, "&aManage Stock",
                 List.of("&7Add or remove shop listings."), "stock", shop));
 
         ItemStack back = item(Material.BARRIER, "&cBack", List.of("&7Return to your shops."));

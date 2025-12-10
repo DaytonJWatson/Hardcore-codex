@@ -15,7 +15,6 @@ import org.bukkit.persistence.PersistentDataType;
 
 import com.daytonjwatson.hardcore.HardcorePlugin;
 import com.daytonjwatson.hardcore.managers.BankManager;
-import com.daytonjwatson.hardcore.managers.ShopManager;
 import com.daytonjwatson.hardcore.shop.PlayerShop;
 import com.daytonjwatson.hardcore.shop.ShopItem;
 import com.daytonjwatson.hardcore.utils.Util;
