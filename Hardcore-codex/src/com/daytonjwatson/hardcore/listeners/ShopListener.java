@@ -223,6 +223,14 @@ public class ShopListener implements Listener {
                 player.sendMessage(Util.color(shop.isOpen() ? "&aShop opened." : "&cShop closed."));
             }
             case "stock" -> ShopStockView.open(player, shop);
+            case "notifications" -> {
+                shop.setNotificationsEnabled(!shop.isNotificationsEnabled());
+                ShopManager.get().save();
+                ShopEditorView.open(player, shop);
+                player.sendMessage(Util.color(shop.isNotificationsEnabled()
+                        ? "&aShop notifications enabled."
+                        : "&cShop notifications disabled."));
+            }
             case "delete" -> {
                 shop.getStock().values().forEach(item -> {
                     Map<Integer, ItemStack> overflow = player.getInventory().addItem(item.getItem().clone());
