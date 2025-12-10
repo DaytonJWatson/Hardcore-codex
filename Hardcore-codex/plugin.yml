@@ -34,6 +34,9 @@ commands:
     description: Opens the Hardcore auction house.
     usage: /auction [page|add]
     aliases: [ah]
+  shops:
+    description: Opens the player shop browser.
+    usage: /shops [manage]
   jobs:
     description: Opens the random jobs board.
     usage: /jobs [accept|abandon|progress|offers|reroll]

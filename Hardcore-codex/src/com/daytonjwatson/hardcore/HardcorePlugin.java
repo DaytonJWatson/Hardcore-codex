@@ -40,6 +40,9 @@ import com.daytonjwatson.hardcore.listeners.AuctionHouseListener;
 import com.daytonjwatson.hardcore.managers.PlayerIpManager;
 import com.daytonjwatson.hardcore.jobs.JobsManager;
 import com.daytonjwatson.hardcore.commands.JobsCommand;
+import com.daytonjwatson.hardcore.managers.ShopManager;
+import com.daytonjwatson.hardcore.listeners.ShopListener;
+import com.daytonjwatson.hardcore.commands.ShopCommand;
 
 public class HardcorePlugin extends JavaPlugin {
 
@@ -65,6 +68,7 @@ public class HardcorePlugin extends JavaPlugin {
         AuctionHouseManager.init(this);
         PlayerIpManager.init(this);
         JobsManager.init(this);
+        ShopManager.init(this);
 
         // Initialize stats system (loads stats.yml, etc.)
         StatsManager.init(this);
@@ -126,6 +130,10 @@ public class HardcorePlugin extends JavaPlugin {
         registerCommand("auction", auctionCommand);
         registerTabCompleter("auction", auctionCommand);
 
+        ShopCommand shopCommand = new ShopCommand();
+        registerCommand("shops", shopCommand);
+        registerTabCompleter("shops", shopCommand);
+
         if (getCommand("stats") != null) {
             StatsCommand statsCommand = new StatsCommand();
             getCommand("stats").setExecutor(statsCommand);
@@ -165,5 +173,6 @@ public class HardcorePlugin extends JavaPlugin {
         pm.registerEvents(new BankGuiListener(), this);
         pm.registerEvents(new AuctionHouseListener(), this);
         pm.registerEvents(new JobsListener(), this);
+        pm.registerEvents(new ShopListener(), this);
     }
 }
