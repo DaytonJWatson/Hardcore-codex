@@ -18,15 +18,18 @@ public class PlayerShop {
     private String description;
     private ItemStack icon;
     private boolean open;
+    private boolean notificationsEnabled;
     private final Map<Integer, ShopItem> stock = new LinkedHashMap<>();
 
-    public PlayerShop(UUID id, UUID owner, String name, String description, ItemStack icon, boolean open) {
+    public PlayerShop(UUID id, UUID owner, String name, String description, ItemStack icon, boolean open,
+            boolean notificationsEnabled) {
         this.id = id;
         this.owner = owner;
         this.name = name;
         this.description = description;
         this.icon = icon == null ? new ItemStack(Material.CHEST) : icon.clone();
         this.open = open;
+        this.notificationsEnabled = notificationsEnabled;
     }
 
     public UUID getId() {
@@ -69,6 +72,14 @@ public class PlayerShop {
 
     public void setOpen(boolean open) {
         this.open = open;
+    }
+
+    public boolean isNotificationsEnabled() {
+        return notificationsEnabled;
+    }
+
+    public void setNotificationsEnabled(boolean notificationsEnabled) {
+        this.notificationsEnabled = notificationsEnabled;
     }
 
     public Map<Integer, ShopItem> getStock() {

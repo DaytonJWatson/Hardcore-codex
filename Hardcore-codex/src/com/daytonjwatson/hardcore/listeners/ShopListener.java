@@ -11,12 +11,14 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
+import com.daytonjwatson.hardcore.HardcorePlugin;
 import com.daytonjwatson.hardcore.managers.ShopManager;
 import com.daytonjwatson.hardcore.shop.PlayerShop;
 import com.daytonjwatson.hardcore.utils.Util;
@@ -54,6 +56,31 @@ public class ShopListener implements Listener {
         if (ShopStockView.isStock(title)) {
             handleStock(event, player);
         }
+    }
+
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        if (!(event.getPlayer() instanceof Player player)) {
+            return;
+        }
+        String title = event.getView().getTitle();
+        if (!ShopView.isShopView(title)) {
+            return;
+        }
+
+        UUID viewerId = player.getUniqueId();
+        UUID shopId = ShopManager.get().consumeViewingShop(viewerId);
+        if (shopId == null) {
+            return;
+        }
+
+        HardcorePlugin plugin = HardcorePlugin.getInstance();
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            if (ShopManager.get().isViewingShop(viewerId, shopId)) {
+                return;
+            }
+            ShopManager.get().dispatchPurchaseSummary(player, shopId);
+        }, 2L);
     }
 
     private void handleBrowser(InventoryClickEvent event, Player player) {
@@ -223,6 +250,14 @@ public class ShopListener implements Listener {
                 player.sendMessage(Util.color(shop.isOpen() ? "&aShop opened." : "&cShop closed."));
             }
             case "stock" -> ShopStockView.open(player, shop);
+            case "notifications" -> {
+                shop.setNotificationsEnabled(!shop.isNotificationsEnabled());
+                ShopManager.get().save();
+                ShopEditorView.open(player, shop);
+                player.sendMessage(Util.color(shop.isNotificationsEnabled()
+                        ? "&aShop notifications enabled."
+                        : "&cShop notifications disabled."));
+            }
             case "delete" -> {
                 shop.getStock().values().forEach(item -> {
                     Map<Integer, ItemStack> overflow = player.getInventory().addItem(item.getItem().clone());
