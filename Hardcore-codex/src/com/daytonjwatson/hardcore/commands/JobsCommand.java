@@ -12,6 +12,7 @@ import org.bukkit.entity.Player;
 
 import com.daytonjwatson.hardcore.jobs.ActiveJob;
 import com.daytonjwatson.hardcore.jobs.JobDefinition;
+import com.daytonjwatson.hardcore.jobs.JobOffer;
 import com.daytonjwatson.hardcore.jobs.JobsManager;
 import com.daytonjwatson.hardcore.utils.MessageStyler;
 import com.daytonjwatson.hardcore.utils.Util;
@@ -83,7 +84,7 @@ public class JobsCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-        List<JobDefinition> offers = jobs.getOfferedJobs(player.getUniqueId());
+        List<JobOffer> offers = jobs.getOfferedJobs(player.getUniqueId());
         if (offers.size() < choice) {
             player.sendMessage(Util.color("&cThat job offer is no longer available. Reroll and try again."));
             return;
@@ -102,7 +103,7 @@ public class JobsCommand implements CommandExecutor, TabCompleter {
         JobDefinition def = active.getJob();
         MessageStyler.sendPanel(player, "Active Job",
                 "&f" + def.getDisplayName(),
-                "&7Progress: &f" + formatNumber(active.getProgress()) + "/" + formatNumber(def.getAmount()),
+                "&7Progress: &f" + formatNumber(active.getProgress()) + "/" + formatNumber(active.getGoalAmount()),
                 "&7Target: &f" + def.getTarget(),
                 "&7Reward: &a" + def.getReward());
     }

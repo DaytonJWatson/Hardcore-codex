@@ -3,21 +3,23 @@ jobs:
     name: "&2Zombie Hunter"
     type: KILL_MOB
     target: ZOMBIE
-    amount: 15
+    amount-min: 10
+    amount-max: 25
     difficulty: 1.0
     reward: 250.0
     description:
       - "Cull the undead threat."
-      - "Slay 15 zombies."
+      - "Slay the undead horde."
   spider_silk:
     name: "&dSilk Collector"
     type: COLLECT_ITEM
     target: STRING
-    amount: 48
+    amount-min: 32
+    amount-max: 64
     difficulty: 1.2
     reward: 325.0
     description:
-      - "Gather string for the fletcher."
+      - "Gather string for the fletcher's stockpile."
   ender_eyes:
     name: "&5Ender Research"
     type: COLLECT_ITEM

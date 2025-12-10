@@ -12,6 +12,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import com.daytonjwatson.hardcore.jobs.ActiveJob;
 import com.daytonjwatson.hardcore.jobs.JobDefinition;
+import com.daytonjwatson.hardcore.jobs.JobOffer;
 import com.daytonjwatson.hardcore.jobs.JobType;
 import com.daytonjwatson.hardcore.jobs.JobsManager;
 import com.daytonjwatson.hardcore.utils.Util;
@@ -34,11 +35,11 @@ public final class JobsGui {
             menu.setItem(slot, filler);
         }
 
-        List<JobDefinition> offers = jobs.getOfferedJobs(player.getUniqueId());
+        List<JobOffer> offers = jobs.getOfferedJobs(player.getUniqueId());
         int[] slots = {11, 13, 15};
         for (int i = 0; i < offers.size() && i < slots.length; i++) {
-            JobDefinition job = offers.get(i);
-            menu.setItem(slots[i], summarizeJob(job, i + 1));
+            JobOffer offer = offers.get(i);
+            menu.setItem(slots[i], summarizeJob(offer, i + 1));
         }
 
         if (active != null) {
@@ -69,13 +70,14 @@ public final class JobsGui {
         player.openInventory(menu);
     }
 
-    private static ItemStack summarizeJob(JobDefinition definition, int optionNumber) {
+    private static ItemStack summarizeJob(JobOffer offer, int optionNumber) {
+        JobDefinition definition = offer.getDefinition();
         List<String> lore = new ArrayList<>();
         for (String line : definition.getDescription()) {
             lore.add("&7" + line);
         }
         lore.add(" ");
-        lore.add("&fGoal: &e" + formatNumber(definition.getAmount()) + "x &f" + definition.getTarget());
+        lore.add("&fGoal: &e" + formatNumber(offer.getAmount()) + "x &f" + definition.getTarget());
         lore.add("&fType: &6" + definition.getType().name().replace('_', ' '));
         lore.add("&fDifficulty: &c" + definition.getDifficulty());
         lore.add("&fReward: &a" + definition.getReward());
@@ -97,7 +99,7 @@ public final class JobsGui {
     private static ItemStack activeJobItem(ActiveJob active) {
         JobDefinition job = active.getJob();
         List<String> lore = new ArrayList<>();
-        lore.add("&7Progress: &f" + formatNumber(active.getProgress()) + "/" + formatNumber(job.getAmount()));
+        lore.add("&7Progress: &f" + formatNumber(active.getProgress()) + "/" + formatNumber(active.getGoalAmount()));
         lore.add("&7Target: &f" + job.getTarget());
         lore.add("&7Reward: &a" + job.getReward());
         return item(Material.NETHER_STAR, "&bActive: " + job.getDisplayName(), lore);

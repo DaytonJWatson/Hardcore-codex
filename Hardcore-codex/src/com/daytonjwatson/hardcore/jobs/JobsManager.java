@@ -42,7 +42,7 @@ public class JobsManager {
 
     private final Map<String, JobDefinition> jobPool = new LinkedHashMap<>();
     private final Map<UUID, ActiveJob> activeJobs = new HashMap<>();
-    private final Map<UUID, List<JobDefinition>> offeredJobs = new HashMap<>();
+    private final Map<UUID, List<JobOffer>> offeredJobs = new HashMap<>();
     private final Random random = new Random();
 
     private JobsManager(JavaPlugin plugin) {
@@ -71,26 +71,27 @@ public class JobsManager {
         return List.copyOf(jobPool.values());
     }
 
-    public List<JobDefinition> getOfferedJobs(UUID playerId) {
-        return offeredJobs.computeIfAbsent(playerId, ignored -> pickRandomJobs(3));
+    public List<JobOffer> getOfferedJobs(UUID playerId) {
+        return offeredJobs.computeIfAbsent(playerId, ignored -> pickRandomOffers(3));
     }
 
     public void rerollOffers(UUID playerId) {
-        offeredJobs.put(playerId, pickRandomJobs(3));
+        offeredJobs.put(playerId, pickRandomOffers(3));
     }
 
     public ActiveJob getActiveJob(UUID uuid) {
         return activeJobs.get(uuid);
     }
 
-    public void assignJob(Player player, JobDefinition definition) {
+    public void assignJob(Player player, JobOffer offer) {
+        JobDefinition definition = offer.getDefinition();
         Location start = definition.getType() == JobType.TRAVEL_DISTANCE ? player.getLocation().clone() : null;
-        ActiveJob active = new ActiveJob(definition, 0, start);
+        ActiveJob active = new ActiveJob(definition, offer.getAmount(), 0, start);
         activeJobs.put(player.getUniqueId(), active);
         offeredJobs.remove(player.getUniqueId());
         saveActiveJobs();
         player.sendMessage(Util.color("&aAccepted job '&f" + definition.getDisplayName() + "&a'. Good luck!"));
-        player.sendMessage(Util.color("&7Goal: &f" + definition.getAmount() + "x " + definition.getTarget() + " (&e"
+        player.sendMessage(Util.color("&7Goal: &f" + offer.getAmount() + "x " + definition.getTarget() + " (&e"
                 + definition.getType().name().replace('_', ' ') + "&7)."));
     }
 
@@ -151,7 +152,7 @@ public class JobsManager {
             case TRAVEL_BIOME -> {
                 Biome biome = to.getBlock().getBiome();
                 if (job.matchesBiome(biome)) {
-                    setProgressIfHigher(player, active, job.getAmount());
+                    setProgressIfHigher(player, active, active.getGoalAmount());
                 }
             }
             case TRAVEL_DISTANCE -> {
@@ -186,13 +187,13 @@ public class JobsManager {
             activeJobs.remove(player.getUniqueId());
         } else {
             player.sendMessage(Util.color("&6Job Progress &8» &7" + formatNumber(updated) + "/" +
-                    formatNumber(job.getAmount()) + " completed."));
+                    formatNumber(active.getGoalAmount()) + " completed."));
         }
         saveActiveJobs();
     }
 
     private void setProgressIfHigher(Player player, ActiveJob active, double newProgress) {
-        double clamped = Math.min(active.getJob().getAmount(), newProgress);
+        double clamped = Math.min(active.getGoalAmount(), newProgress);
         if (clamped <= active.getProgress()) {
             return;
         }
@@ -204,7 +205,7 @@ public class JobsManager {
             activeJobs.remove(player.getUniqueId());
         } else {
             player.sendMessage(Util.color("&6Job Progress &8» &7" + formatNumber(clamped) + "/" +
-                    formatNumber(job.getAmount()) + " completed."));
+                    formatNumber(active.getGoalAmount()) + " completed."));
         }
         saveActiveJobs();
     }
@@ -267,7 +268,8 @@ public class JobsManager {
             }
 
             String target = node.getString("target", "").toUpperCase(Locale.ROOT);
-            int amount = Math.max(1, node.getInt("amount", 1));
+            int minAmount = Math.max(1, node.getInt("amount-min", node.getInt("amount", 1)));
+            int maxAmount = Math.max(minAmount, node.getInt("amount-max", minAmount));
             double difficulty = Math.max(0.1, node.getDouble("difficulty", 1.0));
             double reward = node.getDouble("reward", difficulty * DEFAULT_REWARD_MULTIPLIER);
             String name = node.getString("name", id);
@@ -279,7 +281,8 @@ public class JobsManager {
                 continue;
             }
 
-            JobDefinition definition = new JobDefinition(id, name, type, target, amount, difficulty, reward, description);
+            JobDefinition definition = new JobDefinition(id, name, type, target, minAmount, maxAmount, difficulty, reward,
+                    description);
             jobPool.put(id, definition);
         }
     }
@@ -294,10 +297,14 @@ public class JobsManager {
                 UUID uuid = UUID.fromString(key);
                 String jobId = playerConfig.getString("players." + key + ".job");
                 double progress = playerConfig.getDouble("players." + key + ".progress", 0);
+                int goal = playerConfig.getInt("players." + key + ".goal", -1);
                 Location start = readLocation(playerConfig, "players." + key + ".start");
                 JobDefinition definition = jobPool.get(jobId);
                 if (definition != null) {
-                    activeJobs.put(uuid, new ActiveJob(definition, progress, start));
+                    if (goal < 0) {
+                        goal = Math.max(definition.getMinAmount(), definition.getMaxAmount());
+                    }
+                    activeJobs.put(uuid, new ActiveJob(definition, goal, progress, start));
                 }
             } catch (IllegalArgumentException ignored) {
             }
@@ -308,9 +315,11 @@ public class JobsManager {
         playerConfig.set("players", null);
         for (Map.Entry<UUID, ActiveJob> entry : activeJobs.entrySet()) {
             String base = "players." + entry.getKey() + ".";
-            playerConfig.set(base + "job", entry.getValue().getJob().getId());
-            playerConfig.set(base + "progress", entry.getValue().getProgress());
-            writeLocation(entry.getValue().getStartLocation(), base + "start");
+            ActiveJob job = entry.getValue();
+            playerConfig.set(base + "job", job.getJob().getId());
+            playerConfig.set(base + "progress", job.getProgress());
+            playerConfig.set(base + "goal", job.getGoalAmount());
+            writeLocation(job.getStartLocation(), base + "start");
         }
         try {
             playerConfig.save(playerDataFile);
@@ -319,13 +328,14 @@ public class JobsManager {
         }
     }
 
-    private List<JobDefinition> pickRandomJobs(int amount) {
+    private List<JobOffer> pickRandomOffers(int amount) {
         if (jobPool.isEmpty()) {
             return Collections.emptyList();
         }
         List<JobDefinition> pool = new ArrayList<>(jobPool.values());
         Collections.shuffle(pool, random);
-        return pool.stream().limit(amount).collect(Collectors.toList());
+        return pool.stream().limit(amount).map(def -> new JobOffer(def, def.rollAmount(random)))
+                .collect(Collectors.toList());
     }
 
     private boolean isValidTarget(JobType type, String target) {
@@ -364,12 +374,13 @@ public class JobsManager {
     }
 
     public void backupOffers(Player player) {
-        List<JobDefinition> offers = getOfferedJobs(player.getUniqueId());
+        List<JobOffer> offers = getOfferedJobs(player.getUniqueId());
         List<String> lines = new ArrayList<>();
         for (int i = 0; i < offers.size(); i++) {
-            JobDefinition job = offers.get(i);
+            JobOffer offer = offers.get(i);
+            JobDefinition job = offer.getDefinition();
             lines.add(MessageStyler.bulletLine("Option " + (i + 1), org.bukkit.ChatColor.GOLD,
-                    job.getDisplayName() + " &7(" + job.getTarget() + " x" + job.getAmount() + ")"));
+                    job.getDisplayName() + " &7(" + job.getTarget() + " x" + offer.getAmount() + ")"));
         }
         MessageStyler.sendPanel(player, "Job Offers", lines.toArray(new String[0]));
     }

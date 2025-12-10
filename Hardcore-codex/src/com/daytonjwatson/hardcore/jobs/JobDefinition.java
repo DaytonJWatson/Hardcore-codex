@@ -10,18 +10,20 @@ public class JobDefinition {
     private final String displayName;
     private final JobType type;
     private final String target;
-    private final int amount;
+    private final int minAmount;
+    private final int maxAmount;
     private final double difficulty;
     private final double reward;
     private final String[] description;
 
-    public JobDefinition(String id, String displayName, JobType type, String target, int amount, double difficulty,
+    public JobDefinition(String id, String displayName, JobType type, String target, int minAmount, int maxAmount, double difficulty,
                          double reward, String[] description) {
         this.id = id;
         this.displayName = displayName;
         this.type = type;
         this.target = target;
-        this.amount = amount;
+        this.minAmount = minAmount;
+        this.maxAmount = maxAmount;
         this.difficulty = difficulty;
         this.reward = reward;
         this.description = description;
@@ -43,8 +45,19 @@ public class JobDefinition {
         return target;
     }
 
-    public int getAmount() {
-        return amount;
+    public int getMinAmount() {
+        return minAmount;
+    }
+
+    public int getMaxAmount() {
+        return maxAmount;
+    }
+
+    public int rollAmount(java.util.Random random) {
+        if (maxAmount <= minAmount) {
+            return minAmount;
+        }
+        return random.nextInt((maxAmount - minAmount) + 1) + minAmount;
     }
 
     public double getDifficulty() {
