@@ -74,6 +74,28 @@ economy:
   # Prefix shown when displaying currency (supports color codes).
   currency-symbol: "$"
 
+shops:
+  creation-cost: 5000.0
+  max-per-player: 5
+  default-server-shop:
+    enabled: true
+    name: "Server Shop"
+    description: "Starter items to begin your adventure."
+    icon: CHEST
+    items:
+      starter-wood:
+        material: OAK_PLANKS
+        amount: 32
+        price: 75.0
+      starter-tools:
+        material: IRON_PICKAXE
+        amount: 1
+        price: 400.0
+      starter-food:
+        material: BREAD
+        amount: 16
+        price: 120.0
+
 ###############################
 # Bandits & Heroes system     #
 ###############################
