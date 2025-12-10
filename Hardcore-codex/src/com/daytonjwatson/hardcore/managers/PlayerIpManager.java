@@ -46,13 +46,8 @@ public final class PlayerIpManager {
         }
     }
 
-    public static void recordLogin(Player player) {
-        if (config == null) {
-            return;
-        }
-
-        InetSocketAddress address = player.getAddress();
-        if (address == null || address.getAddress() == null) {
+    public static void recordLogin(Player player, InetSocketAddress address) {
+        if (config == null || address == null || address.getAddress() == null) {
             return;
         }
 
