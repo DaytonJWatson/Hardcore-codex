@@ -14,8 +14,7 @@ public class PlayerLoginListener implements Listener {
 
     @EventHandler
     public void onPlayerLogin(PlayerLoginEvent event) {
-        PlayerIpManager.recordLogin(event.getPlayer(), event.getAddress() == null ? null
-                : new InetSocketAddress(event.getAddress(), event.getPlayer().getPort()));
+        PlayerIpManager.recordLogin(event.getPlayer(), event.getAddress());
 
         if (!BanManager.isBanned(event.getPlayer().getUniqueId())) {
             return;
