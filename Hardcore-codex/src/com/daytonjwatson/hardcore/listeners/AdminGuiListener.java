@@ -42,7 +42,8 @@ public class AdminGuiListener implements Listener {
         PLAYER_SEARCH,
         LIST_PLAYER_AUCTIONS,
         ADD_ADMIN,
-        REMOVE_ADMIN
+        REMOVE_ADMIN,
+        LOG_FILTER
     }
 
     private record PendingChat(PendingType type, OfflinePlayer target, String extra) {
