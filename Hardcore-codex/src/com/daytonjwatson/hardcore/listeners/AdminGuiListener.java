@@ -79,12 +79,6 @@ public class AdminGuiListener implements Listener {
             return false;
         }
 
-        if (!hasAdminAccess(player)) {
-            player.sendMessage(Util.color("&cYou must be a Hardcore admin to use this menu."));
-            player.closeInventory();
-            return true;
-        }
-
         if (!title.equals(AdminGui.MAIN_TITLE) && !title.startsWith(AdminGui.PLAYER_LIST_TITLE)
                 && !title.contains("Manage") && !title.equals(Util.color("&4&lAdmin &8| &7Choose Duration"))
                 && !title.equals(Util.color("&4&lAdmin &8| &7Choose Reason"))
@@ -93,6 +87,12 @@ public class AdminGuiListener implements Listener {
                 && !title.equals(Util.color("&4&lAdmin &8| &7Auction Tools"))
                 && !title.equals(AdminGui.LOG_TITLE)) {
             return false;
+        }
+
+        if (!hasAdminAccess(player)) {
+            player.sendMessage(Util.color("&cYou must be a Hardcore admin to use this menu."));
+            player.closeInventory();
+            return true;
         }
 
         ItemStack current = event.getCurrentItem();
