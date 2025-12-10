@@ -1,7 +1,8 @@
 package com.daytonjwatson.hardcore.commands;
 
-import java.time.Duration;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -28,6 +29,7 @@ import com.daytonjwatson.hardcore.managers.BanManager;
 import com.daytonjwatson.hardcore.managers.BankManager;
 import com.daytonjwatson.hardcore.managers.FreezeManager;
 import com.daytonjwatson.hardcore.managers.MuteManager;
+import com.daytonjwatson.hardcore.managers.PlayerIpManager;
 import com.daytonjwatson.hardcore.auction.AuctionListing;
 import com.daytonjwatson.hardcore.utils.MessageStyler;
 import com.daytonjwatson.hardcore.utils.Util;
@@ -470,41 +472,70 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-        Player target = Bukkit.getPlayer(args[1]);
-        if (target == null) {
-            sender.sendMessage(Util.color("&cPlayer must be online to view connection info."));
+        Player onlineTarget = Bukkit.getPlayer(args[1]);
+        OfflinePlayer offlineTarget = onlineTarget != null ? onlineTarget : PlayerIpManager.resolveByName(args[1]);
+        if (offlineTarget == null) {
+            offlineTarget = Bukkit.getOfflinePlayer(args[1]);
+        }
+
+        if (offlineTarget == null) {
+            sender.sendMessage(Util.color("&cPlayer not found."));
             return;
         }
 
-        String ip = target.getAddress() != null && target.getAddress().getAddress() != null
-                ? target.getAddress().getAddress().getHostAddress()
-                : "Unknown";
+        UUID uuid = offlineTarget.getUniqueId();
+        String storedName = offlineTarget.getName() != null ? offlineTarget.getName()
+                : PlayerIpManager.getStoredName(uuid);
+        if (storedName == null && PlayerIpManager.getLastIp(uuid) == null) {
+            sender.sendMessage(Util.color("&cPlayer not found."));
+            return;
+        }
+
+        String currentIp = onlineTarget != null && onlineTarget.getAddress() != null
+                && onlineTarget.getAddress().getAddress() != null
+                        ? onlineTarget.getAddress().getAddress().getHostAddress()
+                        : "Offline";
+        String lastIp = PlayerIpManager.getLastIp(uuid);
+        List<String> ipHistory = PlayerIpManager.getIpHistory(uuid);
+        List<String> alts = PlayerIpManager.getAltsFor(uuid);
 
         List<String> lines = new ArrayList<>();
-        lines.add(MessageStyler.bulletLine("Name", org.bukkit.ChatColor.GOLD, target.getName()));
-        lines.add(MessageStyler.bulletLine("UUID", org.bukkit.ChatColor.AQUA, target.getUniqueId().toString()));
-        lines.add(MessageStyler.bulletLine("IP", org.bukkit.ChatColor.YELLOW, ip));
-        lines.add(MessageStyler.bulletLine("World", org.bukkit.ChatColor.GREEN, target.getWorld().getName()));
-        lines.add(MessageStyler.bulletLine("Coords", org.bukkit.ChatColor.GREEN,
-                String.format("%.1f, %.1f, %.1f", target.getLocation().getX(), target.getLocation().getY(),
-                        target.getLocation().getZ())));
-        AttributeInstance maxHealthAttr = target.getAttribute(Attribute.MAX_HEALTH);
-        double maxHealth = maxHealthAttr != null ? maxHealthAttr.getValue() : target.getHealth();
-        lines.add(MessageStyler.bulletLine("Health", org.bukkit.ChatColor.RED,
-                String.format("%.1f / %.1f", target.getHealth(), maxHealth)));
-        lines.add(MessageStyler.bulletLine("Food", org.bukkit.ChatColor.GOLD,
-                target.getFoodLevel() + " (sat: " + String.format("%.1f", target.getSaturation()) + ")"));
-        lines.add(MessageStyler.bulletLine("Gamemode", org.bukkit.ChatColor.AQUA, target.getGameMode().name()));
-        lines.add(MessageStyler.bulletLine("Flight", org.bukkit.ChatColor.LIGHT_PURPLE,
-                target.getAllowFlight() ? "Allowed" : "Not allowed"));
-        lines.add(MessageStyler.bulletLine("Admin", org.bukkit.ChatColor.YELLOW,
-                AdminManager.isAdmin(target) ? "Yes" : "No"));
-        lines.add(MessageStyler.bulletLine("Muted", org.bukkit.ChatColor.YELLOW,
-                MuteManager.isMuted(target.getUniqueId()) ? "Yes" : "No"));
-        lines.add(MessageStyler.bulletLine("Banned", org.bukkit.ChatColor.YELLOW,
-                BanManager.isBanned(target.getUniqueId()) ? "Yes" : "No"));
+        lines.add(MessageStyler.bulletLine("Name", org.bukkit.ChatColor.GOLD,
+                storedName != null ? storedName : offlineTarget.getUniqueId().toString()));
+        lines.add(MessageStyler.bulletLine("UUID", org.bukkit.ChatColor.AQUA, uuid.toString()));
+        lines.add(MessageStyler.bulletLine("Current IP", org.bukkit.ChatColor.YELLOW, currentIp));
+        lines.add(MessageStyler.bulletLine("Last IP", org.bukkit.ChatColor.YELLOW, lastIp != null ? lastIp : "Unknown"));
+        lines.add(MessageStyler.bulletLine("Seen", org.bukkit.ChatColor.GREEN, formatLastSeen(PlayerIpManager.getLastSeen(uuid))));
+        lines.add(MessageStyler.bulletLine("IP History", org.bukkit.ChatColor.GREEN,
+                ipHistory.isEmpty() ? "None" : String.join(", ", ipHistory)));
 
-        MessageStyler.sendPanel(sender, target.getName() + " info", lines.toArray(new String[0]));
+        if (onlineTarget != null) {
+            lines.add(MessageStyler.bulletLine("World", org.bukkit.ChatColor.GREEN, onlineTarget.getWorld().getName()));
+            lines.add(MessageStyler.bulletLine("Coords", org.bukkit.ChatColor.GREEN,
+                    String.format("%.1f, %.1f, %.1f", onlineTarget.getLocation().getX(),
+                            onlineTarget.getLocation().getY(), onlineTarget.getLocation().getZ())));
+            AttributeInstance maxHealthAttr = onlineTarget.getAttribute(Attribute.MAX_HEALTH);
+            double maxHealth = maxHealthAttr != null ? maxHealthAttr.getValue() : onlineTarget.getHealth();
+            lines.add(MessageStyler.bulletLine("Health", org.bukkit.ChatColor.RED,
+                    String.format("%.1f / %.1f", onlineTarget.getHealth(), maxHealth)));
+            lines.add(MessageStyler.bulletLine("Food", org.bukkit.ChatColor.GOLD,
+                    onlineTarget.getFoodLevel() + " (sat: " + String.format("%.1f", onlineTarget.getSaturation())
+                            + ")"));
+            lines.add(MessageStyler.bulletLine("Gamemode", org.bukkit.ChatColor.AQUA, onlineTarget.getGameMode().name()));
+            lines.add(MessageStyler.bulletLine("Flight", org.bukkit.ChatColor.LIGHT_PURPLE,
+                    onlineTarget.getAllowFlight() ? "Allowed" : "Not allowed"));
+        }
+
+        lines.add(MessageStyler.bulletLine("Admin", org.bukkit.ChatColor.YELLOW,
+                AdminManager.isAdmin(uuid) ? "Yes" : "No"));
+        lines.add(MessageStyler.bulletLine("Muted", org.bukkit.ChatColor.YELLOW,
+                MuteManager.isMuted(uuid) ? "Yes" : "No"));
+        lines.add(MessageStyler.bulletLine("Banned", org.bukkit.ChatColor.YELLOW,
+                BanManager.isBanned(uuid) ? "Yes" : "No"));
+        lines.add(MessageStyler.bulletLine("Alts", org.bukkit.ChatColor.RED, alts.isEmpty() ? "None" : String.join(", ", alts)));
+
+        MessageStyler.sendPanel(sender, (storedName != null ? storedName : uuid.toString()) + " info",
+                lines.toArray(new String[0]));
     }
 
     private void handleInvSee(CommandSender sender, String[] args) {
@@ -909,7 +940,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 case "tphere":
                 case "heal":
                 case "feed":
-                    return filterStartingWith(onlinePlayerNames(), args[1]);
+                    return filterStartingWith(allKnownPlayerNames(), args[1]);
                 case "auction":
                     return filterStartingWith(Arrays.asList("list", "cancel"), args[1]);
                 case "bank":
@@ -980,11 +1011,30 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 names.add(player.getName());
             }
         }
+
+        for (String name : PlayerIpManager.getStoredNames()) {
+            if (!names.contains(name)) {
+                names.add(name);
+            }
+        }
         return names;
     }
 
     private List<String> suggestDurations() {
         return Arrays.asList("10m", "30m", "1h", "12h", "1d", "7d", "30d");
+    }
+
+    private String formatLastSeen(long lastSeenMillis) {
+        if (lastSeenMillis <= 0) {
+            return "Unknown";
+        }
+
+        Duration since = Duration.between(Instant.ofEpochMilli(lastSeenMillis), Instant.now());
+        if (since.isNegative()) {
+            since = Duration.ZERO;
+        }
+
+        return Util.formatDuration(since.toMillis()) + " ago";
     }
 
     private String formatDurationText(Duration duration) {

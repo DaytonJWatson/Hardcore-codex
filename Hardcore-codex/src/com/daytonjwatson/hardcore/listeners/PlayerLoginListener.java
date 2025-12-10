@@ -5,12 +5,15 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerLoginEvent;
 
 import com.daytonjwatson.hardcore.managers.BanManager;
+import com.daytonjwatson.hardcore.managers.PlayerIpManager;
 import com.daytonjwatson.hardcore.utils.Util;
 
 public class PlayerLoginListener implements Listener {
 
     @EventHandler
     public void onPlayerLogin(PlayerLoginEvent event) {
+        PlayerIpManager.recordLogin(event.getPlayer());
+
         if (!BanManager.isBanned(event.getPlayer().getUniqueId())) {
             return;
         }
