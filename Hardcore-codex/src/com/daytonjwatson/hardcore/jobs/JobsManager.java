@@ -11,7 +11,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -31,6 +30,7 @@ import com.daytonjwatson.hardcore.utils.Util;
 public class JobsManager {
 
     private static final double DEFAULT_REWARD_MULTIPLIER = 125.0;
+    private static final long SLOT_COOLDOWN_MILLIS = 15 * 60 * 1000L;
 
     private static JobsManager instance;
 
@@ -43,6 +43,7 @@ public class JobsManager {
     private final Map<String, JobDefinition> jobPool = new LinkedHashMap<>();
     private final Map<UUID, ActiveJob> activeJobs = new HashMap<>();
     private final Map<UUID, List<JobOffer>> offeredJobs = new HashMap<>();
+    private final Map<UUID, Map<Integer, Long>> slotCooldowns = new HashMap<>();
     private final Random random = new Random();
 
     private JobsManager(JavaPlugin plugin) {
@@ -55,6 +56,7 @@ public class JobsManager {
         createDefaults();
         loadJobs();
         loadActiveJobs();
+        loadCooldowns();
     }
 
     public static void init(JavaPlugin plugin) {
@@ -72,21 +74,31 @@ public class JobsManager {
     }
 
     public List<JobOffer> getOfferedJobs(UUID playerId) {
-        return offeredJobs.computeIfAbsent(playerId, ignored -> pickRandomOffers(3));
+        refreshOffers(playerId);
+        return new ArrayList<>(offeredJobs.get(playerId));
     }
 
     public void rerollOffers(UUID playerId) {
-        offeredJobs.put(playerId, pickRandomOffers(3));
+        List<JobOffer> offers = offeredJobs.computeIfAbsent(playerId,
+                ignored -> new ArrayList<>(Collections.nCopies(3, null)));
+        ensureOfferSize(offers);
+        for (int i = 0; i < offers.size(); i++) {
+            if (isSlotCoolingDown(playerId, i)) {
+                offers.set(i, null);
+            } else {
+                offers.set(i, pickRandomOffer());
+            }
+        }
     }
 
     public ActiveJob getActiveJob(UUID uuid) {
         return activeJobs.get(uuid);
     }
 
-    public void assignJob(Player player, JobOffer offer) {
+    public void assignJob(Player player, JobOffer offer, int slotIndex) {
         JobDefinition definition = offer.getDefinition();
         Location start = definition.getType() == JobType.TRAVEL_DISTANCE ? player.getLocation().clone() : null;
-        ActiveJob active = new ActiveJob(definition, offer.getAmount(), 0, start);
+        ActiveJob active = new ActiveJob(definition, offer.getAmount(), 0, start, slotIndex);
         activeJobs.put(player.getUniqueId(), active);
         offeredJobs.remove(player.getUniqueId());
         saveActiveJobs();
@@ -96,8 +108,11 @@ public class JobsManager {
     }
 
     public void abandonJob(Player player) {
-        activeJobs.remove(player.getUniqueId());
-        saveActiveJobs();
+        ActiveJob active = activeJobs.remove(player.getUniqueId());
+        if (active != null) {
+            startCooldownForSlot(player.getUniqueId(), active.getSelectedSlot());
+            saveActiveJobs();
+        }
         player.sendMessage(Util.color("&eYou abandoned your active job."));
     }
 
@@ -184,11 +199,11 @@ public class JobsManager {
         JobDefinition job = active.getJob();
         if (active.isComplete()) {
             reward(player, job);
-            activeJobs.remove(player.getUniqueId());
-        } else {
-            player.sendMessage(Util.color("&6Job Progress &8» &7" + formatNumber(updated) + "/" +
-                    formatNumber(active.getGoalAmount()) + " completed."));
+            finalizeJob(player, active);
+            return;
         }
+        player.sendMessage(Util.color("&6Job Progress &8» &7" + formatNumber(updated) + "/" +
+                formatNumber(active.getGoalAmount()) + " completed."));
         saveActiveJobs();
     }
 
@@ -203,13 +218,13 @@ public class JobsManager {
         JobDefinition job = active.getJob();
         if (active.isComplete()) {
             reward(player, job);
-            activeJobs.remove(player.getUniqueId());
-        } else {
-            boolean isTravelDistance = job.getType() == JobType.TRAVEL_DISTANCE;
-            if (!isTravelDistance || reachedNextQuarter(previous, clamped, active.getGoalAmount())) {
-                player.sendMessage(Util.color("&6Job Progress &8» &7" + formatNumber(clamped) + "/" +
-                        formatNumber(active.getGoalAmount()) + " completed."));
-            }
+            finalizeJob(player, active);
+            return;
+        }
+        boolean isTravelDistance = job.getType() == JobType.TRAVEL_DISTANCE;
+        if (!isTravelDistance || reachedNextQuarter(previous, clamped, active.getGoalAmount())) {
+            player.sendMessage(Util.color("&6Job Progress &8» &7" + formatNumber(clamped) + "/" +
+                    formatNumber(active.getGoalAmount()) + " completed."));
         }
         saveActiveJobs();
     }
@@ -234,6 +249,12 @@ public class JobsManager {
         MessageStyler.sendPanel(player, "Job Complete",
                 "&7" + job.getDisplayName(),
                 "&7Reward: &a" + formatted);
+    }
+
+    private void finalizeJob(Player player, ActiveJob active) {
+        startCooldownForSlot(player.getUniqueId(), active.getSelectedSlot());
+        activeJobs.remove(player.getUniqueId());
+        saveActiveJobs();
     }
 
     private void createDefaults() {
@@ -310,12 +331,13 @@ public class JobsManager {
                 double progress = playerConfig.getDouble("players." + key + ".progress", 0);
                 int goal = playerConfig.getInt("players." + key + ".goal", -1);
                 Location start = readLocation(playerConfig, "players." + key + ".start");
+                int slot = playerConfig.getInt("players." + key + ".slot", -1);
                 JobDefinition definition = jobPool.get(jobId);
                 if (definition != null) {
                     if (goal < 0) {
                         goal = Math.max(definition.getMinAmount(), definition.getMaxAmount());
                     }
-                    activeJobs.put(uuid, new ActiveJob(definition, goal, progress, start));
+                    activeJobs.put(uuid, new ActiveJob(definition, goal, progress, start, slot));
                 }
             } catch (IllegalArgumentException ignored) {
             }
@@ -330,23 +352,15 @@ public class JobsManager {
             playerConfig.set(base + "job", job.getJob().getId());
             playerConfig.set(base + "progress", job.getProgress());
             playerConfig.set(base + "goal", job.getGoalAmount());
+            playerConfig.set(base + "slot", job.getSelectedSlot());
             writeLocation(job.getStartLocation(), base + "start");
         }
+        writeCooldowns();
         try {
             playerConfig.save(playerDataFile);
         } catch (IOException e) {
             plugin.getLogger().warning("Failed to save jobs-data.yml: " + e.getMessage());
         }
-    }
-
-    private List<JobOffer> pickRandomOffers(int amount) {
-        if (jobPool.isEmpty()) {
-            return Collections.emptyList();
-        }
-        List<JobDefinition> pool = new ArrayList<>(jobPool.values());
-        Collections.shuffle(pool, random);
-        return pool.stream().limit(amount).map(def -> new JobOffer(def, def.rollAmount(random)))
-                .collect(Collectors.toList());
     }
 
     private boolean isValidTarget(JobType type, String target) {
@@ -389,11 +403,125 @@ public class JobsManager {
         List<String> lines = new ArrayList<>();
         for (int i = 0; i < offers.size(); i++) {
             JobOffer offer = offers.get(i);
+            if (isSlotCoolingDown(player.getUniqueId(), i)) {
+                long seconds = getCooldownRemainingMillis(player.getUniqueId(), i) / 1000;
+                lines.add(MessageStyler.bulletLine("Option " + (i + 1), org.bukkit.ChatColor.GRAY,
+                        "Cooling down (" + seconds + "s remaining)"));
+                continue;
+            }
+            if (offer == null) {
+                lines.add(MessageStyler.bulletLine("Option " + (i + 1), org.bukkit.ChatColor.RED,
+                        "Unavailable"));
+                continue;
+            }
             JobDefinition job = offer.getDefinition();
             lines.add(MessageStyler.bulletLine("Option " + (i + 1), org.bukkit.ChatColor.GOLD,
                     job.getDisplayName() + " &7(" + job.getTarget() + " x" + offer.getAmount() + ")"));
         }
         MessageStyler.sendPanel(player, "Job Offers", lines.toArray(new String[0]));
+    }
+
+    public boolean isSlotCoolingDown(UUID playerId, int slotIndex) {
+        Long until = getCooldownMap(playerId).get(slotIndex);
+        if (until == null) {
+            return false;
+        }
+        if (until <= System.currentTimeMillis()) {
+            getCooldownMap(playerId).remove(slotIndex);
+            return false;
+        }
+        return true;
+    }
+
+    public long getCooldownRemainingMillis(UUID playerId, int slotIndex) {
+        Long until = getCooldownMap(playerId).get(slotIndex);
+        if (until == null) {
+            return 0L;
+        }
+        return Math.max(0L, until - System.currentTimeMillis());
+    }
+
+    private void refreshOffers(UUID playerId) {
+        List<JobOffer> offers = offeredJobs.computeIfAbsent(playerId,
+                ignored -> new ArrayList<>(Collections.nCopies(3, null)));
+        ensureOfferSize(offers);
+
+        for (int i = 0; i < offers.size(); i++) {
+            if (isSlotCoolingDown(playerId, i)) {
+                offers.set(i, null);
+            } else if (offers.get(i) == null) {
+                offers.set(i, pickRandomOffer());
+            }
+        }
+    }
+
+    private JobOffer pickRandomOffer() {
+        if (jobPool.isEmpty()) {
+            return null;
+        }
+        List<JobDefinition> pool = new ArrayList<>(jobPool.values());
+        Collections.shuffle(pool, random);
+        JobDefinition def = pool.get(0);
+        return new JobOffer(def, def.rollAmount(random));
+    }
+
+    private void ensureOfferSize(List<JobOffer> offers) {
+        while (offers.size() < 3) {
+            offers.add(null);
+        }
+    }
+
+    private void startCooldownForSlot(UUID uuid, int slotIndex) {
+        if (slotIndex < 0) {
+            return;
+        }
+        getCooldownMap(uuid).put(slotIndex, System.currentTimeMillis() + SLOT_COOLDOWN_MILLIS);
+    }
+
+    private Map<Integer, Long> getCooldownMap(UUID uuid) {
+        return slotCooldowns.computeIfAbsent(uuid, ignored -> new HashMap<>());
+    }
+
+    private void loadCooldowns() {
+        slotCooldowns.clear();
+        ConfigurationSection section = playerConfig.getConfigurationSection("cooldowns");
+        if (section == null) {
+            return;
+        }
+
+        for (String key : section.getKeys(false)) {
+            try {
+                UUID uuid = UUID.fromString(key);
+                ConfigurationSection child = section.getConfigurationSection(key);
+                if (child == null) {
+                    continue;
+                }
+                Map<Integer, Long> slots = getCooldownMap(uuid);
+                for (String slotKey : child.getKeys(false)) {
+                    try {
+                        int slot = Integer.parseInt(slotKey);
+                        long until = child.getLong(slotKey);
+                        if (until > System.currentTimeMillis()) {
+                            slots.put(slot, until);
+                        }
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+    }
+
+    private void writeCooldowns() {
+        playerConfig.set("cooldowns", null);
+        for (Map.Entry<UUID, Map<Integer, Long>> entry : slotCooldowns.entrySet()) {
+            String base = "cooldowns." + entry.getKey() + ".";
+            for (Map.Entry<Integer, Long> slot : entry.getValue().entrySet()) {
+                if (slot.getValue() > System.currentTimeMillis()) {
+                    playerConfig.set(base + slot.getKey(), slot.getValue());
+                }
+            }
+        }
     }
 
     private void writeLocation(Location location, String path) {

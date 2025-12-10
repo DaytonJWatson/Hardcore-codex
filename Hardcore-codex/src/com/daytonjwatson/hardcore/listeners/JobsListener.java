@@ -98,7 +98,16 @@ public class JobsListener implements Listener {
                         player.sendMessage(Util.color("&cThat offer is no longer available."));
                         return;
                     }
-                    jobs.assignJob(player, offers.get(i));
+                    if (jobs.isSlotCoolingDown(player.getUniqueId(), i)) {
+                        player.sendMessage(Util.color("&cThat option is on cooldown."));
+                        return;
+                    }
+                    JobOffer offer = offers.get(i);
+                    if (offer == null) {
+                        player.sendMessage(Util.color("&cThat offer is currently unavailable."));
+                        return;
+                    }
+                    jobs.assignJob(player, offer, i);
                     player.closeInventory();
                     return;
                 }

@@ -90,7 +90,20 @@ public class JobsCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-        jobs.assignJob(player, offers.get(choice - 1));
+        int slotIndex = choice - 1;
+        if (jobs.isSlotCoolingDown(player.getUniqueId(), slotIndex)) {
+            long remaining = jobs.getCooldownRemainingMillis(player.getUniqueId(), slotIndex) / 1000;
+            player.sendMessage(Util.color("&cThat option is cooling down for another " + remaining + "s."));
+            return;
+        }
+
+        JobOffer offer = offers.get(slotIndex);
+        if (offer == null) {
+            player.sendMessage(Util.color("&cThat job offer is currently unavailable."));
+            return;
+        }
+
+        jobs.assignJob(player, offer, slotIndex);
     }
 
     private void showProgress(Player player, JobsManager jobs) {

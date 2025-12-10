@@ -38,8 +38,14 @@ public final class JobsGui {
         List<JobOffer> offers = jobs.getOfferedJobs(player.getUniqueId());
         int[] slots = {11, 13, 15};
         for (int i = 0; i < offers.size() && i < slots.length; i++) {
+            boolean cooling = jobs.isSlotCoolingDown(player.getUniqueId(), i);
             JobOffer offer = offers.get(i);
-            menu.setItem(slots[i], summarizeJob(offer, i + 1));
+            if (cooling) {
+                long remaining = jobs.getCooldownRemainingMillis(player.getUniqueId(), i);
+                menu.setItem(slots[i], cooldownItem(i + 1, remaining));
+            } else if (offer != null) {
+                menu.setItem(slots[i], summarizeJob(offer, i + 1));
+            }
         }
 
         if (active != null) {
@@ -96,6 +102,13 @@ public final class JobsGui {
         return item(icon, "&6" + definition.getDisplayName(), lore);
     }
 
+    private static ItemStack cooldownItem(int optionNumber, long remainingMs) {
+        List<String> lore = new ArrayList<>();
+        lore.add("&7This option is cooling down.");
+        lore.add("&7Available in: &c" + formatDuration(remainingMs));
+        return item(Material.BARRIER, "&cOption " + optionNumber + " Locked", lore);
+    }
+
     private static ItemStack activeJobItem(ActiveJob active) {
         JobDefinition job = active.getJob();
         List<String> lore = new ArrayList<>();
@@ -126,5 +139,18 @@ public final class JobsGui {
             return Integer.toString((int) value);
         }
         return String.format(java.util.Locale.US, "%.1f", value);
+    }
+
+    private static String formatDuration(long millis) {
+        if (millis <= 0) {
+            return "0s";
+        }
+        long seconds = millis / 1000;
+        long minutes = seconds / 60;
+        long remainingSeconds = seconds % 60;
+        if (minutes > 0) {
+            return minutes + "m " + remainingSeconds + "s";
+        }
+        return remainingSeconds + "s";
     }
 }
