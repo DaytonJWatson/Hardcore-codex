@@ -96,7 +96,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
         String sub = args[0].toLowerCase(Locale.ROOT);
         if (sub.equals("add")) {
-            handleAdd(sender, args, isOp);
+            handleAdd(sender, args, canUseAdminTools, isOp);
             return true;
         }
 
@@ -119,8 +119,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 }
                 break;
             case "remove":
-                AdminLogManager.log(sender, fullCommand, true);
-                handleRemove(sender, args);
+                handleRemove(sender, args, isOp);
                 break;
             case "list":
                 AdminLogManager.log(sender, fullCommand, true);
@@ -215,10 +214,16 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    private void handleAdd(CommandSender sender, String[] args, boolean isOp) {
+    private void handleAdd(CommandSender sender, String[] args, boolean canUseAdminTools, boolean isOp) {
+        if (!canUseAdminTools) {
+            AdminLogManager.log(sender, "/admin add" + (args.length > 1 ? " " + args[1] : ""), false);
+            sender.sendMessage(Util.color("&cYou must be a Hardcore admin to add other admins."));
+            return;
+        }
+
         if (!isOp) {
             AdminLogManager.log(sender, "/admin add" + (args.length > 1 ? " " + args[1] : ""), false);
-            sender.sendMessage(Util.color("&cOnly server operators or console can add Hardcore admins."));
+            sender.sendMessage(Util.color("&cYou must be an operator to add admins."));
             return;
         }
 
@@ -230,7 +235,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         OfflinePlayer target = resolveOfflinePlayer(args[1]);
         String targetName = target.getName() == null ? args[1] : target.getName();
         boolean added = AdminManager.addAdmin(target);
-        AdminLogManager.log(sender, "/admin add " + targetName, true);
+        AdminLogManager.log(sender, "/admin add " + targetName, added);
         if (added) {
             sender.sendMessage(Util.color("&aAdded &e" + targetName + " &ato Hardcore admin list."));
         } else {
@@ -238,15 +243,22 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         }
     }
 
-    private void handleRemove(CommandSender sender, String[] args) {
+    private void handleRemove(CommandSender sender, String[] args, boolean isOp) {
         if (args.length < 2) {
             sender.sendMessage(Util.color("&cUsage: /admin remove <player>"));
+            return;
+        }
+
+        if (!isOp) {
+            AdminLogManager.log(sender, "/admin remove" + (args.length > 1 ? " " + args[1] : ""), false);
+            sender.sendMessage(Util.color("&cYou must be an operator to remove admins."));
             return;
         }
 
         OfflinePlayer target = resolveOfflinePlayer(args[1]);
         String targetName = target.getName() == null ? args[1] : target.getName();
         boolean removed = AdminManager.removeAdmin(target);
+        AdminLogManager.log(sender, "/admin remove " + targetName, removed);
         if (removed) {
             sender.sendMessage(Util.color("&aRemoved &e" + targetName + " &afrom Hardcore admin list."));
         } else {
