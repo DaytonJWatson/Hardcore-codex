@@ -33,11 +33,12 @@ import com.daytonjwatson.hardcore.managers.PlayerIpManager;
 import com.daytonjwatson.hardcore.auction.AuctionListing;
 import com.daytonjwatson.hardcore.utils.MessageStyler;
 import com.daytonjwatson.hardcore.utils.Util;
+import com.daytonjwatson.hardcore.views.AdminGui;
 
 public class AdminCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> BASE_SUBCOMMANDS = Arrays.asList(
-            "help", "add", "remove", "list", "ban", "unban", "kick", "mute", "unmute", "warn",
+            "help", "gui", "add", "remove", "list", "ban", "unban", "kick", "mute", "unmute", "warn",
             "freeze", "unfreeze", "clearchat", "status", "info", "invsee", "endersee", "tp",
             "tphere", "heal", "feed", "log", "auction", "bank");
 
@@ -51,7 +52,39 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
         String fullCommand = "/" + label + (args.length > 0 ? " " + String.join(" ", args) : "");
 
-        if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
+        if (args.length == 1 && args[0].equalsIgnoreCase("gui")) {
+            if (!canUseAdminTools && !isOp) {
+                AdminLogManager.log(sender, fullCommand, false);
+                sender.sendMessage(Util.color("&cYou must be a Hardcore admin to use this command."));
+                return true;
+            }
+
+            if (sender instanceof Player player) {
+                AdminLogManager.log(sender, fullCommand, true);
+                AdminGui.openMain(player);
+            } else {
+                sender.sendMessage(Util.color("&cOnly in-game admins can use the GUI."));
+            }
+            return true;
+        }
+
+        if (args.length == 0) {
+            if (sender instanceof Player player && canUseAdminTools) {
+                AdminLogManager.log(sender, fullCommand + " gui", true);
+                AdminGui.openMain(player);
+                return true;
+            }
+            if (!canUseAdminTools && !isOp) {
+                AdminLogManager.log(sender, fullCommand, false);
+                sender.sendMessage(Util.color("&cYou must be a Hardcore admin to use this command."));
+                return true;
+            }
+            AdminLogManager.log(sender, fullCommand, true);
+            sendAdminHelp(sender, label);
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("help")) {
             if (!canUseAdminTools && !isOp) {
                 AdminLogManager.log(sender, fullCommand, false);
                 sender.sendMessage(Util.color("&cYou must be a Hardcore admin to use this command."));
@@ -77,6 +110,14 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         switch (sub) {
             case "add":
                 // handled earlier
+                break;
+            case "gui":
+                if (sender instanceof Player player) {
+                    AdminLogManager.log(sender, fullCommand, true);
+                    AdminGui.openMain(player);
+                } else {
+                    sender.sendMessage(Util.color("&cOnly in-game admins can use the GUI."));
+                }
                 break;
             case "remove":
                 AdminLogManager.log(sender, fullCommand, true);
@@ -867,6 +908,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     private void sendAdminHelp(CommandSender sender, String label) {
         MessageStyler.sendPanel(sender, "Hardcore Admin Help",
                 "&6Core",
+                " &e/" + label + " gui &7- open the admin control panel",
                 " &e/" + label + " list &7- show admins",
                 " &e/" + label + " status <player> &7- flags",
                 " &e/" + label + " log [admin] [limit] &7- recent actions",
