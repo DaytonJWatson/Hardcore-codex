@@ -149,6 +149,10 @@ public final class AdminGui {
         ItemStack back = item(Material.BARRIER, "&cBack", List.of("&7Return to admin panel."));
         menu.setItem(45, back);
 
+        ItemStack search = item(Material.COMPASS, "&bSearch Player",
+                List.of("&7Search any player by name.", "&8Useful for offline lookups."));
+        menu.setItem(49, search);
+
         if (start > 0) {
             ItemStack prev = item(Material.ARROW, "&ePrevious Page", List.of("&7Go to page " + page));
             ItemMeta meta = prev.getItemMeta();

@@ -279,6 +279,13 @@ public class AdminGuiListener implements Listener {
             }
         }
 
+        if (current.getType() == org.bukkit.Material.COMPASS) {
+            prompt(player, new PendingChat(PendingType.PLAYER_SEARCH, null, null),
+                    "&6Admin &8» &7Type the player to manage, or &ccancel&7.");
+            player.closeInventory();
+            return true;
+        }
+
         if (meta != null && meta.getPersistentDataContainer().has(TARGET_KEY, PersistentDataType.STRING)) {
             String targetId = meta.getPersistentDataContainer().get(TARGET_KEY, PersistentDataType.STRING);
             Integer page = getInt(meta, "admin_page");
