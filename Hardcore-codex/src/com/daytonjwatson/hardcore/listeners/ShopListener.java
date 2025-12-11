@@ -74,12 +74,17 @@ public class ShopListener implements Listener {
             return;
         }
 
+        ShopManager manager = ShopManager.get();
+        if (manager.consumeReopeningShop(viewerId, shopId)) {
+            return;
+        }
+
         HardcorePlugin plugin = HardcorePlugin.getInstance();
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            if (ShopManager.get().isViewingShop(viewerId, shopId)) {
+            if (manager.isViewingShop(viewerId, shopId)) {
                 return;
             }
-            ShopManager.get().dispatchPurchaseSummary(player, shopId);
+            manager.dispatchPurchaseSummary(player, shopId);
         }, 2L);
     }
 
@@ -161,8 +166,12 @@ public class ShopListener implements Listener {
             return;
         }
 
-        ShopManager.get().processPurchase(player, shop.getId(), slot, buyStack);
-        ShopView.open(player, shop);
+        ShopManager manager = ShopManager.get();
+        boolean success = manager.processPurchase(player, shop.getId(), slot, buyStack);
+        if (success) {
+            manager.markReopeningShop(player.getUniqueId(), shop.getId());
+            ShopView.open(player, shop);
+        }
     }
 
     private void handleManager(InventoryClickEvent event, Player player) {

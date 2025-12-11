@@ -52,6 +52,7 @@ public class ShopManager {
     private final Map<UUID, UUID> pendingPriceUpdate = new HashMap<>();
     private final Map<UUID, Map<UUID, PurchaseSummary>> pendingOwnerSummaries = new HashMap<>();
     private final Map<UUID, UUID> activeShopViews = new HashMap<>();
+    private final Map<UUID, UUID> reopeningShopView = new HashMap<>();
     private static final UUID LEGACY_SERVER_OWNER = UUID.nameUUIDFromBytes("hardcore-server-shop".getBytes());
 
     private ShopManager(HardcorePlugin plugin) {
@@ -253,6 +254,19 @@ public class ShopManager {
     public boolean isViewingShop(UUID viewer, UUID shopId) {
         UUID viewing = activeShopViews.get(viewer);
         return viewing != null && viewing.equals(shopId);
+    }
+
+    public void markReopeningShop(UUID viewer, UUID shopId) {
+        reopeningShopView.put(viewer, shopId);
+    }
+
+    public boolean consumeReopeningShop(UUID viewer, UUID shopId) {
+        UUID reopening = reopeningShopView.get(viewer);
+        if (reopening != null && reopening.equals(shopId)) {
+            reopeningShopView.remove(viewer);
+            return true;
+        }
+        return false;
     }
 
     public boolean processPurchase(Player buyer, UUID shopId, int slot, boolean buyStack) {
