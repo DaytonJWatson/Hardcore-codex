@@ -3,6 +3,8 @@ package com.daytonjwatson.hardcore.config;
 import com.daytonjwatson.hardcore.HardcorePlugin;
 import org.bukkit.configuration.file.FileConfiguration;
 
+import com.daytonjwatson.hardcore.config.ConfigValues;
+
 public class Config {
 
         public static void setup() {
@@ -20,8 +22,9 @@ public class Config {
 		HardcorePlugin.instance.saveConfig();
 	}
 	
-	public static void reload() {
-		HardcorePlugin.instance.reloadConfig();
-	}
-	
+        public static void reload() {
+                HardcorePlugin.instance.reloadConfig();
+                ConfigValues.load(HardcorePlugin.instance.getConfig());
+        }
+
 }
