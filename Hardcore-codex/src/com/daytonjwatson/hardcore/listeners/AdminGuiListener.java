@@ -96,7 +96,9 @@ public class AdminGuiListener implements Listener {
         }
 
         if (!title.equals(AdminGui.MAIN_TITLE) && !title.startsWith(AdminGui.PLAYER_LIST_TITLE)
-                && !title.contains("Manage") && !title.equals(Util.color("&4&lAdmin &8| &7Choose Duration"))
+                && !title.contains("Manage") && !title.startsWith(Util.color("&4&lAdmin &8| &7Info"))
+                && !title.startsWith(Util.color("&4&lAdmin &8| &7Status"))
+                && !title.equals(Util.color("&4&lAdmin &8| &7Choose Duration"))
                 && !title.equals(Util.color("&4&lAdmin &8| &7Choose Reason"))
                 && !title.equals(Util.color("&4&lAdmin &8| &7Choose Amount"))
                 && !title.equals(Util.color("&4&lAdmin &8| &7Bank Tools"))
@@ -138,6 +140,14 @@ public class AdminGuiListener implements Listener {
 
         if (title.equals(AdminGui.LOG_TITLE)) {
             return handleLogClick(player, current, plainName);
+        }
+
+        if (title.startsWith(Util.color("&4&lAdmin &8| &7Info"))) {
+            return handlePlayerInfoClick(player, current, plainName);
+        }
+
+        if (title.startsWith(Util.color("&4&lAdmin &8| &7Status"))) {
+            return handlePlayerStatusClick(player, current, plainName);
         }
 
         if (title.contains("Manage Shop")) {
@@ -336,6 +346,32 @@ public class AdminGuiListener implements Listener {
         return false;
     }
 
+    private boolean handlePlayerInfoClick(Player player, ItemStack current, String plainName) {
+        ItemMeta meta = current.getItemMeta();
+        OfflinePlayer target = getTarget(current);
+        Integer page = getInt(meta, "admin_page");
+
+        if (plainName.equalsIgnoreCase("Back") && target != null) {
+            AdminGui.openPlayerActions(player, target, page == null ? 0 : page);
+            return true;
+        }
+
+        return true;
+    }
+
+    private boolean handlePlayerStatusClick(Player player, ItemStack current, String plainName) {
+        ItemMeta meta = current.getItemMeta();
+        OfflinePlayer target = getTarget(current);
+        Integer page = getInt(meta, "admin_page");
+
+        if (plainName.equalsIgnoreCase("Back") && target != null) {
+            AdminGui.openPlayerActions(player, target, page == null ? 0 : page);
+            return true;
+        }
+
+        return true;
+    }
+
     private boolean handlePlayerActionClick(Player player, ItemStack current, String plainName) {
         OfflinePlayer target = getTarget(current);
         if (target == null) {
@@ -343,13 +379,15 @@ public class AdminGuiListener implements Listener {
         }
 
         String name = safeName(target);
+        ItemMeta meta = current.getItemMeta();
+        Integer page = getInt(meta, "admin_page");
 
         switch (plainName.toLowerCase()) {
             case "info":
-                player.performCommand("admin info " + name);
+                AdminGui.openPlayerInfo(player, target, page == null ? 0 : page);
                 return true;
             case "status":
-                player.performCommand("admin status " + name);
+                AdminGui.openPlayerStatus(player, target, page == null ? 0 : page);
                 return true;
             case "inventory":
                 player.performCommand("admin invsee " + name);
@@ -402,8 +440,6 @@ public class AdminGuiListener implements Listener {
                 AdminGui.openAuctionListings(player, target.getUniqueId(), 0);
                 return true;
             case "back":
-                ItemMeta meta = current.getItemMeta();
-                Integer page = getInt(meta, "admin_page");
                 AdminGui.openPlayerList(player, page == null ? 0 : page);
                 return true;
             default:
