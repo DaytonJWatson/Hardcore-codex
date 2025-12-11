@@ -140,6 +140,10 @@ public class AdminGuiListener implements Listener {
             return handleLogClick(player, current, plainName);
         }
 
+        if (title.contains("Manage Shop")) {
+            return handleShopActionClick(player, current, plainName);
+        }
+
         if (title.contains("Manage")) {
             return handlePlayerActionClick(player, current, plainName);
         }
@@ -190,10 +194,6 @@ public class AdminGuiListener implements Listener {
 
         if (title.startsWith(AdminGui.SHOP_LIST_TITLE)) {
             return handleShopListClick(player, current, plainName);
-        }
-
-        if (title.contains("Manage Shop")) {
-            return handleShopActionClick(player, current, plainName);
         }
 
         return false;
