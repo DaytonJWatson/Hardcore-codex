@@ -51,9 +51,23 @@ public class ShopManager {
     private final Map<UUID, PendingItem> pendingItemAdds = new HashMap<>();
     private final Map<UUID, UUID> pendingPriceUpdate = new HashMap<>();
     private final Map<UUID, Map<UUID, PurchaseSummary>> pendingOwnerSummaries = new HashMap<>();
-    private final Map<UUID, UUID> activeShopViews = new HashMap<>();
+    private final Map<UUID, ViewSession> viewSessions = new HashMap<>();
     private final Map<UUID, UUID> reopeningShopView = new HashMap<>();
     private static final UUID LEGACY_SERVER_OWNER = UUID.nameUUIDFromBytes("hardcore-server-shop".getBytes());
+
+    public static class ViewSession {
+        private UUID shopId;
+        private int sessionId;
+        private boolean active;
+
+        public UUID shopId() {
+            return shopId;
+        }
+
+        public int sessionId() {
+            return sessionId;
+        }
+    }
 
     private ShopManager(HardcorePlugin plugin) {
         this.plugin = plugin;
@@ -243,17 +257,37 @@ public class ShopManager {
 
     public record PendingItem(UUID shopId, ItemStack item) {}
 
-    public void setViewingShop(UUID viewer, UUID shopId) {
-        activeShopViews.put(viewer, shopId);
+    public ViewSession startViewingShop(UUID viewer, UUID shopId) {
+        ViewSession session = viewSessions.computeIfAbsent(viewer, id -> new ViewSession());
+        session.sessionId++;
+        session.shopId = shopId;
+        session.active = true;
+        return session;
     }
 
-    public UUID consumeViewingShop(UUID viewer) {
-        return activeShopViews.remove(viewer);
+    public ViewSession getViewSession(UUID viewer) {
+        return viewSessions.get(viewer);
     }
 
-    public boolean isViewingShop(UUID viewer, UUID shopId) {
-        UUID viewing = activeShopViews.get(viewer);
-        return viewing != null && viewing.equals(shopId);
+    public ViewSession markSessionClosing(UUID viewer, UUID shopId) {
+        ViewSession session = viewSessions.get(viewer);
+        if (session != null && shopId.equals(session.shopId)) {
+            session.active = false;
+            return session;
+        }
+        return null;
+    }
+
+    public boolean isSessionActive(UUID viewer, UUID shopId, int sessionId) {
+        ViewSession session = viewSessions.get(viewer);
+        return session != null && session.active && session.sessionId == sessionId && shopId.equals(session.shopId);
+    }
+
+    public void clearSession(UUID viewer, UUID shopId, int sessionId) {
+        ViewSession session = viewSessions.get(viewer);
+        if (session != null && !session.active && session.sessionId == sessionId && shopId.equals(session.shopId)) {
+            viewSessions.remove(viewer);
+        }
     }
 
     public void markReopeningShop(UUID viewer, UUID shopId) {

@@ -69,22 +69,31 @@ public class ShopListener implements Listener {
         }
 
         UUID viewerId = player.getUniqueId();
-        UUID shopId = ShopManager.get().consumeViewingShop(viewerId);
-        if (shopId == null) {
+        ShopManager manager = ShopManager.get();
+        ShopManager.ViewSession session = manager.getViewSession(viewerId);
+        if (session == null) {
             return;
         }
 
-        ShopManager manager = ShopManager.get();
+        UUID shopId = session.shopId();
+
         if (manager.consumeReopeningShop(viewerId, shopId)) {
             return;
         }
 
+        ShopManager.ViewSession closingSession = manager.markSessionClosing(viewerId, shopId);
+        if (closingSession == null) {
+            return;
+        }
+        int sessionId = closingSession.sessionId();
+
         HardcorePlugin plugin = HardcorePlugin.getInstance();
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            if (manager.isViewingShop(viewerId, shopId)) {
+            if (manager.isSessionActive(viewerId, shopId, sessionId)) {
                 return;
             }
             manager.dispatchPurchaseSummary(player, shopId);
+            manager.clearSession(viewerId, shopId, sessionId);
         }, 2L);
     }
 
