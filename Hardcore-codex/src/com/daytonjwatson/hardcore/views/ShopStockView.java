@@ -40,7 +40,7 @@ public final class ShopStockView {
         for (int i = 0; i < 27; i++) {
             ShopItem entry = shop.getStock().get(i);
             if (entry == null) continue;
-            ItemStack display = entry.getItem();
+            ItemStack display = entry.getItem().clone();
             ItemMeta meta = display.getItemMeta();
             if (meta != null) {
                 List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();

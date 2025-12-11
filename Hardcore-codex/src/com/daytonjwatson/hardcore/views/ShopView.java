@@ -41,7 +41,7 @@ public final class ShopView {
         for (int i = 0; i < 27; i++) {
             ShopItem entry = shop.getStock().get(i);
             if (entry == null) continue;
-            ItemStack display = entry.getItem();
+            ItemStack display = entry.getItem().clone();
             int amount = display.getAmount();
             double pricePerItem = entry.getPrice() / Math.max(1, amount);
             ItemMeta meta = display.getItemMeta();

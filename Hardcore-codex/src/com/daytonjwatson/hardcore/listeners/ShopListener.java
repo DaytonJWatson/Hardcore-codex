@@ -1,5 +1,7 @@
 package com.daytonjwatson.hardcore.listeners;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -359,7 +361,7 @@ public class ShopListener implements Listener {
         if (slot != null) {
             ShopManager.get().getShop(shop.getId()).getStock().remove(slot);
             ShopManager.get().save();
-            player.getInventory().addItem(clicked.clone());
+            player.getInventory().addItem(clearShopMetadata(clicked));
             ShopStockView.open(player, shop);
             player.sendMessage(Util.color("&aRemoved listing and returned the item."));
             return;
@@ -539,5 +541,41 @@ public class ShopListener implements Listener {
                 }
             }
         });
+    }
+
+    private ItemStack clearShopMetadata(ItemStack item) {
+        ItemStack cleaned = item.clone();
+        ItemMeta meta = cleaned.getItemMeta();
+        if (meta == null) {
+            return cleaned;
+        }
+
+        PersistentDataContainer data = meta.getPersistentDataContainer();
+        data.remove(ShopStockView.shopKey());
+        data.remove(ShopStockView.slotKey());
+        data.remove(ShopView.shopKey());
+        data.remove(ShopView.itemSlotKey());
+
+        if (meta.hasLore()) {
+            List<String> lore = meta.getLore();
+            List<String> cleanedLore = new ArrayList<>();
+            if (lore != null) {
+                for (String line : lore) {
+                    String stripped = ChatColor.stripColor(line);
+                    if (stripped == null) continue;
+                    if (stripped.startsWith("Price:")) continue;
+                    if (stripped.startsWith("Stack Price:")) continue;
+                    if (stripped.startsWith("Single Price:")) continue;
+                    if (stripped.equalsIgnoreCase("Left-click to remove.")) continue;
+                    if (stripped.equalsIgnoreCase("Left-click to buy 1.")) continue;
+                    if (stripped.equalsIgnoreCase("Right-click to buy the stack.")) continue;
+                    cleanedLore.add(line);
+                }
+            }
+            meta.setLore(cleanedLore.isEmpty() ? null : cleanedLore);
+        }
+
+        cleaned.setItemMeta(meta);
+        return cleaned;
     }
 }
