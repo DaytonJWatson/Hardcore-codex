@@ -26,8 +26,13 @@ import com.daytonjwatson.hardcore.managers.AdminLogManager;
 import com.daytonjwatson.hardcore.managers.AdminManager;
 import com.daytonjwatson.hardcore.managers.AuctionHouseManager;
 import com.daytonjwatson.hardcore.managers.BankManager;
+import com.daytonjwatson.hardcore.managers.ShopManager;
+import com.daytonjwatson.hardcore.shop.PlayerShop;
 import com.daytonjwatson.hardcore.utils.Util;
 import com.daytonjwatson.hardcore.views.AdminGui;
+import com.daytonjwatson.hardcore.views.ShopBrowserView;
+import com.daytonjwatson.hardcore.views.ShopEditorView;
+import com.daytonjwatson.hardcore.views.ShopView;
 
 public class AdminGuiListener implements Listener {
 
@@ -48,6 +53,10 @@ public class AdminGuiListener implements Listener {
             HardcorePlugin.getInstance(), "admin_status_filter");
     private static final org.bukkit.NamespacedKey LISTING_KEY = new org.bukkit.NamespacedKey(HardcorePlugin.getInstance(),
             "admin_listing_id");
+    private static final org.bukkit.NamespacedKey SHOP_KEY = new org.bukkit.NamespacedKey(HardcorePlugin.getInstance(),
+            "admin_shop_id");
+    private static final org.bukkit.NamespacedKey SHOP_ACTION_KEY = new org.bukkit.NamespacedKey(
+            HardcorePlugin.getInstance(), "admin_shop_action");
 
     private enum PendingType {
         BAN_REASON,
@@ -96,6 +105,10 @@ public class AdminGuiListener implements Listener {
                 && !title.equals(Util.color("&4&lAdmin &8| &7Auction Tools"))
                 && !title.startsWith(Util.color("&4&lAdmin &8| &7Auction Sellers"))
                 && !title.equals(Util.color("&4&lAdmin &8| &7Auction Listings"))
+                && !title.equals(AdminGui.SHOP_TITLE)
+                && !title.startsWith(AdminGui.SHOP_OWNER_TITLE)
+                && !title.startsWith(AdminGui.SHOP_LIST_TITLE)
+                && !title.contains("Manage Shop")
                 && !title.equals(AdminGui.LOG_TITLE)) {
             return false;
         }
@@ -167,6 +180,22 @@ public class AdminGuiListener implements Listener {
             return handleAuctionListingClick(player, current, plainName);
         }
 
+        if (title.equals(AdminGui.SHOP_TITLE)) {
+            return handleShopClick(player, plainName);
+        }
+
+        if (title.startsWith(AdminGui.SHOP_OWNER_TITLE)) {
+            return handleShopOwnerClick(player, current, plainName);
+        }
+
+        if (title.startsWith(AdminGui.SHOP_LIST_TITLE)) {
+            return handleShopListClick(player, current, plainName);
+        }
+
+        if (title.contains("Manage Shop")) {
+            return handleShopActionClick(player, current, plainName);
+        }
+
         return false;
     }
 
@@ -197,6 +226,9 @@ public class AdminGuiListener implements Listener {
                 return true;
             case "auction tools":
                 AdminGui.openAuctionMenu(player);
+                return true;
+            case "shop tools":
+                AdminGui.openShopMenu(player);
                 return true;
             case "bank tools":
                 AdminGui.openBankPlayerList(player, 0);
@@ -713,6 +745,165 @@ public class AdminGuiListener implements Listener {
         }
 
         return false;
+    }
+
+    private boolean handleShopClick(Player player, String plainName) {
+        switch (plainName.toLowerCase()) {
+            case "view all shops":
+                AdminGui.openShopList(player, 0, null);
+                return true;
+            case "filter by owner":
+                AdminGui.openShopOwnerList(player, 0);
+                return true;
+            case "open public browser":
+                ShopBrowserView.open(player, 0);
+                return true;
+            case "back":
+                AdminGui.openMain(player);
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private boolean handleShopOwnerClick(Player player, ItemStack current, String plainName) {
+        ItemMeta meta = current.getItemMeta();
+        if (plainName.equalsIgnoreCase("Back")) {
+            AdminGui.openShopMenu(player);
+            return true;
+        }
+
+        if (plainName.toLowerCase().contains("previous")) {
+            Integer page = getInt(meta, "admin_page");
+            AdminGui.openShopOwnerList(player, page == null ? 0 : page);
+            return true;
+        }
+
+        if (plainName.toLowerCase().contains("next")) {
+            Integer page = getInt(meta, "admin_page");
+            AdminGui.openShopOwnerList(player, page == null ? 0 : page);
+            return true;
+        }
+
+        if (meta != null && meta.getPersistentDataContainer().has(TARGET_KEY, PersistentDataType.STRING)) {
+            String id = meta.getPersistentDataContainer().get(TARGET_KEY, PersistentDataType.STRING);
+            if (id != null) {
+                AdminGui.openShopList(player, 0, UUID.fromString(id));
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean handleShopListClick(Player player, ItemStack current, String plainName) {
+        ItemMeta meta = current.getItemMeta();
+        UUID ownerFilter = null;
+        if (meta != null) {
+            String rawOwner = meta.getPersistentDataContainer().get(TARGET_KEY, PersistentDataType.STRING);
+            if (rawOwner != null) {
+                ownerFilter = UUID.fromString(rawOwner);
+            }
+        }
+
+        if (plainName.equalsIgnoreCase("Back")) {
+            AdminGui.openShopMenu(player);
+            return true;
+        }
+
+        if (plainName.toLowerCase().contains("previous")) {
+            Integer page = getInt(meta, "admin_page");
+            AdminGui.openShopList(player, page == null ? 0 : page, ownerFilter);
+            return true;
+        }
+
+        if (plainName.toLowerCase().contains("next")) {
+            Integer page = getInt(meta, "admin_page");
+            AdminGui.openShopList(player, page == null ? 0 : page, ownerFilter);
+            return true;
+        }
+
+        if (meta != null && meta.getPersistentDataContainer().has(SHOP_KEY, PersistentDataType.STRING)) {
+            String rawId = meta.getPersistentDataContainer().get(SHOP_KEY, PersistentDataType.STRING);
+            if (rawId != null) {
+                PlayerShop shop = ShopManager.get().getShop(UUID.fromString(rawId));
+                if (shop != null) {
+                    Integer page = getInt(meta, "admin_page");
+                    AdminGui.openShopActions(player, shop, page, ownerFilter);
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean handleShopActionClick(Player player, ItemStack current, String plainName) {
+        ItemMeta meta = current.getItemMeta();
+        if (meta == null) {
+            return false;
+        }
+
+        UUID ownerFilter = null;
+        String rawOwner = meta.getPersistentDataContainer().get(TARGET_KEY, PersistentDataType.STRING);
+        if (rawOwner != null) {
+            ownerFilter = UUID.fromString(rawOwner);
+        }
+
+        Integer page = getInt(meta, "admin_page");
+        String rawId = meta.getPersistentDataContainer().get(SHOP_KEY, PersistentDataType.STRING);
+        if (plainName.equalsIgnoreCase("Back")) {
+            AdminGui.openShopList(player, page == null ? 0 : page, ownerFilter);
+            return true;
+        }
+
+        if (rawId == null) {
+            return false;
+        }
+
+        PlayerShop shop = ShopManager.get().getShop(UUID.fromString(rawId));
+        if (shop == null) {
+            player.sendMessage(Util.color("&cThat shop no longer exists."));
+            AdminGui.openShopList(player, page == null ? 0 : page, ownerFilter);
+            return true;
+        }
+
+        String action = meta.getPersistentDataContainer().get(SHOP_ACTION_KEY, PersistentDataType.STRING);
+        if (action == null) {
+            return false;
+        }
+
+        switch (action.toLowerCase()) {
+            case "view":
+                ShopView.open(player, shop);
+                return true;
+            case "edit":
+                ShopEditorView.open(player, shop);
+                return true;
+            case "toggle":
+                shop.setOpen(!shop.isOpen());
+                ShopManager.get().save();
+                AdminGui.openShopActions(player, shop, page, ownerFilter);
+                player.sendMessage(Util.color(shop.isOpen() ? "&aShop opened." : "&cShop closed."));
+                return true;
+            case "notifications":
+                shop.setNotificationsEnabled(!shop.isNotificationsEnabled());
+                ShopManager.get().save();
+                AdminGui.openShopActions(player, shop, page, ownerFilter);
+                player.sendMessage(Util.color(shop.isNotificationsEnabled()
+                        ? "&aShop notifications enabled."
+                        : "&cShop notifications disabled."));
+                return true;
+            case "delete":
+                shop.getStock().values().forEach(item -> {
+                    Map<Integer, ItemStack> overflow = player.getInventory().addItem(item.getItem().clone());
+                    overflow.values().forEach(extra -> player.getWorld().dropItemNaturally(player.getLocation(), extra));
+                });
+                ShopManager.get().deleteShop(shop.getId());
+                player.sendMessage(Util.color("&cDeleted shop and collected its stock."));
+                AdminGui.openShopList(player, page == null ? 0 : page, ownerFilter);
+                return true;
+            default:
+                return false;
+        }
     }
 
     @EventHandler
