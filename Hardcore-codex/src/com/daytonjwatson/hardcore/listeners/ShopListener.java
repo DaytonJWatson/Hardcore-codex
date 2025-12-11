@@ -437,30 +437,33 @@ public class ShopListener implements Listener {
     }
 
     private void reopenPendingManageView(Player player, PlayerShop shop) {
-        ShopManager manager = ShopManager.get();
-        ManageReopen reopen = manager.consumePendingManageReopen(player.getUniqueId());
-        if (reopen == null) {
-            if (shop != null) {
-                ShopEditorView.open(player, shop);
+        HardcorePlugin plugin = HardcorePlugin.getInstance();
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            ShopManager manager = ShopManager.get();
+            ManageReopen reopen = manager.consumePendingManageReopen(player.getUniqueId());
+            if (reopen == null) {
+                if (shop != null) {
+                    ShopEditorView.open(player, shop);
+                }
+                return;
             }
-            return;
-        }
 
-        PlayerShop reopenShop = shop != null ? shop : manager.getShop(reopen.shopId());
-        switch (reopen.view()) {
-            case MANAGER -> ShopManagerView.open(player);
-            case STOCK -> {
-                if (reopenShop != null) {
-                    ShopStockView.open(player, reopenShop);
+            PlayerShop reopenShop = shop != null ? shop : manager.getShop(reopen.shopId());
+            switch (reopen.view()) {
+                case MANAGER -> ShopManagerView.open(player);
+                case STOCK -> {
+                    if (reopenShop != null) {
+                        ShopStockView.open(player, reopenShop);
+                    }
+                }
+                case EDITOR -> {
+                    if (reopenShop != null) {
+                        ShopEditorView.open(player, reopenShop);
+                    }
+                }
+                default -> {
                 }
             }
-            case EDITOR -> {
-                if (reopenShop != null) {
-                    ShopEditorView.open(player, reopenShop);
-                }
-            }
-            default -> {
-            }
-        }
+        });
     }
 }
