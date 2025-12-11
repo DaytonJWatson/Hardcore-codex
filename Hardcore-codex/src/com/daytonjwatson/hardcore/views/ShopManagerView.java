@@ -44,6 +44,7 @@ public final class ShopManagerView {
                 List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
                 lore.add(Util.color("&7Status: " + (shop.isOpen() ? "&aOpen" : "&cClosed")));
                 lore.add(Util.color("&7Listings: &f" + shop.getStock().size() + "&7/27"));
+                lore.add(Util.color("&7Notifications: " + (shop.isNotificationsEnabled() ? "&aOn" : "&cOff")));
                 lore.add(Util.color("&8Click to manage this shop."));
                 meta.setLore(lore);
                 meta.setDisplayName(Util.color(shop.getName()));

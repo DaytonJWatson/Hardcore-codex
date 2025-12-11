@@ -14,6 +14,7 @@ import org.bukkit.persistence.PersistentDataType;
 
 import com.daytonjwatson.hardcore.HardcorePlugin;
 import com.daytonjwatson.hardcore.managers.BankManager;
+import com.daytonjwatson.hardcore.managers.ShopManager;
 import com.daytonjwatson.hardcore.shop.PlayerShop;
 import com.daytonjwatson.hardcore.shop.ShopItem;
 import com.daytonjwatson.hardcore.utils.Util;
@@ -28,6 +29,7 @@ public final class ShopStockView {
 
     public static void open(Player player, PlayerShop shop) {
         Inventory menu = Bukkit.createInventory(null, 54, TITLE);
+        ShopManager.get().setActiveStockShop(player.getUniqueId(), shop.getId());
         ItemStack filler = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
         for (int i = 0; i < menu.getSize(); i++) {
             menu.setItem(i, filler);
@@ -38,7 +40,7 @@ public final class ShopStockView {
         for (int i = 0; i < 27; i++) {
             ShopItem entry = shop.getStock().get(i);
             if (entry == null) continue;
-            ItemStack display = entry.getItem();
+            ItemStack display = entry.getItem().clone();
             ItemMeta meta = display.getItemMeta();
             if (meta != null) {
                 List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
@@ -52,15 +54,11 @@ public final class ShopStockView {
             menu.setItem(slot++, display);
         }
 
-        ItemStack add = item(Material.EMERALD_BLOCK, "&aAdd Item From Hand", List.of(
-                "&7Place the item you want to sell in your hand.",
-                "&8Click here to price and add it."
+        ItemStack add = item(Material.BOOK, "&aAdd Item", List.of(
+                "&7Click an item in your inventory below",
+                "&7to list it for sale. You'll set the",
+                "&7price in chat after selecting it."
         ));
-        ItemMeta addMeta = add.getItemMeta();
-        if (addMeta != null) {
-            addMeta.getPersistentDataContainer().set(SHOP_KEY, PersistentDataType.STRING, shop.getId().toString());
-            add.setItemMeta(addMeta);
-        }
         menu.setItem(48, add);
 
         ItemStack back = item(Material.BARRIER, "&cBack", List.of("&7Return to shop editor."));
