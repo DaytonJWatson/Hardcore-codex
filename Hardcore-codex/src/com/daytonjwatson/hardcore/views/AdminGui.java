@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -763,10 +764,11 @@ public final class AdminGui {
             menu.setItem(i, filler);
         }
 
-        List<com.daytonjwatson.hardcore.auction.AuctionListing> listings = com.daytonjwatson.hardcore.managers.AuctionHouseManager
-                .get().getListings();
+        List<com.daytonjwatson.hardcore.auction.AuctionListing> listings = new ArrayList<>(
+                com.daytonjwatson.hardcore.managers.AuctionHouseManager.get().getListings());
         if (sellerFilter != null) {
-            listings = listings.stream().filter(l -> sellerFilter.equals(l.getSeller())).toList();
+            listings = listings.stream().filter(l -> sellerFilter.equals(l.getSeller()))
+                    .collect(Collectors.toCollection(ArrayList::new));
         }
 
         listings.sort(java.util.Comparator.comparing(com.daytonjwatson.hardcore.auction.AuctionListing::getExpiresAt));
