@@ -301,8 +301,8 @@ public final class AdminGui {
                 ? String.format("%.1f, %.1f, %.1f", online.getLocation().getX(), online.getLocation().getY(),
                         online.getLocation().getZ())
                 : "Unavailable";
-        double maxHealth = online != null && online.getAttribute(Attribute.GENERIC_MAX_HEALTH) != null
-                ? online.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue()
+        double maxHealth = online != null && online.getAttribute(Attribute.MAX_HEALTH) != null
+                ? online.getAttribute(Attribute.MAX_HEALTH).getValue()
                 : 0.0;
         String healthLine = online != null
                 ? String.format("%.1f / %.1f", online.getHealth(), maxHealth)
