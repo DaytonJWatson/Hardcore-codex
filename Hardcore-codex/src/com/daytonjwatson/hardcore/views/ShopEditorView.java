@@ -37,12 +37,15 @@ public final class ShopEditorView {
                 List.of("&7Current:", "&f" + shop.getDescription(), "&8Click to type a new description."), "description",
                 shop));
         menu.setItem(13, action(Material.ITEM_FRAME, "&eSet Display Item",
-                List.of("&7Use the item in your hand.", "&8Click to update the icon."), "icon", shop));
+                List.of("&7Click an item in your inventory", "&7below to use it as the icon."), "icon", shop));
         menu.setItem(14, action(shop.isOpen() ? Material.LIME_DYE : Material.GRAY_DYE,
                 shop.isOpen() ? "&aOpen Shop" : "&cClosed Shop",
                 List.of("&7Toggle whether players can buy."), "toggle", shop));
         menu.setItem(15, action(Material.CHEST, "&aManage Stock",
                 List.of("&7Add or remove shop listings."), "stock", shop));
+        menu.setItem(21, action(shop.isNotificationsEnabled() ? Material.BELL : Material.NOTE_BLOCK,
+                shop.isNotificationsEnabled() ? "&aNotifications Enabled" : "&cNotifications Disabled",
+                List.of("&7Alerts you when items sell", "&7or sell out."), "notifications", shop));
         menu.setItem(20, action(Material.REDSTONE_BLOCK, "&cDelete Shop",
                 List.of("&7Remove this shop and return", "&7all listed items to you."), "delete", shop));
 
