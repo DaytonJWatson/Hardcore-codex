@@ -1,13 +1,17 @@
 package com.daytonjwatson.hardcore.views;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -16,10 +20,14 @@ import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
 
 import com.daytonjwatson.hardcore.HardcorePlugin;
+import com.daytonjwatson.hardcore.managers.AdminManager;
 import com.daytonjwatson.hardcore.managers.AdminLogManager;
 import com.daytonjwatson.hardcore.managers.BanManager;
 import com.daytonjwatson.hardcore.managers.FreezeManager;
 import com.daytonjwatson.hardcore.managers.MuteManager;
+import com.daytonjwatson.hardcore.managers.PlayerIpManager;
+import com.daytonjwatson.hardcore.managers.ShopManager;
+import com.daytonjwatson.hardcore.shop.PlayerShop;
 import com.daytonjwatson.hardcore.utils.Util;
 
 public final class AdminGui {
@@ -27,6 +35,8 @@ public final class AdminGui {
     public static final String MAIN_TITLE = Util.color("&4&lAdmin &8| &7Control Panel");
     public static final String PLAYER_LIST_TITLE = Util.color("&4&lAdmin &8| &7Online Players");
     private static final String PLAYER_ACTION_TITLE = Util.color("&4&lAdmin &8| &7Manage &e%player%");
+    private static final String PLAYER_INFO_TITLE = Util.color("&4&lAdmin &8| &7Info &e%player%");
+    private static final String PLAYER_STATUS_TITLE = Util.color("&4&lAdmin &8| &7Status &e%player%");
     private static final String DURATION_TITLE = Util.color("&4&lAdmin &8| &7Choose Duration");
     private static final String REASON_TITLE = Util.color("&4&lAdmin &8| &7Choose Reason");
     private static final String AMOUNT_TITLE = Util.color("&4&lAdmin &8| &7Choose Amount");
@@ -36,6 +46,10 @@ public final class AdminGui {
     private static final String AUCTION_TITLE = Util.color("&4&lAdmin &8| &7Auction Tools");
     private static final String AUCTION_SELLERS_TITLE = Util.color("&4&lAdmin &8| &7Auction Sellers");
     private static final String AUCTION_LISTINGS_TITLE = Util.color("&4&lAdmin &8| &7Auction Listings");
+    public static final String SHOP_TITLE = Util.color("&4&lAdmin &8| &7Shop Tools");
+    public static final String SHOP_OWNER_TITLE = Util.color("&4&lAdmin &8| &7Shop Owners");
+    public static final String SHOP_LIST_TITLE = Util.color("&4&lAdmin &8| &7Shop Listings");
+    public static final String SHOP_ACTION_TITLE = Util.color("&4&lAdmin &8| &7Manage Shop &e%shop%");
     public static final String LOG_TITLE = Util.color("&4&lAdmin &8| &7Admin Log");
     private static final int LOG_PAGE_SIZE = 45;
 
@@ -53,6 +67,10 @@ public final class AdminGui {
             HardcorePlugin.getInstance(), "admin_status_filter");
     private static final org.bukkit.NamespacedKey LISTING_KEY = new org.bukkit.NamespacedKey(HardcorePlugin.getInstance(),
             "admin_listing_id");
+    private static final org.bukkit.NamespacedKey SHOP_KEY = new org.bukkit.NamespacedKey(HardcorePlugin.getInstance(),
+            "admin_shop_id");
+    private static final org.bukkit.NamespacedKey SHOP_ACTION_KEY = new org.bukkit.NamespacedKey(
+            HardcorePlugin.getInstance(), "admin_shop_action");
 
     private AdminGui() {
     }
@@ -83,6 +101,8 @@ public final class AdminGui {
         ItemStack bank = item(Material.EMERALD_BLOCK, "&aBank Tools",
                 List.of("&7Check balances, history, and anomalies."));
 
+        ItemStack shops = item(Material.CHEST, "&6Shop Tools", List.of("&7Review and manage player shops."));
+
         ItemStack addAdmin = item(Material.LIME_DYE, "&aAdd Admin",
                 List.of("&7Promote a player to Hardcore admin."));
 
@@ -101,6 +121,7 @@ public final class AdminGui {
         menu.setItem(14, clearChat);
         menu.setItem(15, auction);
         menu.setItem(16, bank);
+        menu.setItem(17, shops);
         menu.setItem(21, addAdmin);
         menu.setItem(23, removeAdmin);
 
@@ -135,6 +156,10 @@ public final class AdminGui {
 
         ItemStack back = item(Material.BARRIER, "&cBack", List.of("&7Return to admin panel."));
         menu.setItem(45, back);
+
+        ItemStack search = item(Material.COMPASS, "&bSearch Player",
+                List.of("&7Search any player by name.", "&8Useful for offline lookups."));
+        menu.setItem(49, search);
 
         if (start > 0) {
             ItemStack prev = item(Material.ARROW, "&ePrevious Page", List.of("&7Go to page " + page));
@@ -201,6 +226,9 @@ public final class AdminGui {
             back.setItemMeta(backMeta);
         }
 
+        setReturnPage(info, page);
+        setReturnPage(status, page);
+
         menu.setItem(10, info);
         menu.setItem(11, status);
         menu.setItem(12, invsee);
@@ -228,6 +256,128 @@ public final class AdminGui {
         menu.setItem(33, auctions);
 
         menu.setItem(49, back);
+
+        viewer.openInventory(menu);
+    }
+
+    public static void openPlayerInfo(Player viewer, OfflinePlayer target, int returnPage) {
+        String title = PLAYER_INFO_TITLE.replace("%player%", target.getName() == null ? "Unknown" : target.getName());
+        Inventory menu = Bukkit.createInventory(null, 54, title);
+
+        ItemStack filler = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
+        for (int i = 0; i < menu.getSize(); i++) {
+            menu.setItem(i, filler);
+        }
+
+        UUID uuid = target.getUniqueId();
+        String storedName = target.getName() != null ? target.getName() : PlayerIpManager.getStoredName(uuid);
+        String lastSeen = formatLastSeen(PlayerIpManager.getLastSeen(uuid));
+        ItemStack profile = playerHead(uuid, storedName == null ? "Unknown" : storedName);
+        ItemMeta profileMeta = profile.getItemMeta();
+        if (profileMeta != null) {
+            profileMeta.setLore(List.of(Util.color("&7UUID: &f" + uuid), Util.color("&7Last Seen: &f" + lastSeen)));
+            profile.setItemMeta(profileMeta);
+        }
+
+        List<String> ipHistory = PlayerIpManager.getIpHistory(uuid);
+        String historyText = ipHistory.isEmpty() ? "None"
+                : String.join(", ", ipHistory.subList(0, Math.min(3, ipHistory.size())));
+        if (ipHistory.size() > 3) {
+            historyText += ", ...";
+        }
+
+        Player online = target.isOnline() ? target.getPlayer() : null;
+        String currentIp = online != null && online.getAddress() != null && online.getAddress().getAddress() != null
+                ? online.getAddress().getAddress().getHostAddress()
+                : "Offline";
+        String lastIp = PlayerIpManager.getLastIp(uuid);
+
+        ItemStack connections = item(Material.PAPER, "&eConnections",
+                List.of("&7Current IP: &f" + currentIp, "&7Last IP: &f" + (lastIp == null ? "Unknown" : lastIp),
+                        "&7IP History: &f" + historyText));
+
+        String worldLine = online != null ? online.getWorld().getName() : "Offline";
+        String coordsLine = online != null
+                ? String.format("%.1f, %.1f, %.1f", online.getLocation().getX(), online.getLocation().getY(),
+                        online.getLocation().getZ())
+                : "Unavailable";
+        double maxHealth = online != null && online.getAttribute(Attribute.GENERIC_MAX_HEALTH) != null
+                ? online.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue()
+                : 0.0;
+        String healthLine = online != null
+                ? String.format("%.1f / %.1f", online.getHealth(), maxHealth)
+                : "Offline";
+        String foodLine = online != null ? online.getFoodLevel() + " (sat: " + String.format("%.1f", online.getSaturation()) + ")"
+                : "Offline";
+
+        ItemStack location = item(Material.COMPASS, "&bLocation",
+                List.of("&7World: &f" + worldLine, "&7Coords: &f" + coordsLine, "&7Health: &f" + healthLine,
+                        "&7Food: &f" + foodLine, "&7Gamemode: &f"
+                                + (online != null ? online.getGameMode().name() : "Offline"),
+                        "&7Flight: &f" + (online != null && online.getAllowFlight() ? "Allowed" : "Not allowed")));
+
+        ItemStack account = item(Material.WRITABLE_BOOK, "&6Account",
+                List.of("&7Admin: &f" + (AdminManager.isAdmin(uuid) ? "Yes" : "No"),
+                        "&7Muted: &f" + (MuteManager.isMuted(uuid) ? "Yes" : "No"),
+                        "&7Banned: &f" + (BanManager.isBanned(uuid) ? "Yes" : "No")));
+
+        List<String> alts = PlayerIpManager.getAltsFor(uuid);
+        ItemStack altAccounts = item(Material.PLAYER_HEAD, "&dAlt Accounts",
+                List.of(alts.isEmpty() ? "&7None" : "&7" + String.join(", ", alts)));
+
+        ItemStack back = actionItem(Material.BARRIER, "&cBack", uuid.toString(), List.of("&7Return to actions."));
+        ItemMeta backMeta = back.getItemMeta();
+        if (backMeta != null) {
+            backMeta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, returnPage);
+            back.setItemMeta(backMeta);
+        }
+
+        menu.setItem(10, profile);
+        menu.setItem(12, connections);
+        menu.setItem(14, location);
+        menu.setItem(16, account);
+        menu.setItem(28, altAccounts);
+        menu.setItem(49, back);
+
+        viewer.openInventory(menu);
+    }
+
+    public static void openPlayerStatus(Player viewer, OfflinePlayer target, int returnPage) {
+        String title = PLAYER_STATUS_TITLE.replace("%player%", target.getName() == null ? "Unknown" : target.getName());
+        Inventory menu = Bukkit.createInventory(null, 27, title);
+
+        ItemStack filler = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
+        for (int i = 0; i < menu.getSize(); i++) {
+            menu.setItem(i, filler);
+        }
+
+        UUID uuid = target.getUniqueId();
+
+        ItemStack role = item(Material.NAME_TAG, "&bRole",
+                List.of("&7Current: &f" + (AdminManager.isAdmin(uuid) ? "Admin" : "Player")));
+
+        ItemStack mute = statusItem(Material.RED_DYE, "&cMute", MuteManager.isMuted(uuid),
+                MuteManager.getRemainingMillis(uuid), MuteManager.getReason(uuid));
+
+        ItemStack ban = statusItem(Material.ANVIL, "&4Ban", BanManager.isBanned(uuid),
+                BanManager.getRemainingMillis(uuid), BanManager.getReason(uuid));
+
+        ItemStack freeze = item(Material.PACKED_ICE, "&bFreeze",
+                List.of("&7Status: &f" + (FreezeManager.isFrozen(uuid) ? "Frozen" : "Not frozen"), "&7Reason: &f"
+                        + (FreezeManager.isFrozen(uuid) ? FreezeManager.getReason(uuid) : "N/A")));
+
+        ItemStack back = actionItem(Material.BARRIER, "&cBack", uuid.toString(), List.of("&7Return to actions."));
+        ItemMeta backMeta = back.getItemMeta();
+        if (backMeta != null) {
+            backMeta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, returnPage);
+            back.setItemMeta(backMeta);
+        }
+
+        menu.setItem(10, role);
+        menu.setItem(12, mute);
+        menu.setItem(14, ban);
+        menu.setItem(16, freeze);
+        menu.setItem(22, back);
 
         viewer.openInventory(menu);
     }
@@ -477,6 +627,28 @@ public final class AdminGui {
         viewer.openInventory(menu);
     }
 
+    public static void openShopMenu(Player viewer) {
+        Inventory menu = Bukkit.createInventory(null, 27, SHOP_TITLE);
+        ItemStack filler = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
+        for (int i = 0; i < menu.getSize(); i++) {
+            menu.setItem(i, filler);
+        }
+
+        ItemStack listAll = item(Material.CHEST, "&eView All Shops",
+                List.of("&7Browse every player shop."));
+        ItemStack listOwners = item(Material.PLAYER_HEAD, "&bFilter by Owner",
+                List.of("&7Pick a shop owner to filter."));
+        ItemStack browser = item(Material.EMERALD, "&aOpen Public Browser", List.of("&7Open the normal shop browser."));
+        ItemStack back = item(Material.ARROW, "&cBack", List.of("&7Return to admin panel."));
+
+        menu.setItem(11, listAll);
+        menu.setItem(13, listOwners);
+        menu.setItem(15, browser);
+        menu.setItem(22, back);
+
+        viewer.openInventory(menu);
+    }
+
     public static void openAuctionSellerList(Player viewer, int page) {
         Inventory menu = Bukkit.createInventory(null, 54, AUCTION_SELLERS_TITLE + " " + (page + 1));
         ItemStack filler = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
@@ -535,6 +707,188 @@ public final class AdminGui {
         viewer.openInventory(menu);
     }
 
+    public static void openShopOwnerList(Player viewer, int page) {
+        Inventory menu = Bukkit.createInventory(null, 54, SHOP_OWNER_TITLE + " " + (page + 1));
+        ItemStack filler = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
+        for (int i = 0; i < menu.getSize(); i++) {
+            menu.setItem(i, filler);
+        }
+
+        java.util.Map<UUID, Integer> counts = new java.util.HashMap<>();
+        ShopManager.get().getShops().forEach(shop -> counts.merge(shop.getOwner(), 1, Integer::sum));
+        List<UUID> owners = new ArrayList<>(counts.keySet());
+        owners.sort(java.util.Comparator.comparing(uuid -> Bukkit.getOfflinePlayer(uuid).getName(),
+                java.util.Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
+
+        int start = page * 45;
+        int end = Math.min(start + 45, owners.size());
+        int slot = 0;
+        for (int i = start; i < end; i++) {
+            UUID owner = owners.get(i);
+            String name = Bukkit.getOfflinePlayer(owner).getName();
+            ItemStack head = playerHead(owner, name == null ? "Unknown" : name);
+            ItemMeta meta = head.getItemMeta();
+            if (meta != null) {
+                meta.getPersistentDataContainer().set(TARGET_KEY, PersistentDataType.STRING, owner.toString());
+                meta.setLore(List.of(Util.color("&7Shops: &f" + counts.getOrDefault(owner, 0)),
+                        Util.color("&7Click to filter.")));
+                meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, page);
+                head.setItemMeta(meta);
+            }
+            menu.setItem(slot++, head);
+        }
+
+        ItemStack back = item(Material.BARRIER, "&cBack", List.of("&7Return to shop tools."));
+        menu.setItem(45, back);
+
+        if (start > 0) {
+            ItemStack prev = item(Material.ARROW, "&ePrevious Page", List.of("&7Go to page " + page));
+            ItemMeta meta = prev.getItemMeta();
+            if (meta != null) {
+                meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, Math.max(0, page - 1));
+                prev.setItemMeta(meta);
+            }
+            menu.setItem(48, prev);
+        }
+
+        if (end < owners.size()) {
+            ItemStack next = item(Material.ARROW, "&eNext Page", List.of("&7Go to page " + (page + 2)));
+            ItemMeta meta = next.getItemMeta();
+            if (meta != null) {
+                meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, page + 1);
+                next.setItemMeta(meta);
+            }
+            menu.setItem(50, next);
+        }
+
+        viewer.openInventory(menu);
+    }
+
+    public static void openShopList(Player viewer, int page, UUID ownerFilter) {
+        Inventory menu = Bukkit.createInventory(null, 54, SHOP_LIST_TITLE + " " + (page + 1));
+        ItemStack filler = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
+        for (int i = 0; i < menu.getSize(); i++) {
+            menu.setItem(i, filler);
+        }
+
+        List<PlayerShop> shops = new ArrayList<>();
+        for (PlayerShop shop : ShopManager.get().getShops()) {
+            if (ownerFilter == null || ownerFilter.equals(shop.getOwner())) {
+                shops.add(shop);
+            }
+        }
+        shops.sort(java.util.Comparator.comparing(PlayerShop::getName, String.CASE_INSENSITIVE_ORDER));
+
+        int start = page * 45;
+        int end = Math.min(start + 45, shops.size());
+        int slot = 0;
+        for (int i = start; i < end; i++) {
+            PlayerShop shop = shops.get(i);
+            ItemStack icon = shop.getIcon();
+            ItemMeta meta = icon.getItemMeta();
+            if (meta != null) {
+                List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
+                lore.add(Util.color("&7Owner: &f" + Util.resolveShopOwnerName(shop)));
+                lore.add(Util.color("&7Status: " + (shop.isOpen() ? "&aOpen" : "&cClosed")));
+                lore.add(Util.color("&7Listings: &f" + shop.getStock().size() + "&7/27"));
+                lore.add(Util.color("&7Notifications: " + (shop.isNotificationsEnabled() ? "&aOn" : "&cOff")));
+                lore.add(Util.color("&8Click for admin actions."));
+                meta.setLore(lore);
+                meta.setDisplayName(Util.color(shop.getName()));
+                meta.getPersistentDataContainer().set(SHOP_KEY, PersistentDataType.STRING, shop.getId().toString());
+                meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, page);
+                if (ownerFilter != null) {
+                    meta.getPersistentDataContainer().set(TARGET_KEY, PersistentDataType.STRING, ownerFilter.toString());
+                }
+                icon.setItemMeta(meta);
+            }
+            menu.setItem(slot++, icon);
+        }
+
+        ItemStack back = item(Material.BARRIER, "&cBack", List.of("&7Return to shop tools."));
+        if (ownerFilter != null) {
+            ItemMeta meta = back.getItemMeta();
+            if (meta != null) {
+                meta.getPersistentDataContainer().set(TARGET_KEY, PersistentDataType.STRING, ownerFilter.toString());
+                back.setItemMeta(meta);
+            }
+        }
+        menu.setItem(45, back);
+
+        if (start > 0) {
+            ItemStack prev = item(Material.ARROW, "&ePrevious Page", List.of("&7Go to page " + page));
+            ItemMeta meta = prev.getItemMeta();
+            if (meta != null) {
+                meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, Math.max(0, page - 1));
+                if (ownerFilter != null) {
+                    meta.getPersistentDataContainer().set(TARGET_KEY, PersistentDataType.STRING, ownerFilter.toString());
+                }
+                prev.setItemMeta(meta);
+            }
+            menu.setItem(48, prev);
+        }
+
+        if (end < shops.size()) {
+            ItemStack next = item(Material.ARROW, "&eNext Page", List.of("&7Go to page " + (page + 2)));
+            ItemMeta meta = next.getItemMeta();
+            if (meta != null) {
+                meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, page + 1);
+                if (ownerFilter != null) {
+                    meta.getPersistentDataContainer().set(TARGET_KEY, PersistentDataType.STRING, ownerFilter.toString());
+                }
+                next.setItemMeta(meta);
+            }
+            menu.setItem(50, next);
+        }
+
+        viewer.openInventory(menu);
+    }
+
+    public static void openShopActions(Player viewer, PlayerShop shop, Integer returnPage, UUID ownerFilter) {
+        String title = SHOP_ACTION_TITLE.replace("%shop%", shop.getName() == null ? "Shop" : shop.getName());
+        Inventory menu = Bukkit.createInventory(null, 27, title);
+        ItemStack filler = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
+        for (int i = 0; i < menu.getSize(); i++) {
+            menu.setItem(i, filler);
+        }
+
+        ItemStack view = shopAction(Material.MAP, "&bView Shopfront",
+                List.of("&7Open the shop as a customer."), "view", shop, returnPage, ownerFilter);
+        ItemStack edit = shopAction(Material.ANVIL, "&eEdit Shop",
+                List.of("&7Open the shop editor."), "edit", shop, returnPage, ownerFilter);
+        ItemStack toggle = shopAction(shop.isOpen() ? Material.LIME_DYE : Material.GRAY_DYE,
+                shop.isOpen() ? "&aOpen Shop" : "&cClosed Shop", List.of("&7Toggle buying access."), "toggle", shop,
+                returnPage, ownerFilter);
+        ItemStack notifications = shopAction(shop.isNotificationsEnabled() ? Material.BELL : Material.NOTE_BLOCK,
+                shop.isNotificationsEnabled() ? "&aNotifications Enabled" : "&cNotifications Disabled",
+                List.of("&7Toggle owner notifications."), "notifications", shop, returnPage, ownerFilter);
+        ItemStack delete = shopAction(Material.REDSTONE_BLOCK, "&cDelete Shop",
+                List.of("&7Remove this shop and", "&7return items to you."), "delete", shop, returnPage,
+                ownerFilter);
+
+        ItemStack back = item(Material.BARRIER, "&cBack", List.of("&7Return to shop list."));
+        ItemMeta backMeta = back.getItemMeta();
+        if (backMeta != null) {
+            if (returnPage != null) {
+                backMeta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, returnPage);
+            }
+            backMeta.getPersistentDataContainer().set(SHOP_KEY, PersistentDataType.STRING, shop.getId().toString());
+            if (ownerFilter != null) {
+                backMeta.getPersistentDataContainer().set(TARGET_KEY, PersistentDataType.STRING, ownerFilter.toString());
+            }
+            back.setItemMeta(backMeta);
+        }
+
+        menu.setItem(10, view);
+        menu.setItem(11, edit);
+        menu.setItem(13, toggle);
+        menu.setItem(15, notifications);
+        menu.setItem(16, delete);
+        menu.setItem(22, back);
+
+        viewer.openInventory(menu);
+    }
+
     public static void openAuctionListings(Player viewer, UUID sellerFilter, int page) {
         Inventory menu = Bukkit.createInventory(null, 54, AUCTION_LISTINGS_TITLE);
         ItemStack filler = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
@@ -542,10 +896,11 @@ public final class AdminGui {
             menu.setItem(i, filler);
         }
 
-        List<com.daytonjwatson.hardcore.auction.AuctionListing> listings = com.daytonjwatson.hardcore.managers.AuctionHouseManager
-                .get().getListings();
+        List<com.daytonjwatson.hardcore.auction.AuctionListing> listings = new ArrayList<>(
+                com.daytonjwatson.hardcore.managers.AuctionHouseManager.get().getListings());
         if (sellerFilter != null) {
-            listings = listings.stream().filter(l -> sellerFilter.equals(l.getSeller())).toList();
+            listings = listings.stream().filter(l -> sellerFilter.equals(l.getSeller()))
+                    .collect(Collectors.toCollection(ArrayList::new));
         }
 
         listings.sort(java.util.Comparator.comparing(com.daytonjwatson.hardcore.auction.AuctionListing::getExpiresAt));
@@ -758,6 +1113,14 @@ public final class AdminGui {
         viewer.openInventory(menu);
     }
 
+    private static void setReturnPage(ItemStack item, int page) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, page);
+            item.setItemMeta(meta);
+        }
+    }
+
     private static ItemStack actionItem(Material material, String name, String targetUuid, List<String> lore) {
         ItemStack item = item(material, name, lore);
         ItemMeta meta = item.getItemMeta();
@@ -766,6 +1129,48 @@ public final class AdminGui {
             item.setItemMeta(meta);
         }
         return item;
+    }
+
+    private static ItemStack statusItem(Material material, String name, boolean active, long remainingMillis, String reason) {
+        String statusText = active ? "&cActive" : "&aNot Active";
+        String duration = remainingMillis == -1L ? "Permanent"
+                : remainingMillis > 0 ? Util.formatDuration(remainingMillis) : "Expired";
+        List<String> lore = new ArrayList<>();
+        lore.add("&7Status: &f" + statusText);
+        lore.add("&7Duration: &f" + duration);
+        lore.add("&7Reason: &f" + (reason == null ? "Unknown" : reason));
+        return item(material, name, lore);
+    }
+
+    private static ItemStack shopAction(Material material, String name, List<String> lore, String action, PlayerShop shop,
+            Integer returnPage, UUID ownerFilter) {
+        ItemStack item = item(material, name, lore);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.getPersistentDataContainer().set(SHOP_KEY, PersistentDataType.STRING, shop.getId().toString());
+            meta.getPersistentDataContainer().set(SHOP_ACTION_KEY, PersistentDataType.STRING, action);
+            if (returnPage != null) {
+                meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, returnPage);
+            }
+            if (ownerFilter != null) {
+                meta.getPersistentDataContainer().set(TARGET_KEY, PersistentDataType.STRING, ownerFilter.toString());
+            }
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    private static String formatLastSeen(long lastSeenMillis) {
+        if (lastSeenMillis <= 0) {
+            return "Unknown";
+        }
+
+        Duration since = Duration.between(Instant.ofEpochMilli(lastSeenMillis), Instant.now());
+        if (since.isNegative()) {
+            since = Duration.ZERO;
+        }
+
+        return Util.formatDuration(since.toMillis()) + " ago";
     }
 
     private static ItemStack reasonItem(Material material, String name, OfflinePlayer target, String action,
