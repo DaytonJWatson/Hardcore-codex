@@ -53,6 +53,7 @@ public class ShopManager {
     private final Map<UUID, Map<UUID, PurchaseSummary>> pendingOwnerSummaries = new HashMap<>();
     private final Map<UUID, ViewSession> viewSessions = new HashMap<>();
     private final Map<UUID, UUID> reopeningShopView = new HashMap<>();
+    private final Map<UUID, ManageReopen> pendingManageReopens = new HashMap<>();
     private static final UUID LEGACY_SERVER_OWNER = UUID.nameUUIDFromBytes("hardcore-server-shop".getBytes());
 
     public static class ViewSession {
@@ -68,6 +69,14 @@ public class ShopManager {
             return sessionId;
         }
     }
+
+    public enum ManageView {
+        MANAGER,
+        EDITOR,
+        STOCK
+    }
+
+    public record ManageReopen(ManageView view, UUID shopId) {}
 
     private ShopManager(HardcorePlugin plugin) {
         this.plugin = plugin;
@@ -301,6 +310,14 @@ public class ShopManager {
             return true;
         }
         return false;
+    }
+
+    public void setPendingManageReopen(UUID player, ManageView view, UUID shopId) {
+        pendingManageReopens.put(player, new ManageReopen(view, shopId));
+    }
+
+    public ManageReopen consumePendingManageReopen(UUID player) {
+        return pendingManageReopens.remove(player);
     }
 
     public boolean processPurchase(Player buyer, UUID shopId, int slot, boolean buyStack) {

@@ -20,6 +20,8 @@ import org.bukkit.persistence.PersistentDataType;
 
 import com.daytonjwatson.hardcore.HardcorePlugin;
 import com.daytonjwatson.hardcore.managers.ShopManager;
+import com.daytonjwatson.hardcore.managers.ShopManager.ManageReopen;
+import com.daytonjwatson.hardcore.managers.ShopManager.ManageView;
 import com.daytonjwatson.hardcore.shop.PlayerShop;
 import com.daytonjwatson.hardcore.utils.Util;
 import com.daytonjwatson.hardcore.views.ShopBrowserView;
@@ -241,12 +243,16 @@ public class ShopListener implements Listener {
 
         switch (action) {
             case "rename" -> {
-                ShopManager.get().setPendingRename(player.getUniqueId(), shop.getId());
+                ShopManager manager = ShopManager.get();
+                manager.setPendingRename(player.getUniqueId(), shop.getId());
+                manager.setPendingManageReopen(player.getUniqueId(), ManageView.EDITOR, shop.getId());
                 player.closeInventory();
                 player.sendMessage(Util.color("&eType the new shop name in chat. Type &ccancel &eto abort."));
             }
             case "description" -> {
-                ShopManager.get().setPendingDescription(player.getUniqueId(), shop.getId());
+                ShopManager manager = ShopManager.get();
+                manager.setPendingDescription(player.getUniqueId(), shop.getId());
+                manager.setPendingManageReopen(player.getUniqueId(), ManageView.EDITOR, shop.getId());
                 player.closeInventory();
                 player.sendMessage(Util.color("&eType the new description in chat. Type &ccancel &eto abort."));
             }
@@ -329,8 +335,10 @@ public class ShopListener implements Listener {
             }
             ItemStack copy = hand.clone();
             player.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
-            ShopManager.get().setPendingItemAdd(player.getUniqueId(), shop.getId(), copy);
-            ShopManager.get().setPendingPrice(player.getUniqueId(), shop.getId());
+            ShopManager manager = ShopManager.get();
+            manager.setPendingItemAdd(player.getUniqueId(), shop.getId(), copy);
+            manager.setPendingPrice(player.getUniqueId(), shop.getId());
+            manager.setPendingManageReopen(player.getUniqueId(), ManageView.STOCK, shop.getId());
             player.closeInventory();
             player.sendMessage(Util.color("&eEnter the price for &f" + copy.getAmount() + "x &e" + Util.plainName(copy)
                     + "&e in chat. Type &ccancel &eto abort."));
@@ -347,49 +355,51 @@ public class ShopListener implements Listener {
             handled = true;
             event.setCancelled(true);
             String message = ChatColor.stripColor(event.getMessage().trim());
+            PlayerShop shop = manager.consumeRenameTarget(player.getUniqueId());
             if (message.equalsIgnoreCase("cancel")) {
-                manager.consumeRenameTarget(player.getUniqueId());
                 player.sendMessage(Util.color("&cRename cancelled."));
+                reopenPendingManageView(player, shop);
                 return;
             }
-            PlayerShop shop = manager.consumeRenameTarget(player.getUniqueId());
             if (shop != null) {
                 shop.setName(message);
                 manager.save();
                 player.sendMessage(Util.color("&aShop name updated."));
             }
-            reopenEditor(player, shop);
+            reopenPendingManageView(player, shop);
         }
 
         if (manager.isDescribing(player.getUniqueId())) {
             handled = true;
             event.setCancelled(true);
             String message = ChatColor.stripColor(event.getMessage().trim());
+            PlayerShop shop = manager.consumeDescriptionTarget(player.getUniqueId());
             if (message.equalsIgnoreCase("cancel")) {
-                manager.consumeDescriptionTarget(player.getUniqueId());
                 player.sendMessage(Util.color("&cDescription update cancelled."));
+                reopenPendingManageView(player, shop);
                 return;
             }
-            PlayerShop shop = manager.consumeDescriptionTarget(player.getUniqueId());
             if (shop != null) {
                 shop.setDescription(message);
                 manager.save();
                 player.sendMessage(Util.color("&aShop description updated."));
             }
-            reopenEditor(player, shop);
+            reopenPendingManageView(player, shop);
         }
 
         if (manager.isAwaitingPrice(player.getUniqueId())) {
             handled = true;
             event.setCancelled(true);
             String message = ChatColor.stripColor(event.getMessage().trim());
+            ShopManager.PendingItem pending = manager.consumePendingItem(player.getUniqueId());
+            PlayerShop shop = pending == null ? null : manager.getShop(pending.shopId());
             if (message.equalsIgnoreCase("cancel")) {
-                ShopManager.PendingItem pending = manager.consumePendingItem(player.getUniqueId());
                 if (pending != null) {
                     player.getInventory().addItem(pending.item());
                 }
                 manager.consumePriceTarget(player.getUniqueId());
                 player.sendMessage(Util.color("&cItem add cancelled."));
+                reopenPendingManageView(player, shop);
                 return;
             }
             double price;
@@ -399,16 +409,16 @@ public class ShopListener implements Listener {
                 player.sendMessage(Util.color("&cEnter a valid number for the price or type cancel."));
                 return;
             }
-            ShopManager.PendingItem pending = manager.consumePendingItem(player.getUniqueId());
             manager.consumePriceTarget(player.getUniqueId());
             if (pending == null) {
                 player.sendMessage(Util.color("&cNo pending item to add."));
+                reopenPendingManageView(player, null);
                 return;
             }
-            PlayerShop shop = manager.getShop(pending.shopId());
             if (shop == null) {
                 player.sendMessage(Util.color("&cThat shop no longer exists."));
                 player.getInventory().addItem(pending.item());
+                reopenPendingManageView(player, null);
                 return;
             }
             boolean added = manager.addItemToShop(shop, pending.item(), price);
@@ -418,7 +428,7 @@ public class ShopListener implements Listener {
             } else {
                 player.sendMessage(Util.color("&aItem added for &f" + price + "&a."));
             }
-            reopenEditor(player, shop);
+            reopenPendingManageView(player, shop);
         }
 
         if (handled) {
@@ -426,9 +436,31 @@ public class ShopListener implements Listener {
         }
     }
 
-    private void reopenEditor(Player player, PlayerShop shop) {
-        if (shop != null) {
-            ShopEditorView.open(player, shop);
+    private void reopenPendingManageView(Player player, PlayerShop shop) {
+        ShopManager manager = ShopManager.get();
+        ManageReopen reopen = manager.consumePendingManageReopen(player.getUniqueId());
+        if (reopen == null) {
+            if (shop != null) {
+                ShopEditorView.open(player, shop);
+            }
+            return;
+        }
+
+        PlayerShop reopenShop = shop != null ? shop : manager.getShop(reopen.shopId());
+        switch (reopen.view()) {
+            case MANAGER -> ShopManagerView.open(player);
+            case STOCK -> {
+                if (reopenShop != null) {
+                    ShopStockView.open(player, reopenShop);
+                }
+            }
+            case EDITOR -> {
+                if (reopenShop != null) {
+                    ShopEditorView.open(player, reopenShop);
+                }
+            }
+            default -> {
+            }
         }
     }
 }
