@@ -71,6 +71,9 @@ public class ShopListener implements Listener {
         if (ShopStockView.isStock(title)) {
             ShopManager.get().clearActiveStockShop(player.getUniqueId());
         }
+        if (ShopEditorView.isEditor(title)) {
+            ShopManager.get().consumePendingIcon(player.getUniqueId());
+        }
         if (!ShopView.isShopView(title)) {
             return;
         }
@@ -226,9 +229,19 @@ public class ShopListener implements Listener {
     private void handleEditor(InventoryClickEvent event, Player player) {
         event.setCancelled(true);
         if (event.isShiftClick() || event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY) return;
+        Inventory clickedInventory = event.getClickedInventory();
         ItemStack clicked = event.getCurrentItem();
-        if (clicked == null || clicked.getItemMeta() == null) return;
+        if (clicked == null || clicked.getType() == Material.AIR) return;
+
+        ShopManager manager = ShopManager.get();
+        if (clickedInventory != null && clickedInventory.equals(player.getInventory())
+                && manager.isAwaitingIcon(player.getUniqueId())) {
+            handleIconSelectionFromInventory(player, clicked);
+            return;
+        }
+
         ItemMeta meta = clicked.getItemMeta();
+        if (meta == null) return;
         String name = meta.getDisplayName();
         if (name != null && ChatColor.stripColor(name).equalsIgnoreCase("Back")) {
             ShopManagerView.open(player);
@@ -248,29 +261,21 @@ public class ShopListener implements Listener {
 
         switch (action) {
             case "rename" -> {
-                ShopManager manager = ShopManager.get();
                 manager.setPendingRename(player.getUniqueId(), shop.getId());
                 manager.setPendingManageReopen(player.getUniqueId(), ManageView.EDITOR, shop.getId());
                 player.closeInventory();
                 player.sendMessage(Util.color("&eType the new shop name in chat. Type &ccancel &eto abort."));
             }
             case "description" -> {
-                ShopManager manager = ShopManager.get();
                 manager.setPendingDescription(player.getUniqueId(), shop.getId());
                 manager.setPendingManageReopen(player.getUniqueId(), ManageView.EDITOR, shop.getId());
                 player.closeInventory();
                 player.sendMessage(Util.color("&eType the new description in chat. Type &ccancel &eto abort."));
             }
             case "icon" -> {
-                ItemStack hand = player.getInventory().getItemInMainHand();
-                if (hand.getType() == Material.AIR) {
-                    player.sendMessage(Util.color("&cHold the item you want to use as the display icon."));
-                    return;
-                }
-                shop.setIcon(hand);
-                ShopManager.get().save();
-                ShopEditorView.open(player, shop);
-                player.sendMessage(Util.color("&aUpdated shop icon."));
+                manager.setPendingIcon(player.getUniqueId(), shop.getId());
+                player.sendMessage(Util.color(
+                        "&eClick an item in your inventory to use it as this shop's display icon."));
             }
             case "toggle" -> {
                 shop.setOpen(!shop.isOpen());
@@ -298,6 +303,26 @@ public class ShopListener implements Listener {
             }
             default -> {}
         }
+    }
+
+    private void handleIconSelectionFromInventory(Player player, ItemStack clicked) {
+        ShopManager manager = ShopManager.get();
+        UUID shopId = manager.consumePendingIcon(player.getUniqueId());
+        if (shopId == null) {
+            player.sendMessage(Util.color("&cNo shop selected for icon update."));
+            return;
+        }
+        PlayerShop shop = manager.getShop(shopId);
+        if (shop == null) {
+            player.sendMessage(Util.color("&cThat shop no longer exists."));
+            return;
+        }
+
+        ItemStack icon = clicked.clone();
+        shop.setIcon(icon);
+        manager.save();
+        ShopEditorView.open(player, shop);
+        player.sendMessage(Util.color("&aUpdated shop icon."));
     }
 
     private void handleStock(InventoryClickEvent event, Player player) {

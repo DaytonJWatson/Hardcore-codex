@@ -37,7 +37,7 @@ public final class ShopEditorView {
                 List.of("&7Current:", "&f" + shop.getDescription(), "&8Click to type a new description."), "description",
                 shop));
         menu.setItem(13, action(Material.ITEM_FRAME, "&eSet Display Item",
-                List.of("&7Use the item in your hand.", "&8Click to update the icon."), "icon", shop));
+                List.of("&7Click an item in your inventory", "&7below to use it as the icon."), "icon", shop));
         menu.setItem(14, action(shop.isOpen() ? Material.LIME_DYE : Material.GRAY_DYE,
                 shop.isOpen() ? "&aOpen Shop" : "&cClosed Shop",
                 List.of("&7Toggle whether players can buy."), "toggle", shop));

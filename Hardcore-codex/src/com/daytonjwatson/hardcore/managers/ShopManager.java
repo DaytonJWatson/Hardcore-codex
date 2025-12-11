@@ -50,6 +50,7 @@ public class ShopManager {
     private final Map<UUID, UUID> pendingDescription = new HashMap<>();
     private final Map<UUID, PendingItem> pendingItemAdds = new HashMap<>();
     private final Map<UUID, UUID> pendingPriceUpdate = new HashMap<>();
+    private final Map<UUID, UUID> pendingIconUpdate = new HashMap<>();
     private final Map<UUID, Map<UUID, PurchaseSummary>> pendingOwnerSummaries = new HashMap<>();
     private final Map<UUID, ViewSession> viewSessions = new HashMap<>();
     private final Map<UUID, UUID> reopeningShopView = new HashMap<>();
@@ -265,6 +266,18 @@ public class ShopManager {
         return pendingItemAdds.remove(player);
     }
 
+    public void setPendingIcon(UUID player, UUID shop) {
+        pendingIconUpdate.put(player, shop);
+    }
+
+    public UUID consumePendingIcon(UUID player) {
+        return pendingIconUpdate.remove(player);
+    }
+
+    public boolean isAwaitingIcon(UUID player) {
+        return pendingIconUpdate.containsKey(player);
+    }
+
     public UUID getActiveStockShop(UUID player) {
         return activeStockView.get(player);
     }
@@ -278,60 +291,6 @@ public class ShopManager {
     }
 
     public record PendingItem(UUID shopId, ItemStack item, int slot) {}
-
-    public ViewSession startViewingShop(UUID viewer, UUID shopId) {
-        ViewSession session = viewSessions.computeIfAbsent(viewer, id -> new ViewSession());
-        session.sessionId++;
-        session.shopId = shopId;
-        session.active = true;
-        return session;
-    }
-
-    public ViewSession getViewSession(UUID viewer) {
-        return viewSessions.get(viewer);
-    }
-
-    public ViewSession markSessionClosing(UUID viewer, UUID shopId) {
-        ViewSession session = viewSessions.get(viewer);
-        if (session != null && shopId.equals(session.shopId)) {
-            session.active = false;
-            return session;
-        }
-        return null;
-    }
-
-    public boolean isSessionActive(UUID viewer, UUID shopId, int sessionId) {
-        ViewSession session = viewSessions.get(viewer);
-        return session != null && session.active && session.sessionId == sessionId && shopId.equals(session.shopId);
-    }
-
-    public void clearSession(UUID viewer, UUID shopId, int sessionId) {
-        ViewSession session = viewSessions.get(viewer);
-        if (session != null && !session.active && session.sessionId == sessionId && shopId.equals(session.shopId)) {
-            viewSessions.remove(viewer);
-        }
-    }
-
-    public void markReopeningShop(UUID viewer, UUID shopId) {
-        reopeningShopView.put(viewer, shopId);
-    }
-
-    public boolean consumeReopeningShop(UUID viewer, UUID shopId) {
-        UUID reopening = reopeningShopView.get(viewer);
-        if (reopening != null && reopening.equals(shopId)) {
-            reopeningShopView.remove(viewer);
-            return true;
-        }
-        return false;
-    }
-
-    public void setPendingManageReopen(UUID player, ManageView view, UUID shopId) {
-        pendingManageReopens.put(player, new ManageReopen(view, shopId));
-    }
-
-    public ManageReopen consumePendingManageReopen(UUID player) {
-        return pendingManageReopens.remove(player);
-    }
 
     public ViewSession startViewingShop(UUID viewer, UUID shopId) {
         ViewSession session = viewSessions.computeIfAbsent(viewer, id -> new ViewSession());
