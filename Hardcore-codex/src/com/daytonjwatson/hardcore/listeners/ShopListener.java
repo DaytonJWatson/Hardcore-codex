@@ -13,7 +13,9 @@ import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
@@ -66,6 +68,9 @@ public class ShopListener implements Listener {
             return;
         }
         String title = event.getView().getTitle();
+        if (ShopStockView.isStock(title)) {
+            ShopManager.get().clearActiveStockShop(player.getUniqueId());
+        }
         if (!ShopView.isShopView(title)) {
             return;
         }
@@ -298,9 +303,17 @@ public class ShopListener implements Listener {
     private void handleStock(InventoryClickEvent event, Player player) {
         event.setCancelled(true);
         if (event.isShiftClick() || event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY) return;
+        Inventory clickedInventory = event.getClickedInventory();
         ItemStack clicked = event.getCurrentItem();
-        if (clicked == null || clicked.getItemMeta() == null) return;
+        if (clickedInventory == null || clicked == null || clicked.getType() == Material.AIR) return;
+
+        if (clickedInventory.equals(player.getInventory())) {
+            handleStockSelectionFromInventory(player, clicked, event.getSlot());
+            return;
+        }
+
         ItemMeta meta = clicked.getItemMeta();
+        if (meta == null) return;
         String name = meta.getDisplayName();
         if (name != null && ChatColor.stripColor(name).equalsIgnoreCase("Back")) {
             ShopManagerView.open(player);
@@ -326,23 +339,46 @@ public class ShopListener implements Listener {
             player.sendMessage(Util.color("&aRemoved listing and returned the item."));
             return;
         }
+    }
 
-        if (name != null && ChatColor.stripColor(name).equalsIgnoreCase("Add Item From Hand")) {
-            ItemStack hand = player.getInventory().getItemInMainHand();
-            if (hand.getType() == Material.AIR) {
-                player.sendMessage(Util.color("&cHold the item you want to sell in your hand."));
-                return;
-            }
-            ItemStack copy = hand.clone();
-            player.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
-            ShopManager manager = ShopManager.get();
-            manager.setPendingItemAdd(player.getUniqueId(), shop.getId(), copy);
-            manager.setPendingPrice(player.getUniqueId(), shop.getId());
-            manager.setPendingManageReopen(player.getUniqueId(), ManageView.STOCK, shop.getId());
-            player.closeInventory();
-            player.sendMessage(Util.color("&eEnter the price for &f" + copy.getAmount() + "x &e" + Util.plainName(copy)
-                    + "&e in chat. Type &ccancel &eto abort."));
+    private void handleStockSelectionFromInventory(Player player, ItemStack clicked, int slot) {
+        ShopManager manager = ShopManager.get();
+        UUID shopId = manager.getActiveStockShop(player.getUniqueId());
+        if (shopId == null) {
+            player.sendMessage(Util.color("&cReopen the stock manager from your shop editor to add items."));
+            return;
         }
+        PlayerShop shop = manager.getShop(shopId);
+        if (shop == null) {
+            manager.clearActiveStockShop(player.getUniqueId());
+            player.sendMessage(Util.color("&cThat shop no longer exists."));
+            return;
+        }
+
+        ItemStack copy = clicked.clone();
+        manager.setPendingItemAdd(player.getUniqueId(), shopId, copy, slot);
+        manager.setPendingPrice(player.getUniqueId(), shopId);
+        manager.setPendingManageReopen(player.getUniqueId(), ManageView.STOCK, shopId);
+        player.closeInventory();
+        player.sendMessage(Util.color("&eEnter the price for &f" + copy.getAmount() + "x &e" + Util.plainName(copy)
+                + "&e in chat. Type &ccancel &eto abort."));
+    }
+
+    private int findMatchingSlot(PlayerInventory inventory, ItemStack target, int preferredSlot) {
+        ItemStack preferred = inventory.getItem(preferredSlot);
+        if (preferred != null && preferred.getType() != Material.AIR && preferred.isSimilar(target)
+                && preferred.getAmount() >= target.getAmount()) {
+            return preferredSlot;
+        }
+
+        for (int i = 0; i < inventory.getSize(); i++) {
+            ItemStack current = inventory.getItem(i);
+            if (current != null && current.getType() != Material.AIR && current.isSimilar(target)
+                    && current.getAmount() >= target.getAmount()) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     @EventHandler
@@ -394,9 +430,6 @@ public class ShopListener implements Listener {
             ShopManager.PendingItem pending = manager.consumePendingItem(player.getUniqueId());
             PlayerShop shop = pending == null ? null : manager.getShop(pending.shopId());
             if (message.equalsIgnoreCase("cancel")) {
-                if (pending != null) {
-                    player.getInventory().addItem(pending.item());
-                }
                 manager.consumePriceTarget(player.getUniqueId());
                 player.sendMessage(Util.color("&cItem add cancelled."));
                 reopenPendingManageView(player, shop);
@@ -417,15 +450,31 @@ public class ShopListener implements Listener {
             }
             if (shop == null) {
                 player.sendMessage(Util.color("&cThat shop no longer exists."));
-                player.getInventory().addItem(pending.item());
                 reopenPendingManageView(player, null);
+                return;
+            }
+            int slot = findMatchingSlot(player.getInventory(), pending.item(), pending.slot());
+            if (slot == -1) {
+                player.sendMessage(Util.color("&cCouldn't find the selected item in your inventory. Listing cancelled."));
+                reopenPendingManageView(player, shop);
+                return;
+            }
+            ItemStack inventoryItem = player.getInventory().getItem(slot);
+            if (inventoryItem == null || inventoryItem.getAmount() < pending.item().getAmount()) {
+                player.sendMessage(Util.color("&cYou no longer have enough of that item to list it."));
+                reopenPendingManageView(player, shop);
                 return;
             }
             boolean added = manager.addItemToShop(shop, pending.item(), price);
             if (!added) {
-                player.sendMessage(Util.color("&cYour shop is full. Item returned."));
-                player.getInventory().addItem(pending.item());
+                player.sendMessage(Util.color("&cYour shop is full. Item not listed."));
             } else {
+                int remaining = inventoryItem.getAmount() - pending.item().getAmount();
+                if (remaining <= 0) {
+                    player.getInventory().setItem(slot, new ItemStack(Material.AIR));
+                } else {
+                    inventoryItem.setAmount(remaining);
+                }
                 player.sendMessage(Util.color("&aItem added for &f" + price + "&a."));
             }
             reopenPendingManageView(player, shop);

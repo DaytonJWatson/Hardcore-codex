@@ -54,6 +54,7 @@ public class ShopManager {
     private final Map<UUID, ViewSession> viewSessions = new HashMap<>();
     private final Map<UUID, UUID> reopeningShopView = new HashMap<>();
     private final Map<UUID, ManageReopen> pendingManageReopens = new HashMap<>();
+    private final Map<UUID, UUID> activeStockView = new HashMap<>();
     private static final UUID LEGACY_SERVER_OWNER = UUID.nameUUIDFromBytes("hardcore-server-shop".getBytes());
 
     public static class ViewSession {
@@ -256,15 +257,81 @@ public class ShopManager {
         return pendingPriceUpdate.get(player);
     }
 
-    public void setPendingItemAdd(UUID player, UUID shop, ItemStack item) {
-        pendingItemAdds.put(player, new PendingItem(shop, item));
+    public void setPendingItemAdd(UUID player, UUID shop, ItemStack item, int slot) {
+        pendingItemAdds.put(player, new PendingItem(shop, item, slot));
     }
 
     public PendingItem consumePendingItem(UUID player) {
         return pendingItemAdds.remove(player);
     }
 
-    public record PendingItem(UUID shopId, ItemStack item) {}
+    public UUID getActiveStockShop(UUID player) {
+        return activeStockView.get(player);
+    }
+
+    public void setActiveStockShop(UUID player, UUID shopId) {
+        activeStockView.put(player, shopId);
+    }
+
+    public void clearActiveStockShop(UUID player) {
+        activeStockView.remove(player);
+    }
+
+    public record PendingItem(UUID shopId, ItemStack item, int slot) {}
+
+    public ViewSession startViewingShop(UUID viewer, UUID shopId) {
+        ViewSession session = viewSessions.computeIfAbsent(viewer, id -> new ViewSession());
+        session.sessionId++;
+        session.shopId = shopId;
+        session.active = true;
+        return session;
+    }
+
+    public ViewSession getViewSession(UUID viewer) {
+        return viewSessions.get(viewer);
+    }
+
+    public ViewSession markSessionClosing(UUID viewer, UUID shopId) {
+        ViewSession session = viewSessions.get(viewer);
+        if (session != null && shopId.equals(session.shopId)) {
+            session.active = false;
+            return session;
+        }
+        return null;
+    }
+
+    public boolean isSessionActive(UUID viewer, UUID shopId, int sessionId) {
+        ViewSession session = viewSessions.get(viewer);
+        return session != null && session.active && session.sessionId == sessionId && shopId.equals(session.shopId);
+    }
+
+    public void clearSession(UUID viewer, UUID shopId, int sessionId) {
+        ViewSession session = viewSessions.get(viewer);
+        if (session != null && !session.active && session.sessionId == sessionId && shopId.equals(session.shopId)) {
+            viewSessions.remove(viewer);
+        }
+    }
+
+    public void markReopeningShop(UUID viewer, UUID shopId) {
+        reopeningShopView.put(viewer, shopId);
+    }
+
+    public boolean consumeReopeningShop(UUID viewer, UUID shopId) {
+        UUID reopening = reopeningShopView.get(viewer);
+        if (reopening != null && reopening.equals(shopId)) {
+            reopeningShopView.remove(viewer);
+            return true;
+        }
+        return false;
+    }
+
+    public void setPendingManageReopen(UUID player, ManageView view, UUID shopId) {
+        pendingManageReopens.put(player, new ManageReopen(view, shopId));
+    }
+
+    public ManageReopen consumePendingManageReopen(UUID player) {
+        return pendingManageReopens.remove(player);
+    }
 
     public ViewSession startViewingShop(UUID viewer, UUID shopId) {
         ViewSession session = viewSessions.computeIfAbsent(viewer, id -> new ViewSession());
