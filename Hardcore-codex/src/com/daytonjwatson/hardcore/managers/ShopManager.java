@@ -333,6 +333,60 @@ public class ShopManager {
         return pendingManageReopens.remove(player);
     }
 
+    public ViewSession startViewingShop(UUID viewer, UUID shopId) {
+        ViewSession session = viewSessions.computeIfAbsent(viewer, id -> new ViewSession());
+        session.sessionId++;
+        session.shopId = shopId;
+        session.active = true;
+        return session;
+    }
+
+    public ViewSession getViewSession(UUID viewer) {
+        return viewSessions.get(viewer);
+    }
+
+    public ViewSession markSessionClosing(UUID viewer, UUID shopId) {
+        ViewSession session = viewSessions.get(viewer);
+        if (session != null && shopId.equals(session.shopId)) {
+            session.active = false;
+            return session;
+        }
+        return null;
+    }
+
+    public boolean isSessionActive(UUID viewer, UUID shopId, int sessionId) {
+        ViewSession session = viewSessions.get(viewer);
+        return session != null && session.active && session.sessionId == sessionId && shopId.equals(session.shopId);
+    }
+
+    public void clearSession(UUID viewer, UUID shopId, int sessionId) {
+        ViewSession session = viewSessions.get(viewer);
+        if (session != null && !session.active && session.sessionId == sessionId && shopId.equals(session.shopId)) {
+            viewSessions.remove(viewer);
+        }
+    }
+
+    public void markReopeningShop(UUID viewer, UUID shopId) {
+        reopeningShopView.put(viewer, shopId);
+    }
+
+    public boolean consumeReopeningShop(UUID viewer, UUID shopId) {
+        UUID reopening = reopeningShopView.get(viewer);
+        if (reopening != null && reopening.equals(shopId)) {
+            reopeningShopView.remove(viewer);
+            return true;
+        }
+        return false;
+    }
+
+    public void setPendingManageReopen(UUID player, ManageView view, UUID shopId) {
+        pendingManageReopens.put(player, new ManageReopen(view, shopId));
+    }
+
+    public ManageReopen consumePendingManageReopen(UUID player) {
+        return pendingManageReopens.remove(player);
+    }
+
     public boolean processPurchase(Player buyer, UUID shopId, int slot, boolean buyStack) {
         PlayerShop shop = shops.get(shopId);
         if (shop == null || !shop.isOpen()) {
