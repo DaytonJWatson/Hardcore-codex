@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -49,6 +50,9 @@ public class ShopManager {
     private final Map<UUID, UUID> pendingDescription = new HashMap<>();
     private final Map<UUID, PendingItem> pendingItemAdds = new HashMap<>();
     private final Map<UUID, UUID> pendingPriceUpdate = new HashMap<>();
+    private final Map<UUID, Map<UUID, PurchaseSummary>> pendingOwnerSummaries = new HashMap<>();
+    private final Map<UUID, UUID> activeShopViews = new HashMap<>();
+    private final Map<UUID, UUID> reopeningShopView = new HashMap<>();
     private static final UUID LEGACY_SERVER_OWNER = UUID.nameUUIDFromBytes("hardcore-server-shop".getBytes());
 
     private ShopManager(HardcorePlugin plugin) {
@@ -95,7 +99,7 @@ public class ShopManager {
 
         UUID id = UUID.randomUUID();
         PlayerShop shop = new PlayerShop(id, player.getUniqueId(), Util.color(player.getName() + "'s Shop"),
-                Util.color("Browse my wares!"), new ItemStack(Material.CHEST), true);
+                Util.color("Browse my wares!"), new ItemStack(Material.CHEST), true, true);
         shops.put(id, shop);
         save();
         player.sendMessage(Util.color("&aShop created! Use the manager to customize it."));
@@ -116,6 +120,7 @@ public class ShopManager {
             data.set(base + "description", shop.getDescription());
             data.set(base + "open", shop.isOpen());
             data.set(base + "icon", shop.getIcon());
+            data.set(base + "notifications", shop.isNotificationsEnabled());
 
             Map<Integer, ShopItem> stock = shop.getStock();
             for (Map.Entry<Integer, ShopItem> entry : stock.entrySet()) {
@@ -147,9 +152,10 @@ public class ShopManager {
                 String name = section.getString(key + ".name", "Shop");
                 String description = section.getString(key + ".description", "Wares");
                 boolean open = section.getBoolean(key + ".open", true);
+                boolean notificationsEnabled = section.getBoolean(key + ".notifications", true);
                 ItemStack icon = section.getItemStack(key + ".icon", new ItemStack(Material.CHEST));
 
-                PlayerShop shop = new PlayerShop(id, owner, name, description, icon, open);
+                PlayerShop shop = new PlayerShop(id, owner, name, description, icon, open, notificationsEnabled);
                 ConfigurationSection items = section.getConfigurationSection(key + ".items");
                 if (items != null) {
                     for (String slotKey : items.getKeys(false)) {
@@ -237,6 +243,32 @@ public class ShopManager {
 
     public record PendingItem(UUID shopId, ItemStack item) {}
 
+    public void setViewingShop(UUID viewer, UUID shopId) {
+        activeShopViews.put(viewer, shopId);
+    }
+
+    public UUID consumeViewingShop(UUID viewer) {
+        return activeShopViews.remove(viewer);
+    }
+
+    public boolean isViewingShop(UUID viewer, UUID shopId) {
+        UUID viewing = activeShopViews.get(viewer);
+        return viewing != null && viewing.equals(shopId);
+    }
+
+    public void markReopeningShop(UUID viewer, UUID shopId) {
+        reopeningShopView.put(viewer, shopId);
+    }
+
+    public boolean consumeReopeningShop(UUID viewer, UUID shopId) {
+        UUID reopening = reopeningShopView.get(viewer);
+        if (reopening != null && reopening.equals(shopId)) {
+            reopeningShopView.remove(viewer);
+            return true;
+        }
+        return false;
+    }
+
     public boolean processPurchase(Player buyer, UUID shopId, int slot, boolean buyStack) {
         PlayerShop shop = shops.get(shopId);
         if (shop == null || !shop.isOpen()) {
@@ -283,7 +315,85 @@ public class ShopManager {
         save();
         buyer.sendMessage(Util.color("&aPurchased &f" + purchaseAmount + "x &e" + Util.plainName(purchase)
                 + " &afor &f" + bank.formatCurrency(price) + "&a."));
+        recordSaleForSummary(buyer.getUniqueId(), shop, purchaseAmount, price,
+                remaining <= 0 ? Util.plainName(purchase) : null);
         return true;
+    }
+
+    private void recordSaleForSummary(UUID buyer, PlayerShop shop, int amount, double price, String soldOutItem) {
+        if (shop == null) {
+            return;
+        }
+        Map<UUID, PurchaseSummary> summaries = pendingOwnerSummaries.computeIfAbsent(buyer,
+                id -> new HashMap<>());
+        PurchaseSummary summary = summaries.computeIfAbsent(shop.getId(), id -> new PurchaseSummary());
+        summary.addSale(amount, price, soldOutItem);
+    }
+
+    public void dispatchPurchaseSummary(Player buyer, UUID shopId) {
+        if (buyer == null || shopId == null) {
+            return;
+        }
+        Map<UUID, PurchaseSummary> summaries = pendingOwnerSummaries.get(buyer.getUniqueId());
+        if (summaries == null) {
+            return;
+        }
+        PurchaseSummary summary = summaries.remove(shopId);
+        if (summaries.isEmpty()) {
+            pendingOwnerSummaries.remove(buyer.getUniqueId());
+        }
+        if (summary == null) {
+            return;
+        }
+
+        PlayerShop shop = shops.get(shopId);
+        if (shop == null || !shop.isNotificationsEnabled()) {
+            return;
+        }
+
+        Player owner = Bukkit.getPlayer(shop.getOwner());
+        if (owner == null || !owner.isOnline()) {
+            return;
+        }
+
+        BankManager bank = BankManager.get();
+        StringBuilder message = new StringBuilder(Util.color("&e" + buyer.getName() + " &apurchased &f"
+                + summary.getTotalItems() + " &aitems for &f" + bank.formatCurrency(summary.getTotalRevenue())
+                + " &afrom your shop &e" + shop.getName() + "&a."));
+
+        Optional<String> soldOutList = summary.getSoldOutItems();
+        soldOutList.ifPresent(items -> message.append(Util.color(" &cSold out: &f" + items + "&c.")));
+        owner.sendMessage(message.toString());
+    }
+
+    private static class PurchaseSummary {
+
+        private int totalItems;
+        private double totalRevenue;
+        private final List<String> soldOutItems = new ArrayList<>();
+
+        void addSale(int amount, double price, String soldOutItem) {
+            totalItems += amount;
+            totalRevenue += price;
+            if (soldOutItem != null) {
+                soldOutItems.add(soldOutItem);
+            }
+        }
+
+        int getTotalItems() {
+            return totalItems;
+        }
+
+        double getTotalRevenue() {
+            return totalRevenue;
+        }
+
+        Optional<String> getSoldOutItems() {
+            if (soldOutItems.isEmpty()) {
+                return Optional.empty();
+            }
+            return Optional.of(String.join(", ", soldOutItems));
+        }
     }
 
     public boolean addItemToShop(PlayerShop shop, ItemStack item, double price) {
