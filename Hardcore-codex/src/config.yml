@@ -60,7 +60,7 @@ tablist:
     show-role: true
     show-life: true
     show-kd: true
-    commands-line: "&8◆ &6Commands&8: &7/guide &8· &7/rules &8· &7/stats &8· &7/bandittracker"
+    commands-line: "&8◆ &6Commands&8: &7/auction &8· &7/bank &8· &7/shops &8· &7/stats"
     bar-style: default  # kept for future styling options  
   
 ###############################
@@ -169,7 +169,7 @@ content:
       - "&7One life only. Death bans you from the world."
       - "&7Leave spawn to find trees, animals, and caves quickly."
       - "&7Trust carefully — PvP and raiding are allowed."
-      - "&7Use /guide for your one-time Hardcore Guide book."
+      - "&7You have been given your one-time Hardcore Guide book."
     book:
       title: "&cHardcore Guide"
       author: "Hardcore"
@@ -207,7 +207,6 @@ content:
       - "&7Join the community and stay updated."
       - "&bInvite: &fhttps://discord.gg/hardcore"
       - "&7Channels for trading, allies, and announcements."
-      - "&7Enable notifications to catch wipe news and events."
 
   rules:
     title: "Server Rules"
