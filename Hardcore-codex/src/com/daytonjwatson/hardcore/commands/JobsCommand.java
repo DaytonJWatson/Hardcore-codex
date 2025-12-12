@@ -10,11 +10,9 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
-import com.daytonjwatson.hardcore.jobs.ActiveJob;
-import com.daytonjwatson.hardcore.jobs.ActiveObjective;
-import com.daytonjwatson.hardcore.jobs.JobDefinition;
-import com.daytonjwatson.hardcore.jobs.JobOffer;
 import com.daytonjwatson.hardcore.jobs.JobsManager;
+import com.daytonjwatson.hardcore.jobs.Occupation;
+import com.daytonjwatson.hardcore.jobs.JobsManager.OccupationSettings;
 import com.daytonjwatson.hardcore.utils.MessageStyler;
 import com.daytonjwatson.hardcore.utils.Util;
 import com.daytonjwatson.hardcore.views.JobsGui;
@@ -24,7 +22,7 @@ public class JobsCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(Util.color("&cOnly players can use jobs."));
+            sender.sendMessage(Util.color("&cOnly players can manage occupations."));
             return true;
         }
 
@@ -37,117 +35,72 @@ public class JobsCommand implements CommandExecutor, TabCompleter {
 
         String sub = args[0].toLowerCase(Locale.ROOT);
         switch (sub) {
-            case "accept":
-                handleAccept(player, jobs, args, label);
+            case "set":
+                setOccupation(player, jobs, args, label);
                 return true;
-            case "abandon":
-                jobs.abandonJob(player);
+            case "clear":
+                jobs.clearOccupation(player);
                 return true;
-            case "active":
-            case "progress":
-                showProgress(player, jobs);
-                return true;
-            case "offers":
-                jobs.backupOffers(player);
-                return true;
-            case "reroll":
-                jobs.rerollOffers(player.getUniqueId());
-                player.sendMessage(Util.color("&aRefreshed your available contracts."));
-                JobsGui.open(player);
+            case "info":
+            case "current":
+                showInfo(player, jobs);
                 return true;
             default:
-                player.sendMessage(Util.color("&cUnknown jobs action. Try /jobs, /jobs accept <1-3>, /jobs progress, /jobs reroll."));
+                player.sendMessage(Util.color("&cUnknown action. Try /" + label + " set <occupation> or /" + label
+                        + " info."));
                 return true;
         }
     }
 
-    private void handleAccept(Player player, JobsManager jobs, String[] args, String label) {
-        if (jobs.getActiveJob(player.getUniqueId()) != null) {
-            player.sendMessage(Util.color("&cYou already have an active job. Use /" + label + " abandon first."));
-            return;
-        }
-
+    private void setOccupation(Player player, JobsManager jobs, String[] args, String label) {
         if (args.length < 2) {
-            player.sendMessage(Util.color("&cUsage: /" + label + " accept <1-3>"));
+            player.sendMessage(Util.color("&cUsage: /" + label + " set <occupation>"));
             return;
         }
-
-        int choice;
-        try {
-            choice = Integer.parseInt(args[1]);
-        } catch (NumberFormatException ex) {
-            player.sendMessage(Util.color("&c'" + args[1] + "' is not a valid choice."));
+        Occupation occupation = Occupation.fromString(args[1]);
+        if (occupation == null) {
+            player.sendMessage(Util.color("&cUnknown occupation. Valid options: warrior, farmer, fisherman, lumberjack, miner, explorer, builder."));
             return;
         }
-
-        if (choice < 1 || choice > 3) {
-            player.sendMessage(Util.color("&cChoice must be between 1 and 3."));
-            return;
-        }
-
-        List<JobOffer> offers = jobs.getOfferedJobs(player.getUniqueId());
-        if (offers.size() < choice) {
-            player.sendMessage(Util.color("&cThat job offer is no longer available. Reroll and try again."));
-            return;
-        }
-
-        int slotIndex = choice - 1;
-        if (jobs.isSlotCoolingDown(player.getUniqueId(), slotIndex)) {
-            long remaining = jobs.getCooldownRemainingMillis(player.getUniqueId(), slotIndex) / 1000;
-            player.sendMessage(Util.color("&cThat option is cooling down for another " + remaining + "s."));
-            return;
-        }
-
-        JobOffer offer = offers.get(slotIndex);
-        if (offer == null) {
-            player.sendMessage(Util.color("&cThat job offer is currently unavailable."));
-            return;
-        }
-
-        jobs.assignJob(player, offer, slotIndex);
+        jobs.setOccupation(player, occupation);
     }
 
-    private void showProgress(Player player, JobsManager jobs) {
-        ActiveJob active = jobs.getActiveJob(player.getUniqueId());
-        if (active == null) {
-            player.sendMessage(Util.color("&eYou don't have an active job. Use /jobs to pick one."));
+    private void showInfo(Player player, JobsManager jobs) {
+        Occupation occupation = jobs.getOccupation(player.getUniqueId());
+        if (occupation == null) {
+            player.sendMessage(Util.color("&eYou do not have an occupation yet. Use /jobs to pick one."));
             return;
         }
 
-        JobDefinition def = active.getJob();
-        java.util.List<String> lines = new java.util.ArrayList<>();
-        lines.add("&f" + def.getDisplayName());
-        int index = 1;
-        for (ActiveObjective objective : active.getObjectives()) {
-            lines.add("&7Obj " + index + ": &f" + formatNumber(objective.getProgress()) + "/"
-                    + formatNumber(objective.getGoalAmount()) + " " + objective.getDefinition().getTarget());
-            index++;
+        OccupationSettings settings = jobs.getOccupationSettings().get(occupation);
+        List<String> lines = new ArrayList<>();
+        lines.add("&f" + settings.displayName());
+        for (String line : settings.description()) {
+            lines.add("&7" + line);
         }
-        lines.add("&7Order: &f" + (def.isOrdered() ? "Sequential" : "Concurrent"));
-        lines.add("&7Reward: &a" + def.getReward());
-        MessageStyler.sendPanel(player, "Active Job", lines.toArray(new String[0]));
-    }
-
-    private String formatNumber(double value) {
-        if (value % 1 == 0) {
-            return Integer.toString((int) value);
+        switch (occupation) {
+            case WARRIOR -> lines.add("&fHostile mobs: &a+" + settings.killHostileReward());
+            case FARMER -> lines.add("&fHarvested crop: &a+" + settings.harvestReward());
+            case FISHERMAN -> lines.add("&fCaught fish: &a+" + settings.catchReward());
+            case LUMBERJACK -> lines.add("&fLog broken: &a+" + settings.logReward());
+            case MINER -> lines.add("&fOre mined: &a+" + settings.oreReward());
+            case EXPLORER -> lines.add("&fTravel: &a+" + settings.travelRewardPerBlock() + " per block");
+            case BUILDER -> lines.add("&fNew block type: &a+" + settings.uniqueBlockReward());
         }
-        return String.format(java.util.Locale.US, "%.1f", value);
+        MessageStyler.sendPanel(player, "Occupation", lines.toArray(new String[0]));
     }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> options = new ArrayList<>();
         if (args.length == 1) {
-            options.add("accept");
-            options.add("abandon");
-            options.add("offers");
-            options.add("progress");
-            options.add("reroll");
-        } else if (args.length == 2 && args[0].equalsIgnoreCase("accept")) {
-            options.add("1");
-            options.add("2");
-            options.add("3");
+            options.add("set");
+            options.add("clear");
+            options.add("info");
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("set")) {
+            for (Occupation occupation : Occupation.values()) {
+                options.add(occupation.name().toLowerCase(Locale.ROOT));
+            }
         }
         return options;
     }
