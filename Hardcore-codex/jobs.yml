@@ -2,42 +2,82 @@ occupations:
   WARRIOR:
     display-name: "&cWarrior"
     description:
-      - "Hunt hostile mobs for coin."
+      - "Paid for dangerous PvP and hostile mobs."
+      - "Anti-repeat cooldowns are strict."
+    daily-cap: 5000.0
     rewards:
-      kill-hostile: 25.0
+      pvp-kill: 120.0
+      hostile-kill: 35.0
+    cooldowns:
+      default: 5
+      pvp-kill: 120
+    depth-threshold: 20
+    build-session:
+      block-threshold: 30
+      unique-threshold: 5
   FARMER:
     display-name: "&aFarmer"
     description:
-      - "Harvest ripe crops to get paid."
+      - "Harvest mature crops and breed livestock."
+      - "No credit for placed crops."
+    daily-cap: 4000.0
     rewards:
-      harvest-crop: 6.0
+      harvest: 8.0
+    cooldowns:
+      default: 3
   FISHERMAN:
     display-name: "&bFisherman"
     description:
-      - "Reel in fish for steady income."
+      - "Catch fish while actively fishing."
+      - "AFK fishing yields nothing."
+    daily-cap: 3500.0
     rewards:
-      catch-fish: 8.0
+      catch: 10.0
+    cooldowns:
+      default: 2
   LUMBERJACK:
     display-name: "&6Lumberjack"
     description:
-      - "Chop down trees to earn wages."
+      - "Chop natural trees and replant."
+      - "No farmed log abuse."
+    daily-cap: 3500.0
     rewards:
-      chop-log: 4.0
+      tree: 12.0
+    cooldowns:
+      default: 5
   MINER:
     display-name: "&7Miner"
     description:
-      - "Mine valuable ores for cash."
+      - "Mine natural ores deeper underground."
+      - "Placed ores never pay."
+    daily-cap: 4500.0
     rewards:
-      mine-ore: 7.0
+      ore: 14.0
+      depth-bonus: 8.0
+    cooldowns:
+      default: 3
+    depth-threshold: 32
   EXPLORER:
     display-name: "&dExplorer"
     description:
-      - "Get rewarded for every block you travel."
+      - "Earn for new chunks you meaningfully enter."
+      - "Strong anti-loop protections."
+    daily-cap: 3000.0
     rewards:
-      travel-per-block: 0.12
+      chunk: 20.0
+    cooldowns:
+      default: 15
+      chunk: 60
   BUILDER:
     display-name: "&eBuilder"
     description:
-      - "Place new block types to make money."
+      - "Paid for sustained build sessions with variety."
+      - "Spam and place-break loops are blocked."
+    daily-cap: 4000.0
     rewards:
-      unique-block: 3.5
+      build-session: 75.0
+    cooldowns:
+      default: 30
+    build-session:
+      block-threshold: 30
+      unique-threshold: 5

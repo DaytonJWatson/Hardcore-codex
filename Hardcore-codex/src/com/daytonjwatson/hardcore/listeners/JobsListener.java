@@ -1,6 +1,5 @@
 package com.daytonjwatson.hardcore.listeners;
 
-import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -10,12 +9,25 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerFishEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 
 import com.daytonjwatson.hardcore.jobs.JobsManager;
+import com.daytonjwatson.hardcore.jobs.Occupation;
 import com.daytonjwatson.hardcore.views.JobsGui;
 
 public class JobsListener implements Listener {
+
+    @EventHandler
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        JobsManager.get().handleJoin(event.getPlayer());
+    }
+
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        JobsManager.get().handleQuit(event.getPlayer());
+    }
 
     @EventHandler
     public void onEntityDeath(EntityDeathEvent event) {
@@ -32,15 +44,16 @@ public class JobsListener implements Listener {
         Block block = event.getBlock();
         JobsManager jobs = JobsManager.get();
         jobs.handleCropBreak(player, block);
-        jobs.handleLogBreak(player, block.getType());
-        jobs.handleOreBreak(player, block.getType());
+        jobs.handleLogBreak(player, block);
+        jobs.handleOreBreak(player, block);
     }
 
     @EventHandler
     public void onBlockPlace(BlockPlaceEvent event) {
         Player player = event.getPlayer();
-        Material type = event.getBlockPlaced().getType();
-        JobsManager.get().handleBuild(player, type);
+        JobsManager jobs = JobsManager.get();
+        jobs.trackPlacement(player.getUniqueId(), event.getBlockPlaced());
+        jobs.handleBuild(player, event.getBlockPlaced());
     }
 
     @EventHandler
@@ -61,13 +74,15 @@ public class JobsListener implements Listener {
                 && event.getFrom().getBlockZ() == event.getTo().getBlockZ()) {
             return;
         }
-        JobsManager.get().handleTravel(event.getPlayer(), event.getFrom(), event.getTo());
+        JobsManager jobs = JobsManager.get();
+        jobs.markMovement(event.getPlayer().getUniqueId());
+        jobs.handleTravel(event.getPlayer(), event.getFrom(), event.getTo());
     }
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         String title = event.getView().getTitle();
-        if (!title.equals(JobsGui.TITLE)) {
+        if (!JobsGui.isJobsMenu(title)) {
             return;
         }
 
@@ -77,20 +92,36 @@ public class JobsListener implements Listener {
         }
 
         JobsManager jobs = JobsManager.get();
-        int slot = event.getRawSlot();
-        int[] slots = {10, 12, 14, 16, 28, 30, 32};
-        for (int i = 0; i < slots.length && i < com.daytonjwatson.hardcore.jobs.Occupation.values().length; i++) {
-            if (slot == slots[i]) {
-                com.daytonjwatson.hardcore.jobs.Occupation occupation = com.daytonjwatson.hardcore.jobs.Occupation.values()[i];
-                jobs.setOccupation(player, occupation);
+        if (JobsGui.isConfirm(title)) {
+            int slot = event.getRawSlot();
+            if (slot == JobsGui.CONFIRM_SLOT) {
+                Occupation pending = jobs.popPendingSelection(player.getUniqueId());
+                if (pending != null) {
+                    jobs.setOccupation(player, pending, false);
+                }
                 player.closeInventory();
-                return;
+            } else if (slot == JobsGui.CANCEL_SLOT) {
+                jobs.popPendingSelection(player.getUniqueId());
+                JobsGui.open(player);
             }
+            return;
         }
 
-        if (slot == 49 && jobs.getOccupation(player.getUniqueId()) != null) {
-            jobs.clearOccupation(player);
-            player.closeInventory();
+        int slot = event.getRawSlot();
+        Occupation[] values = Occupation.values();
+        int[] slots = JobsGui.getOccupationSlots();
+        for (int i = 0; i < slots.length && i < values.length; i++) {
+            if (slot == slots[i]) {
+                if (jobs.getOccupation(player.getUniqueId()) != null) {
+                    player.sendMessage(com.daytonjwatson.hardcore.utils.Util
+                            .color("&cYou already have a permanent occupation."));
+                    player.closeInventory();
+                    return;
+                }
+                jobs.queueSelection(player, values[i]);
+                JobsGui.openConfirm(player, values[i]);
+                return;
+            }
         }
     }
 }

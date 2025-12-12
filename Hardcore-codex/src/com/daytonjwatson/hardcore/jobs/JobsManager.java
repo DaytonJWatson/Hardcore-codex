@@ -2,20 +2,23 @@ package com.daytonjwatson.hardcore.jobs;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Ageable;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
@@ -30,6 +33,10 @@ import com.daytonjwatson.hardcore.utils.Util;
 
 public class JobsManager {
 
+    public static final String ADMIN_PERMISSION = "hardcore.jobs.admin";
+    private static final int MAX_RECENT_LOCATIONS = 20;
+    private static final int MAX_RECENT_PAYOUTS = 20;
+
     private static JobsManager instance;
 
     private final JavaPlugin plugin;
@@ -38,7 +45,9 @@ public class JobsManager {
     private final FileConfiguration jobConfig;
     private final FileConfiguration playerConfig;
     private final Map<Occupation, OccupationSettings> occupationSettings = new EnumMap<>(Occupation.class);
-    private final Map<UUID, OccupationProgress> progressMap = new HashMap<>();
+    private final Map<UUID, OccupationProfile> profiles = new HashMap<>();
+    private final Set<String> placedBlockRegistry = new HashSet<>();
+    private final Map<UUID, Occupation> pendingSelection = new HashMap<>();
 
     private JobsManager(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -49,7 +58,7 @@ public class JobsManager {
 
         createDefaults();
         loadSettings();
-        loadProgress();
+        loadProfiles();
     }
 
     public static void init(JavaPlugin plugin) {
@@ -62,6 +71,46 @@ public class JobsManager {
         return instance;
     }
 
+    public Map<Occupation, OccupationSettings> getOccupationSettings() {
+        return occupationSettings;
+    }
+
+    public OccupationProfile getProfile(UUID uuid) {
+        return profiles.get(uuid);
+    }
+
+    public Occupation getOccupation(UUID uuid) {
+        OccupationProfile profile = profiles.get(uuid);
+        return profile == null ? null : profile.getOccupation();
+    }
+
+    public void queueSelection(Player player, Occupation occupation) {
+        pendingSelection.put(player.getUniqueId(), occupation);
+    }
+
+    public Occupation popPendingSelection(UUID uuid) {
+        return pendingSelection.remove(uuid);
+    }
+
+    public void setOccupation(Player player, Occupation occupation, boolean adminOverride) {
+        OccupationProfile existing = profiles.get(player.getUniqueId());
+        if (existing != null && !adminOverride) {
+            player.sendMessage(Util.color("&cYour occupation is permanent and cannot be changed."));
+            return;
+        }
+
+        OccupationProfile profile = new OccupationProfile(occupation, System.currentTimeMillis());
+        profiles.put(player.getUniqueId(), profile);
+        save();
+        MessageStyler.sendPanel(player, "Occupation Selected",
+                "&7You are now a &f" + occupation.getDisplayName() + "&7. This choice is permanent.");
+    }
+
+    public void resetOccupation(UUID uuid) {
+        profiles.remove(uuid);
+        save();
+    }
+
     public void reload() {
         try {
             jobConfig.load(jobFile);
@@ -71,126 +120,156 @@ public class JobsManager {
         }
     }
 
-    public Occupation getOccupation(UUID uuid) {
-        OccupationProgress progress = progressMap.get(uuid);
-        return progress == null ? null : progress.occupation();
+    public void handleJoin(Player player) {
+        OccupationProfile profile = profiles.get(player.getUniqueId());
+        if (profile != null) {
+            profile.markActivity();
+        }
     }
 
-    public void setOccupation(Player player, Occupation occupation) {
-        progressMap.put(player.getUniqueId(), new OccupationProgress(occupation, new HashSet<>()));
+    public void markMovement(UUID uuid) {
+        OccupationProfile profile = profiles.get(uuid);
+        if (profile != null) {
+            profile.markActivity();
+        }
+    }
+
+    public void handleQuit(Player player) {
         save();
-        MessageStyler.sendPanel(player, "Occupation Selected",
-                "&7You are now a &f" + occupation.getDisplayName() + "&7.");
-    }
-
-    public void clearOccupation(Player player) {
-        progressMap.remove(player.getUniqueId());
-        save();
-        player.sendMessage(Util.color("&cYou cleared your occupation. Use /jobs to pick a new one."));
-    }
-
-    public Map<Occupation, OccupationSettings> getOccupationSettings() {
-        return occupationSettings;
     }
 
     public void handleKill(Player player, Entity killed) {
-        OccupationProgress progress = progressMap.get(player.getUniqueId());
-        if (progress == null || progress.occupation() != Occupation.WARRIOR) {
+        OccupationProfile profile = profiles.get(player.getUniqueId());
+        if (profile == null || profile.getOccupation() != Occupation.WARRIOR) {
             return;
         }
-        if (!(killed instanceof Monster) && !isHostileOverride(killed)) {
+        OccupationSettings settings = occupationSettings.get(Occupation.WARRIOR);
+        String key;
+        double reward;
+
+        if (killed instanceof Player victim) {
+            if (!allowNewVictim(profile, victim.getUniqueId(), settings.getCooldown("pvp-kill"))) {
+                return;
+            }
+            key = "pvp-kill";
+            reward = settings.getReward(key);
+        } else if (killed instanceof Monster || isHostileOverride(killed)) {
+            key = "hostile-kill";
+            reward = settings.getReward(key);
+        } else {
             return;
         }
 
-        double reward = occupationSettings.get(Occupation.WARRIOR).killHostileReward();
-        reward(player, reward, "for slaying a hostile mob");
+        reward(player, profile, reward, "for combat victories", key, settings);
+        profile.incrementCounter(key);
     }
 
     public void handleCropBreak(Player player, Block block) {
-        OccupationProgress progress = progressMap.get(player.getUniqueId());
-        if (progress == null || progress.occupation() != Occupation.FARMER) {
+        OccupationProfile profile = profiles.get(player.getUniqueId());
+        if (profile == null || profile.getOccupation() != Occupation.FARMER) {
             return;
         }
-        if (!isMatureCrop(block)) {
+        if (!isMatureCrop(block) || isPlayerPlaced(block.getLocation())) {
             return;
         }
-        double reward = occupationSettings.get(Occupation.FARMER).harvestReward();
-        reward(player, reward, "for harvesting crops");
+        OccupationSettings settings = occupationSettings.get(Occupation.FARMER);
+        reward(player, profile, settings.getReward("harvest"), "for harvesting crops", "harvest", settings);
+        profile.incrementCounter("crops");
     }
 
     public void handleFish(Player player, PlayerFishEvent event) {
-        OccupationProgress progress = progressMap.get(player.getUniqueId());
-        if (progress == null || progress.occupation() != Occupation.FISHERMAN) {
+        OccupationProfile profile = profiles.get(player.getUniqueId());
+        if (profile == null || profile.getOccupation() != Occupation.FISHERMAN) {
             return;
         }
         if (event.getState() != PlayerFishEvent.State.CAUGHT_FISH) {
             return;
         }
-        double reward = occupationSettings.get(Occupation.FISHERMAN).catchReward();
-        reward(player, reward, "for catching a fish");
+        if (!profile.recentlyMoved()) {
+            // basic AFK prevention
+            return;
+        }
+        OccupationSettings settings = occupationSettings.get(Occupation.FISHERMAN);
+        reward(player, profile, settings.getReward("catch"), "for catching fish", "catch", settings);
+        profile.incrementCounter("catches");
     }
 
-    public void handleLogBreak(Player player, Material material) {
-        OccupationProgress progress = progressMap.get(player.getUniqueId());
-        if (progress == null || progress.occupation() != Occupation.LUMBERJACK) {
+    public void handleLogBreak(Player player, Block block) {
+        OccupationProfile profile = profiles.get(player.getUniqueId());
+        if (profile == null || profile.getOccupation() != Occupation.LUMBERJACK) {
             return;
         }
-        if (!isLog(material)) {
+        if (!isLog(block.getType()) || isPlayerPlaced(block.getLocation())) {
             return;
         }
-        double reward = occupationSettings.get(Occupation.LUMBERJACK).logReward();
-        reward(player, reward, "for chopping logs");
+        OccupationSettings settings = occupationSettings.get(Occupation.LUMBERJACK);
+        reward(player, profile, settings.getReward("tree"), "for felling trees", "tree", settings);
+        profile.incrementCounter("trees");
     }
 
-    public void handleOreBreak(Player player, Material material) {
-        OccupationProgress progress = progressMap.get(player.getUniqueId());
-        if (progress == null || progress.occupation() != Occupation.MINER) {
+    public void handleOreBreak(Player player, Block block) {
+        OccupationProfile profile = profiles.get(player.getUniqueId());
+        if (profile == null || profile.getOccupation() != Occupation.MINER) {
             return;
         }
-        if (!isOre(material)) {
+        if (!isOre(block.getType()) || isPlayerPlaced(block.getLocation())) {
             return;
         }
-        double reward = occupationSettings.get(Occupation.MINER).oreReward();
-        reward(player, reward, "for mining valuable blocks");
+        OccupationSettings settings = occupationSettings.get(Occupation.MINER);
+        double reward = settings.getReward("ore");
+        if (block.getLocation().getY() < settings.getDepthBonusThreshold()) {
+            reward += settings.getReward("depth-bonus");
+        }
+        reward(player, profile, reward, "for mining ores", "ore", settings);
+        profile.incrementCounter("ores");
     }
 
     public void handleTravel(Player player, Location from, Location to) {
-        OccupationProgress progress = progressMap.get(player.getUniqueId());
-        if (progress == null || progress.occupation() != Occupation.EXPLORER) {
+        OccupationProfile profile = profiles.get(player.getUniqueId());
+        if (profile == null || profile.getOccupation() != Occupation.EXPLORER) {
             return;
         }
         if (from == null || to == null || from.getWorld() == null || to.getWorld() == null
                 || !from.getWorld().equals(to.getWorld())) {
             return;
         }
-
-        double distance = from.distance(to);
-        if (distance <= 0) {
+        profile.markActivity();
+        if (from.getChunk().equals(to.getChunk())) {
             return;
         }
-
         OccupationSettings settings = occupationSettings.get(Occupation.EXPLORER);
-        double rewardPerBlock = settings.travelRewardPerBlock();
-        double payout = distance * rewardPerBlock;
-        reward(player, payout, "for exploring the world");
+        long now = System.currentTimeMillis();
+        if (!profile.canRewardLocation(to.getChunk(), settings.getCooldown("chunk"), MAX_RECENT_LOCATIONS)) {
+            return;
+        }
+        double reward = settings.getReward("chunk");
+        reward(player, profile, reward, "for exploring new territory", "chunk", settings);
+        profile.incrementCounter("chunks");
+        profile.setLastLocationTime(now);
     }
 
-    public void handleBuild(Player player, Material material) {
-        OccupationProgress progress = progressMap.get(player.getUniqueId());
-        if (progress == null || progress.occupation() != Occupation.BUILDER) {
+    public void handleBuild(Player player, Block placed) {
+        OccupationProfile profile = profiles.get(player.getUniqueId());
+        if (profile == null || profile.getOccupation() != Occupation.BUILDER) {
             return;
         }
-        if (material == Material.AIR) {
+        profile.addPlacedBlock(placed.getLocation());
+        OccupationSettings settings = occupationSettings.get(Occupation.BUILDER);
+        profile.recordBuildSession(placed.getType());
+        if (profile.readyForBuildReward(settings.getSessionBlockThreshold(), settings.getSessionUniqueThreshold())) {
+            reward(player, profile, settings.getReward("build-session"), "for sustained building", "build-session",
+                    settings);
+            profile.resetBuildSession();
+        }
+    }
+
+    public void trackPlacement(UUID uuid, Block block) {
+        OccupationProfile profile = profiles.get(uuid);
+        if (profile == null) {
             return;
         }
-        Set<Material> seen = new HashSet<>(progress.uniqueBlocks());
-        if (!seen.add(material)) {
-            return;
-        }
-        progressMap.put(player.getUniqueId(), new OccupationProgress(progress.occupation(), seen));
-        double reward = occupationSettings.get(Occupation.BUILDER).uniqueBlockReward();
-        reward(player, reward, "for placing a new block type");
-        save();
+        profile.addPlacedBlock(block.getLocation());
+        placedBlockRegistry.add(serializeLocation(block.getLocation()));
     }
 
     public void backupOffers(Player player) {
@@ -199,15 +278,23 @@ public class JobsManager {
 
     public void save() {
         playerConfig.set("players", null);
-        for (Map.Entry<UUID, OccupationProgress> entry : progressMap.entrySet()) {
+        for (Map.Entry<UUID, OccupationProfile> entry : profiles.entrySet()) {
             String base = "players." + entry.getKey() + ".";
-            OccupationProgress progress = entry.getValue();
-            playerConfig.set(base + "occupation", progress.occupation().name());
-            List<String> placed = new ArrayList<>();
-            for (Material material : progress.uniqueBlocks()) {
-                placed.add(material.name());
-            }
-            playerConfig.set(base + "unique-blocks", placed);
+            OccupationProfile profile = entry.getValue();
+            playerConfig.set(base + "occupation", profile.getOccupation().name());
+            playerConfig.set(base + "chosenAt", profile.getChosenAt());
+            playerConfig.set(base + "lifetimeEarnings", profile.getLifetimeEarnings());
+            playerConfig.set(base + "sessionEarnings", profile.getSessionEarnings());
+            playerConfig.set(base + "lastPayoutAt", profile.getLastPayoutAt());
+            playerConfig.set(base + "dailyEarnings", profile.getDailyEarnings());
+            playerConfig.set(base + "dailyResetAt", profile.getDailyResetAt());
+            playerConfig.set(base + "placed", new ArrayList<>(profile.getPlacedBlocks()));
+            playerConfig.set(base + "recentVictims", serializeVictims(profile.getRecentVictims()));
+            playerConfig.set(base + "recentLocations", new ArrayList<>(profile.getRecentLocations()));
+            playerConfig.set(base + "counters", profile.getCounters());
+            playerConfig.set(base + "bests", profile.getBests());
+            playerConfig.set(base + "streaks", profile.getStreaks());
+            playerConfig.set(base + "recentPayouts", serializePayouts(profile.getRecentPayouts()));
         }
         try {
             playerConfig.save(playerDataFile);
@@ -216,17 +303,76 @@ public class JobsManager {
         }
     }
 
-    private void reward(Player player, double amount, String reason) {
+    private List<String> serializeVictims(Map<UUID, Long> victims) {
+        List<String> serialized = new ArrayList<>();
+        for (Map.Entry<UUID, Long> entry : victims.entrySet()) {
+            serialized.add(entry.getKey() + ":" + entry.getValue());
+        }
+        return serialized;
+    }
+
+    private List<String> serializePayouts(Deque<PayoutRecord> payouts) {
+        List<String> serialized = new ArrayList<>();
+        for (PayoutRecord record : payouts) {
+            serialized.add(record.reason() + "|" + record.amount() + "|" + record.timestamp());
+        }
+        return serialized;
+    }
+
+    private Map<UUID, Long> deserializeVictims(List<String> values) {
+        Map<UUID, Long> victims = new HashMap<>();
+        for (String value : values) {
+            String[] parts = value.split(":");
+            if (parts.length != 2) {
+                continue;
+            }
+            try {
+                victims.put(UUID.fromString(parts[0]), Long.parseLong(parts[1]));
+            } catch (Exception ignored) {
+            }
+        }
+        return victims;
+    }
+
+    private Deque<PayoutRecord> deserializePayouts(List<String> values) {
+        Deque<PayoutRecord> payouts = new ArrayDeque<>();
+        for (String value : values) {
+            String[] parts = value.split("\\|");
+            if (parts.length != 3) {
+                continue;
+            }
+            try {
+                payouts.add(new PayoutRecord(parts[0], Double.parseDouble(parts[1]), Long.parseLong(parts[2])));
+            } catch (Exception ignored) {
+            }
+            playerConfig.set(base + "unique-blocks", placed);
+        }
+        return payouts;
+    }
+
+    private void reward(Player player, OccupationProfile profile, double amount, String reason, String key,
+            OccupationSettings settings) {
         if (amount <= 0) {
             return;
         }
+        long now = System.currentTimeMillis();
+        profile.refreshDaily(now);
+        if (!profile.canCollect(key, settings.getCooldown(key), now)) {
+            return;
+        }
+        double available = Math.max(0, settings.getDailyCap() - profile.getDailyEarnings());
+        if (available <= 0) {
+            return;
+        }
+        double payout = Math.min(amount, available);
         BankManager bank = BankManager.get();
         if (bank != null) {
-            bank.deposit(player.getUniqueId(), amount, "Occupation income: " + reason);
-            player.sendMessage(Util.color("&a+" + bank.formatCurrency(amount) + " &7" + reason + "."));
+            bank.deposit(player.getUniqueId(), payout, "Occupation income: " + reason);
+            player.sendMessage(Util.color("&a+" + bank.formatCurrency(payout) + " &7" + reason + "."));
         } else {
-            player.sendMessage(Util.color("&a+" + amount + " &7" + reason + "."));
+            player.sendMessage(Util.color("&a+" + payout + " &7" + reason + "."));
         }
+        profile.bookkeepPayout(payout, reason, now, MAX_RECENT_PAYOUTS);
     }
 
     private void createDefaults() {
@@ -262,21 +408,31 @@ public class JobsManager {
             if (description.isEmpty()) {
                 description = occupation.getDefaultDescription();
             }
-            double killReward = jobConfig.getDouble(path + "rewards.kill-hostile", 20.0);
-            double harvestReward = jobConfig.getDouble(path + "rewards.harvest-crop", 4.0);
-            double catchReward = jobConfig.getDouble(path + "rewards.catch-fish", 6.0);
-            double logReward = jobConfig.getDouble(path + "rewards.chop-log", 3.0);
-            double oreReward = jobConfig.getDouble(path + "rewards.mine-ore", 5.0);
-            double travelReward = jobConfig.getDouble(path + "rewards.travel-per-block", 0.1);
-            double uniqueReward = jobConfig.getDouble(path + "rewards.unique-block", 2.5);
-            occupationSettings.put(occupation,
-                    new OccupationSettings(display, description, occupation.getIcon(), killReward, harvestReward,
-                            catchReward, logReward, oreReward, travelReward, uniqueReward));
+            double dailyCap = jobConfig.getDouble(path + "daily-cap", 5000.0);
+            Map<String, Double> rewards = new HashMap<>();
+            ConfigurationSection rewardSection = jobConfig.getConfigurationSection(path + "rewards");
+            if (rewardSection != null) {
+                for (String key : rewardSection.getKeys(false)) {
+                    rewards.put(key, rewardSection.getDouble(key));
+                }
+            }
+            Map<String, Integer> cooldowns = new HashMap<>();
+            ConfigurationSection cooldownSection = jobConfig.getConfigurationSection(path + "cooldowns");
+            if (cooldownSection != null) {
+                for (String key : cooldownSection.getKeys(false)) {
+                    cooldowns.put(key, cooldownSection.getInt(key));
+                }
+            }
+            int depthThreshold = jobConfig.getInt(path + "depth-threshold", 20);
+            int sessionBlockThreshold = jobConfig.getInt(path + "build-session.block-threshold", 25);
+            int sessionUniqueThreshold = jobConfig.getInt(path + "build-session.unique-threshold", 5);
+            occupationSettings.put(occupation, new OccupationSettings(display, description, occupation.getIcon(),
+                    dailyCap, rewards, cooldowns, depthThreshold, sessionBlockThreshold, sessionUniqueThreshold));
         }
     }
 
-    private void loadProgress() {
-        progressMap.clear();
+    private void loadProfiles() {
+        profiles.clear();
         if (!playerConfig.isConfigurationSection("players")) {
             return;
         }
@@ -285,17 +441,39 @@ public class JobsManager {
             if (occupation == null) {
                 continue;
             }
-            List<String> placed = playerConfig.getStringList("players." + key + ".unique-blocks");
-            Set<Material> unique = new HashSet<>();
-            for (String raw : placed) {
-                try {
-                    unique.add(Material.valueOf(raw.toUpperCase(Locale.ROOT)));
-                } catch (IllegalArgumentException ignored) {
-                }
-            }
             try {
                 UUID uuid = UUID.fromString(key);
-                progressMap.put(uuid, new OccupationProgress(occupation, unique));
+                long chosenAt = playerConfig.getLong("players." + key + ".chosenAt", System.currentTimeMillis());
+                OccupationProfile profile = new OccupationProfile(occupation, chosenAt);
+                profile.setLifetimeEarnings(playerConfig.getDouble("players." + key + ".lifetimeEarnings", 0));
+                profile.setSessionEarnings(0); // session earnings reset each startup
+                profile.setLastPayoutAt(playerConfig.getLong("players." + key + ".lastPayoutAt", 0));
+                profile.setDailyEarnings(playerConfig.getDouble("players." + key + ".dailyEarnings", 0));
+                profile.setDailyResetAt(playerConfig.getLong("players." + key + ".dailyResetAt", 0));
+                profile.setPlacedBlocks(new HashSet<>(playerConfig.getStringList("players." + key + ".placed")));
+                placedBlockRegistry.addAll(profile.getPlacedBlocks());
+                profile.setRecentVictims(deserializeVictims(playerConfig.getStringList("players." + key + ".recentVictims")));
+                profile.setRecentLocations(new ArrayDeque<>(playerConfig.getStringList("players." + key + ".recentLocations")));
+                ConfigurationSection counterSec = playerConfig.getConfigurationSection("players." + key + ".counters");
+                if (counterSec != null) {
+                    for (String cKey : counterSec.getKeys(false)) {
+                        profile.getCounters().put(cKey, counterSec.getInt(cKey));
+                    }
+                }
+                ConfigurationSection bestSec = playerConfig.getConfigurationSection("players." + key + ".bests");
+                if (bestSec != null) {
+                    for (String cKey : bestSec.getKeys(false)) {
+                        profile.getBests().put(cKey, bestSec.getInt(cKey));
+                    }
+                }
+                ConfigurationSection streakSec = playerConfig.getConfigurationSection("players." + key + ".streaks");
+                if (streakSec != null) {
+                    for (String cKey : streakSec.getKeys(false)) {
+                        profile.getStreaks().put(cKey, streakSec.getInt(cKey));
+                    }
+                }
+                profile.setRecentPayouts(deserializePayouts(playerConfig.getStringList("players." + key + ".recentPayouts")));
+                profiles.put(uuid, profile);
             } catch (IllegalArgumentException ignored) {
             }
         }
@@ -333,11 +511,274 @@ public class JobsManager {
         };
     }
 
-    public record OccupationSettings(String displayName, List<String> description, Material icon,
-            double killHostileReward, double harvestReward, double catchReward, double logReward, double oreReward,
-            double travelRewardPerBlock, double uniqueBlockReward) {
+    private boolean isPlayerPlaced(Location location) {
+        return placedBlockRegistry.contains(serializeLocation(location));
     }
 
-    public record OccupationProgress(Occupation occupation, Set<Material> uniqueBlocks) {
+    public record OccupationSettings(String displayName, List<String> description, Material icon, double dailyCap,
+            Map<String, Double> rewards, Map<String, Integer> cooldowns, int depthBonusThreshold,
+            int sessionBlockThreshold, int sessionUniqueThreshold) {
+
+        public double getReward(String key) {
+            return rewards.getOrDefault(key, 0.0);
+        }
+
+        public int getCooldown(String key) {
+            return cooldowns.getOrDefault(key, cooldowns.getOrDefault("default", 0));
+        }
+
+        public int getDepthBonusThreshold() {
+            return depthBonusThreshold;
+        }
+
+        public int getSessionBlockThreshold() {
+            return sessionBlockThreshold;
+        }
+
+        public int getSessionUniqueThreshold() {
+            return sessionUniqueThreshold;
+        }
+    }
+
+    public record PayoutRecord(String reason, double amount, long timestamp) {
+    }
+
+    public static final class OccupationProfile {
+        private final Occupation occupation;
+        private final long chosenAt;
+        private double lifetimeEarnings;
+        private double sessionEarnings;
+        private double dailyEarnings;
+        private long lastPayoutAt;
+        private long lastMoveAt;
+        private long dailyResetAt;
+        private final Map<String, Integer> counters = new HashMap<>();
+        private final Map<String, Integer> bests = new HashMap<>();
+        private final Map<String, Integer> streaks = new HashMap<>();
+        private final Map<String, Long> cooldowns = new HashMap<>();
+        private final Map<UUID, Long> recentVictims = new HashMap<>();
+        private final Set<String> placedBlocks = new HashSet<>();
+        private final Deque<String> recentLocations = new ArrayDeque<>();
+        private final Deque<PayoutRecord> recentPayouts = new ArrayDeque<>();
+        private final Map<Material, Integer> buildSessionCounts = new HashMap<>();
+
+        public OccupationProfile(Occupation occupation, long chosenAt) {
+            this.occupation = occupation;
+            this.chosenAt = chosenAt;
+            this.dailyResetAt = System.currentTimeMillis();
+        }
+
+        public Occupation getOccupation() {
+            return occupation;
+        }
+
+        public long getChosenAt() {
+            return chosenAt;
+        }
+
+        public double getLifetimeEarnings() {
+            return lifetimeEarnings;
+        }
+
+        public void setLifetimeEarnings(double lifetimeEarnings) {
+            this.lifetimeEarnings = lifetimeEarnings;
+        }
+
+        public double getSessionEarnings() {
+            return sessionEarnings;
+        }
+
+        public void setSessionEarnings(double sessionEarnings) {
+            this.sessionEarnings = sessionEarnings;
+        }
+
+        public double getDailyEarnings() {
+            return dailyEarnings;
+        }
+
+        public void setDailyEarnings(double dailyEarnings) {
+            this.dailyEarnings = dailyEarnings;
+        }
+
+        public long getLastPayoutAt() {
+            return lastPayoutAt;
+        }
+
+        public void setLastPayoutAt(long lastPayoutAt) {
+            this.lastPayoutAt = lastPayoutAt;
+        }
+
+        public long getDailyResetAt() {
+            return dailyResetAt;
+        }
+
+        public void setDailyResetAt(long dailyResetAt) {
+            this.dailyResetAt = dailyResetAt;
+        }
+
+        public Map<String, Integer> getCounters() {
+            return counters;
+        }
+
+        public Map<String, Integer> getBests() {
+            return bests;
+        }
+
+        public Map<String, Integer> getStreaks() {
+            return streaks;
+        }
+
+        public Map<UUID, Long> getRecentVictims() {
+            return recentVictims;
+        }
+
+        public Deque<PayoutRecord> getRecentPayouts() {
+            return recentPayouts;
+        }
+
+        public Set<String> getPlacedBlocks() {
+            return placedBlocks;
+        }
+
+        public Deque<String> getRecentLocations() {
+            return recentLocations;
+        }
+
+        public boolean canCollect(String key, int cooldownSeconds, long now) {
+            long last = cooldowns.getOrDefault(key, 0L);
+            if (cooldownSeconds > 0 && now - last < cooldownSeconds * 1000L) {
+                return false;
+            }
+            cooldowns.put(key, now);
+            return true;
+        }
+
+        public void bookkeepPayout(double amount, String reason, long now, int limit) {
+            lifetimeEarnings += amount;
+            sessionEarnings += amount;
+            dailyEarnings += amount;
+            lastPayoutAt = now;
+            recentPayouts.addFirst(new PayoutRecord(reason, amount, now));
+            while (recentPayouts.size() > limit) {
+                recentPayouts.removeLast();
+            }
+        }
+
+        public void incrementCounter(String key) {
+            int next = counters.getOrDefault(key, 0) + 1;
+            counters.put(key, next);
+            int best = bests.getOrDefault(key, 0);
+            if (next > best) {
+                bests.put(key, next);
+            }
+        }
+
+        public boolean isPlayerPlaced(Location location) {
+            return placedBlocks.contains(serializeLocation(location));
+        }
+
+        public void addPlacedBlock(Location location) {
+            placedBlocks.add(serializeLocation(location));
+        }
+
+        public void setPlacedBlocks(Set<String> placedBlocks) {
+            this.placedBlocks.clear();
+            this.placedBlocks.addAll(placedBlocks);
+        }
+
+        public boolean canRewardLocation(Chunk chunk, int cooldownSeconds, int limit) {
+            String key = chunkKey(chunk);
+            if (recentLocations.contains(key)) {
+                return false;
+            }
+            recentLocations.addFirst(key);
+            while (recentLocations.size() > limit) {
+                recentLocations.removeLast();
+            }
+            long now = System.currentTimeMillis();
+            long last = cooldowns.getOrDefault("location", 0L);
+            if (cooldownSeconds > 0 && now - last < cooldownSeconds * 1000L) {
+                return false;
+            }
+            cooldowns.put("location", now);
+            return true;
+        }
+
+        public void setRecentLocations(Deque<String> locations) {
+            recentLocations.clear();
+            recentLocations.addAll(locations);
+        }
+
+        public void setRecentPayouts(Deque<PayoutRecord> payouts) {
+            recentPayouts.clear();
+            recentPayouts.addAll(payouts);
+        }
+
+        public boolean recentlyMoved() {
+            return System.currentTimeMillis() - lastMoveAt < 30000L;
+        }
+
+        public void markActivity() {
+            lastMoveAt = System.currentTimeMillis();
+        }
+
+        public void setLastLocationTime(long time) {
+            cooldowns.put("location", time);
+        }
+
+        public boolean readyForBuildReward(int blockThreshold, int uniqueThreshold) {
+            int total = 0;
+            for (int count : buildSessionCounts.values()) {
+                total += count;
+            }
+            return total >= blockThreshold && buildSessionCounts.size() >= uniqueThreshold;
+        }
+
+        public void recordBuildSession(Material material) {
+            buildSessionCounts.merge(material, 1, Integer::sum);
+        }
+
+        public void resetBuildSession() {
+            buildSessionCounts.clear();
+        }
+
+        public Map<UUID, Long> getRecentVictimsCopy() {
+            return new HashMap<>(recentVictims);
+        }
+
+        public void setRecentVictims(Map<UUID, Long> victims) {
+            recentVictims.clear();
+            recentVictims.putAll(victims);
+        }
+
+        public boolean allowVictim(UUID uuid, int cooldownSeconds) {
+            long now = System.currentTimeMillis();
+            long last = recentVictims.getOrDefault(uuid, 0L);
+            if (cooldownSeconds > 0 && now - last < cooldownSeconds * 1000L) {
+                return false;
+            }
+            recentVictims.put(uuid, now);
+            return true;
+        }
+
+        public void refreshDaily(long now) {
+            if (now - dailyResetAt >= 86_400_000L) {
+                dailyResetAt = now;
+                dailyEarnings = 0;
+            }
+        }
+    }
+
+    private boolean allowNewVictim(OccupationProfile profile, UUID victim, int cooldownSeconds) {
+        return profile.allowVictim(victim, cooldownSeconds);
+    }
+
+    private String serializeLocation(Location location) {
+        return location.getWorld().getName() + ":" + location.getBlockX() + ":" + location.getBlockY() + ":"
+                + location.getBlockZ();
+    }
+
+    private static String chunkKey(Chunk chunk) {
+        return chunk.getWorld().getName() + ":" + chunk.getX() + ":" + chunk.getZ();
     }
 }

@@ -39,4 +39,4 @@ commands:
     usage: /shops [manage]
   jobs:
     description: Opens the occupation selection menu.
-    usage: /jobs [set|clear|info]
+    usage: /jobs [set|info|admin]
