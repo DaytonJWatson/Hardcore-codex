@@ -2,27 +2,30 @@ package com.daytonjwatson.hardcore.jobs;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Deque;
+import java.util.EnumMap;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 
-import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.block.Biome;
+import org.bukkit.block.Block;
+import org.bukkit.block.data.Ageable;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
+import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.inventory.ItemStack;
 
 import com.daytonjwatson.hardcore.managers.BankManager;
 import com.daytonjwatson.hardcore.utils.MessageStyler;
@@ -30,8 +33,9 @@ import com.daytonjwatson.hardcore.utils.Util;
 
 public class JobsManager {
 
-    private static final double DEFAULT_REWARD_MULTIPLIER = 125.0;
-    private static final long SLOT_COOLDOWN_MILLIS = 15 * 60 * 1000L;
+    public static final String ADMIN_PERMISSION = "hardcore.jobs.admin";
+    private static final int MAX_RECENT_LOCATIONS = 20;
+    private static final int MAX_RECENT_PAYOUTS = 20;
 
     private static JobsManager instance;
 
@@ -40,12 +44,10 @@ public class JobsManager {
     private final File playerDataFile;
     private final FileConfiguration jobConfig;
     private final FileConfiguration playerConfig;
-
-    private final Map<String, JobDefinition> jobPool = new LinkedHashMap<>();
-    private final Map<UUID, ActiveJob> activeJobs = new HashMap<>();
-    private final Map<UUID, List<JobOffer>> offeredJobs = new HashMap<>();
-    private final Map<UUID, Map<Integer, Long>> slotCooldowns = new HashMap<>();
-    private final Random random = new Random();
+    private final Map<Occupation, OccupationSettings> occupationSettings = new EnumMap<>(Occupation.class);
+    private final Map<UUID, OccupationProfile> profiles = new HashMap<>();
+    private final Set<String> placedBlockRegistry = new HashSet<>();
+    private final Map<UUID, Occupation> pendingSelection = new HashMap<>();
 
     private JobsManager(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -55,9 +57,8 @@ public class JobsManager {
         this.playerConfig = YamlConfiguration.loadConfiguration(playerDataFile);
 
         createDefaults();
-        loadJobs();
-        loadActiveJobs();
-        loadCooldowns();
+        loadSettings();
+        loadProfiles();
     }
 
     public static void init(JavaPlugin plugin) {
@@ -70,379 +71,312 @@ public class JobsManager {
         return instance;
     }
 
-    public List<JobDefinition> getJobPool() {
-        return List.copyOf(jobPool.values());
+    public Map<Occupation, OccupationSettings> getOccupationSettings() {
+        return occupationSettings;
     }
 
-    public List<JobOffer> getOfferedJobs(UUID playerId) {
-        refreshOffers(playerId);
-        return new ArrayList<>(offeredJobs.get(playerId));
+    public OccupationProfile getProfile(UUID uuid) {
+        return profiles.get(uuid);
     }
 
-    public void rerollOffers(UUID playerId) {
-        List<JobOffer> offers = offeredJobs.computeIfAbsent(playerId,
-                ignored -> new ArrayList<>(Collections.nCopies(3, null)));
-        ensureOfferSize(offers);
-        for (int i = 0; i < offers.size(); i++) {
-            if (isSlotCoolingDown(playerId, i)) {
-                offers.set(i, null);
-            } else {
-                offers.set(i, pickRandomOffer());
-            }
-        }
+    public Occupation getOccupation(UUID uuid) {
+        OccupationProfile profile = profiles.get(uuid);
+        return profile == null ? null : profile.getOccupation();
     }
 
-    public ActiveJob getActiveJob(UUID uuid) {
-        return activeJobs.get(uuid);
+    public void queueSelection(Player player, Occupation occupation) {
+        pendingSelection.put(player.getUniqueId(), occupation);
     }
 
-    public void assignJob(Player player, JobOffer offer, int slotIndex) {
-        JobDefinition definition = offer.getDefinition();
-        List<ActiveObjective> objectives = new ArrayList<>();
-        List<JobObjective> defs = definition.getObjectives();
-        for (int i = 0; i < defs.size(); i++) {
-            JobObjective objective = defs.get(i);
-            int goal = offer.getAmount(i);
-            if (goal <= 0) {
-                goal = Math.max(objective.getMinAmount(), objective.getMaxAmount());
-            }
-            Location start = objective.getType() == JobType.TRAVEL_DISTANCE ? player.getLocation().clone() : null;
-            objectives.add(new ActiveObjective(objective, goal, 0, start));
-        }
-        ActiveJob active = new ActiveJob(definition, objectives, slotIndex);
-        activeJobs.put(player.getUniqueId(), active);
-        startCooldownForSlot(player.getUniqueId(), slotIndex);
-        offeredJobs.remove(player.getUniqueId());
-        saveActiveJobs();
-        player.sendMessage(Util.color("&aAccepted job '&f" + definition.getDisplayName() + "&a'. Good luck!"));
-        int index = 1;
-        for (ActiveObjective objective : objectives) {
-            player.sendMessage(Util.color("&7Objective " + index + ": &f" + describeObjective(objective.getDefinition())
-                    + " &7- &e" + formatNumber(objective.getGoalAmount()) + "x"));
-            index++;
-        }
+    public Occupation popPendingSelection(UUID uuid) {
+        return pendingSelection.remove(uuid);
     }
 
-    public void abandonJob(Player player) {
-        ActiveJob active = activeJobs.remove(player.getUniqueId());
-        if (active != null) {
-            saveActiveJobs();
-        }
-        player.sendMessage(Util.color("&eYou abandoned your active job."));
-    }
-
-    public void handleKill(Player player, EntityType type) {
-        ActiveJob active = activeJobs.get(player.getUniqueId());
-        if (active == null) {
+    public void setOccupation(Player player, Occupation occupation, boolean adminOverride) {
+        OccupationProfile existing = profiles.get(player.getUniqueId());
+        if (existing != null && !adminOverride) {
+            player.sendMessage(Util.color("&cYour occupation is permanent and cannot be changed."));
             return;
         }
 
-        for (ActiveObjective objective : getMatchingObjectives(active, JobType.KILL_MOB,
-                def -> def.matches(type))) {
-            incrementProgress(player, active, objective, 1);
+        OccupationProfile profile = new OccupationProfile(occupation, System.currentTimeMillis());
+        profiles.put(player.getUniqueId(), profile);
+        save();
+        MessageStyler.sendPanel(player, "Occupation Selected",
+                "&7You are now a &f" + occupation.getDisplayName() + "&7. This choice is permanent.");
+    }
+
+    public void resetOccupation(UUID uuid) {
+        profiles.remove(uuid);
+        save();
+    }
+
+    public void reload() {
+        try {
+            jobConfig.load(jobFile);
+            loadSettings();
+        } catch (Exception ex) {
+            plugin.getLogger().warning("Failed to reload jobs.yml: " + ex.getMessage());
         }
     }
 
-    public void handleCollection(Player player, Material material, int amount) {
-        ActiveJob active = activeJobs.get(player.getUniqueId());
-        if (active == null) {
-            return;
-        }
-
-        int remaining = amount;
-        for (ActiveObjective objective : getMatchingObjectives(active, JobType.COLLECT_ITEM,
-                def -> def.matches(material))) {
-            int counted = amount;
-            if (objective.getDefinition().shouldConsumeItems()) {
-                int toConsume = (int) Math.min(objective.getRemaining(), remaining);
-                counted = consumeItems(player, material, toConsume);
-                remaining -= counted;
-            }
-            if (counted > 0) {
-                incrementProgress(player, active, objective, counted);
-            }
-            if (remaining <= 0 || active.getJob().isOrdered()) {
-                break;
-            }
+    public void handleJoin(Player player) {
+        OccupationProfile profile = profiles.get(player.getUniqueId());
+        if (profile != null) {
+            profile.markActivity();
         }
     }
 
-    public void handleMine(Player player, Material material, int amount) {
-        ActiveJob active = activeJobs.get(player.getUniqueId());
-        if (active == null) {
-            return;
-        }
-        for (ActiveObjective objective : getMatchingObjectives(active, JobType.MINE_BLOCK,
-                def -> def.matches(material))) {
-            incrementProgress(player, active, objective, amount);
+    public void markMovement(UUID uuid) {
+        OccupationProfile profile = profiles.get(uuid);
+        if (profile != null) {
+            profile.markActivity();
         }
     }
 
-    public void handleFish(Player player, Material material, int amount) {
-        ActiveJob active = activeJobs.get(player.getUniqueId());
-        if (active == null) {
+    public void handleQuit(Player player) {
+        save();
+    }
+
+    public void handleKill(Player player, Entity killed) {
+        OccupationProfile profile = profiles.get(player.getUniqueId());
+        if (profile == null || profile.getOccupation() != Occupation.WARRIOR) {
             return;
         }
-        int remaining = amount;
-        for (ActiveObjective objective : getMatchingObjectives(active, JobType.FISH_ITEM,
-                def -> def.matches(material))) {
-            int counted = amount;
-            if (objective.getDefinition().shouldConsumeItems()) {
-                int toConsume = (int) Math.min(objective.getRemaining(), remaining);
-                counted = consumeItems(player, material, toConsume);
-                remaining -= counted;
+        OccupationSettings settings = occupationSettings.get(Occupation.WARRIOR);
+        String key;
+        double reward;
+
+        if (killed instanceof Player victim) {
+            if (!allowNewVictim(profile, victim.getUniqueId(), settings.getCooldown("pvp-kill"))) {
+                return;
             }
-            if (counted > 0) {
-                incrementProgress(player, active, objective, counted);
-            }
-            if (remaining <= 0 || active.getJob().isOrdered()) {
-                break;
-            }
-        }
-    }
-
-    public void handleCraft(Player player, Material material, int amount) {
-        ActiveJob active = activeJobs.get(player.getUniqueId());
-        if (active == null) {
+            key = "pvp-kill";
+            reward = settings.getReward(key);
+        } else if (killed instanceof Monster || isHostileOverride(killed)) {
+            key = "hostile-kill";
+            reward = settings.getReward(key);
+        } else {
             return;
         }
-        int remaining = amount;
-        for (ActiveObjective objective : getMatchingObjectives(active, JobType.CRAFT_ITEM,
-                def -> def.matches(material))) {
-            int counted = amount;
-            if (objective.getDefinition().shouldConsumeItems()) {
-                int toConsume = (int) Math.min(objective.getRemaining(), remaining);
-                counted = consumeItems(player, material, toConsume);
-                remaining -= counted;
-            }
-            if (counted > 0) {
-                incrementProgress(player, active, objective, counted);
-            }
-            if (remaining <= 0 || active.getJob().isOrdered()) {
-                break;
-            }
-        }
+
+        reward(player, profile, reward, "for combat victories", key, settings);
+        profile.incrementCounter(key);
     }
 
-    public void handlePlace(Player player, Material material, int amount) {
-        ActiveJob active = activeJobs.get(player.getUniqueId());
-        if (active == null) {
+    public void handleCropBreak(Player player, Block block) {
+        OccupationProfile profile = profiles.get(player.getUniqueId());
+        if (profile == null || profile.getOccupation() != Occupation.FARMER) {
             return;
         }
-        for (ActiveObjective objective : getMatchingObjectives(active, JobType.PLACE_BLOCK,
-                def -> def.matches(material))) {
-            incrementProgress(player, active, objective, amount);
+        if (!isMatureCrop(block) || isPlayerPlaced(block.getLocation())) {
+            return;
         }
+        OccupationSettings settings = occupationSettings.get(Occupation.FARMER);
+        reward(player, profile, settings.getReward("harvest"), "for harvesting crops", "harvest", settings);
+        profile.incrementCounter("crops");
     }
 
-    public void handleSmelt(Player player, Material material, int amount) {
-        ActiveJob active = activeJobs.get(player.getUniqueId());
-        if (active == null) {
+    public void handleFish(Player player, PlayerFishEvent event) {
+        OccupationProfile profile = profiles.get(player.getUniqueId());
+        if (profile == null || profile.getOccupation() != Occupation.FISHERMAN) {
             return;
         }
-        for (ActiveObjective objective : getMatchingObjectives(active, JobType.SMELT_ITEM,
-                def -> def.matches(material))) {
-            incrementProgress(player, active, objective, amount);
+        if (event.getState() != PlayerFishEvent.State.CAUGHT_FISH) {
+            return;
         }
+        if (!profile.recentlyMoved()) {
+            // basic AFK prevention
+            return;
+        }
+        OccupationSettings settings = occupationSettings.get(Occupation.FISHERMAN);
+        reward(player, profile, settings.getReward("catch"), "for catching fish", "catch", settings);
+        profile.incrementCounter("catches");
     }
 
-    public void handleEnchant(Player player, Material material) {
-        ActiveJob active = activeJobs.get(player.getUniqueId());
-        if (active == null) {
+    public void handleLogBreak(Player player, Block block) {
+        OccupationProfile profile = profiles.get(player.getUniqueId());
+        if (profile == null || profile.getOccupation() != Occupation.LUMBERJACK) {
             return;
         }
-        for (ActiveObjective objective : getMatchingObjectives(active, JobType.ENCHANT_ITEM,
-                def -> def.matches(material))) {
-            incrementProgress(player, active, objective, 1);
+        if (!isLog(block.getType()) || isPlayerPlaced(block.getLocation())) {
+            return;
         }
+        OccupationSettings settings = occupationSettings.get(Occupation.LUMBERJACK);
+        reward(player, profile, settings.getReward("tree"), "for felling trees", "tree", settings);
+        profile.incrementCounter("trees");
     }
 
-    public void handleBreed(Player player, EntityType entityType) {
-        ActiveJob active = activeJobs.get(player.getUniqueId());
-        if (active == null) {
+    public void handleOreBreak(Player player, Block block) {
+        OccupationProfile profile = profiles.get(player.getUniqueId());
+        if (profile == null || profile.getOccupation() != Occupation.MINER) {
             return;
         }
-        for (ActiveObjective objective : getMatchingObjectives(active, JobType.BREED_ANIMAL,
-                def -> def.matches(entityType))) {
-            incrementProgress(player, active, objective, 1);
-        }
-    }
-
-    public void handleTame(Player player, EntityType entityType) {
-        ActiveJob active = activeJobs.get(player.getUniqueId());
-        if (active == null) {
+        if (!isOre(block.getType()) || isPlayerPlaced(block.getLocation())) {
             return;
         }
-        for (ActiveObjective objective : getMatchingObjectives(active, JobType.TAME_ENTITY,
-                def -> def.matches(entityType))) {
-            incrementProgress(player, active, objective, 1);
+        OccupationSettings settings = occupationSettings.get(Occupation.MINER);
+        double reward = settings.getReward("ore");
+        if (block.getLocation().getY() < settings.getDepthBonusThreshold()) {
+            reward += settings.getReward("depth-bonus");
         }
+        reward(player, profile, reward, "for mining ores", "ore", settings);
+        profile.incrementCounter("ores");
     }
 
     public void handleTravel(Player player, Location from, Location to) {
-        ActiveJob active = activeJobs.get(player.getUniqueId());
-        if (active == null) {
+        OccupationProfile profile = profiles.get(player.getUniqueId());
+        if (profile == null || profile.getOccupation() != Occupation.EXPLORER) {
             return;
         }
-
-        for (ActiveObjective objective : getMatchingObjectives(active, JobType.TRAVEL_BIOME,
-                def -> def.matchesBiome(to.getBlock().getBiome()))) {
-            setProgressIfHigher(player, active, objective, objective.getGoalAmount());
+        if (from == null || to == null || from.getWorld() == null || to.getWorld() == null
+                || !from.getWorld().equals(to.getWorld())) {
+            return;
         }
+        profile.markActivity();
+        if (from.getChunk().equals(to.getChunk())) {
+            return;
+        }
+        OccupationSettings settings = occupationSettings.get(Occupation.EXPLORER);
+        long now = System.currentTimeMillis();
+        if (!profile.canRewardLocation(to.getChunk(), settings.getCooldown("chunk"), MAX_RECENT_LOCATIONS)) {
+            return;
+        }
+        double reward = settings.getReward("chunk");
+        reward(player, profile, reward, "for exploring new territory", "chunk", settings);
+        profile.incrementCounter("chunks");
+        profile.setLastLocationTime(now);
+    }
 
-        for (ActiveObjective objective : getMatchingObjectives(active, JobType.TRAVEL_DISTANCE, def -> true)) {
-            Location start = objective.getStartLocation();
-            if (start == null) {
-                start = from.clone();
-                objective.setStartLocation(start);
-            }
+    public void handleBuild(Player player, Block placed) {
+        OccupationProfile profile = profiles.get(player.getUniqueId());
+        if (profile == null || profile.getOccupation() != Occupation.BUILDER) {
+            return;
+        }
+        profile.addPlacedBlock(placed.getLocation());
+        OccupationSettings settings = occupationSettings.get(Occupation.BUILDER);
+        profile.recordBuildSession(placed.getType());
+        if (profile.readyForBuildReward(settings.getSessionBlockThreshold(), settings.getSessionUniqueThreshold())) {
+            reward(player, profile, settings.getReward("build-session"), "for sustained building", "build-session",
+                    settings);
+            profile.resetBuildSession();
+        }
+    }
 
-            if (start.getWorld() == null || to.getWorld() == null || !start.getWorld().equals(to.getWorld())) {
+    public void trackPlacement(UUID uuid, Block block) {
+        OccupationProfile profile = profiles.get(uuid);
+        if (profile == null) {
+            return;
+        }
+        profile.addPlacedBlock(block.getLocation());
+        placedBlockRegistry.add(serializeLocation(block.getLocation()));
+    }
+
+    public void backupOffers(Player player) {
+        player.sendMessage(Util.color("&eUse the jobs menu to pick an occupation."));
+    }
+
+    public void save() {
+        playerConfig.set("players", null);
+        for (Map.Entry<UUID, OccupationProfile> entry : profiles.entrySet()) {
+            String base = playerBasePath(entry.getKey().toString());
+            OccupationProfile profile = entry.getValue();
+            playerConfig.set(base + "occupation", profile.getOccupation().name());
+            playerConfig.set(base + "chosenAt", profile.getChosenAt());
+            playerConfig.set(base + "lifetimeEarnings", profile.getLifetimeEarnings());
+            playerConfig.set(base + "sessionEarnings", profile.getSessionEarnings());
+            playerConfig.set(base + "lastPayoutAt", profile.getLastPayoutAt());
+            playerConfig.set(base + "dailyEarnings", profile.getDailyEarnings());
+            playerConfig.set(base + "dailyResetAt", profile.getDailyResetAt());
+            List<String> placed = new ArrayList<>(profile.getPlacedBlocks());
+            playerConfig.set(base + "placed", placed);
+            playerConfig.set(base + "recentVictims", serializeVictims(profile.getRecentVictims()));
+            playerConfig.set(base + "recentLocations", new ArrayList<>(profile.getRecentLocations()));
+            playerConfig.set(base + "counters", profile.getCounters());
+            playerConfig.set(base + "bests", profile.getBests());
+            playerConfig.set(base + "streaks", profile.getStreaks());
+            playerConfig.set(base + "recentPayouts", serializePayouts(profile.getRecentPayouts()));
+        }
+        try {
+            playerConfig.save(playerDataFile);
+        } catch (IOException e) {
+            plugin.getLogger().warning("Failed to save jobs-data.yml: " + e.getMessage());
+        }
+    }
+
+    private List<String> serializeVictims(Map<UUID, Long> victims) {
+        List<String> serialized = new ArrayList<>();
+        for (Map.Entry<UUID, Long> entry : victims.entrySet()) {
+            serialized.add(entry.getKey() + ":" + entry.getValue());
+        }
+        return serialized;
+    }
+
+    private List<String> serializePayouts(Deque<PayoutRecord> payouts) {
+        List<String> serialized = new ArrayList<>();
+        for (PayoutRecord record : payouts) {
+            serialized.add(record.reason() + "|" + record.amount() + "|" + record.timestamp());
+        }
+        return serialized;
+    }
+
+    private Map<UUID, Long> deserializeVictims(List<String> values) {
+        Map<UUID, Long> victims = new HashMap<>();
+        for (String value : values) {
+            String[] parts = value.split(":");
+            if (parts.length != 2) {
                 continue;
             }
-
-            double distance = start.distance(to);
-            setProgressIfHigher(player, active, objective, distance);
+            try {
+                victims.put(UUID.fromString(parts[0]), Long.parseLong(parts[1]));
+            } catch (Exception ignored) {
+            }
         }
+        return victims;
     }
 
-    private void incrementProgress(Player player, ActiveJob active, ActiveObjective objective, double amount) {
-        double previous = objective.getProgress();
-        boolean wasComplete = objective.isComplete();
-        double updated = objective.addProgress(amount);
-        if (updated == previous) {
+    private Deque<PayoutRecord> deserializePayouts(List<String> values) {
+        Deque<PayoutRecord> payouts = new ArrayDeque<>();
+        for (String value : values) {
+            String[] parts = value.split("\\|");
+            if (parts.length != 3) {
+                continue;
+            }
+            try {
+                payouts.add(new PayoutRecord(parts[0], Double.parseDouble(parts[1]), Long.parseLong(parts[2])));
+            } catch (Exception ignored) {
+            }
+        }
+        return payouts;
+    }
+
+    private String playerBasePath(String playerKey) {
+        return "players." + playerKey + ".";
+    }
+
+    private void reward(Player player, OccupationProfile profile, double amount, String reason, String key,
+            OccupationSettings settings) {
+        if (amount <= 0) {
             return;
         }
-
-        boolean completedNow = !wasComplete && objective.isComplete();
-        if (objective.isComplete()) {
-            player.sendMessage(Util.color("&aObjective complete: &f" + describeObjective(objective.getDefinition())));
-        } else {
-            player.sendMessage(Util.color("&6Job Progress &8» &7[" + describeObjective(objective.getDefinition()) + "] "
-                    + formatNumber(updated) + "/" + formatNumber(objective.getGoalAmount()) + " completed."));
-        }
-        concludeIfFinished(player, active, completedNow);
-        saveActiveJobs();
-    }
-
-    private void setProgressIfHigher(Player player, ActiveJob active, ActiveObjective objective, double newProgress) {
-        double previous = objective.getProgress();
-        boolean wasComplete = objective.isComplete();
-        double clamped = Math.min(objective.getGoalAmount(), newProgress);
-        if (clamped <= previous) {
+        long now = System.currentTimeMillis();
+        profile.refreshDaily(now);
+        if (!profile.canCollect(key, settings.getCooldown(key), now)) {
             return;
         }
-        objective.setProgress(clamped);
-
-        boolean completedNow = !wasComplete && objective.isComplete();
-        if (objective.isComplete()) {
-            player.sendMessage(Util.color("&aObjective complete: &f" + describeObjective(objective.getDefinition())));
-        } else if (objective.getDefinition().getType() != JobType.TRAVEL_DISTANCE
-                || reachedNextQuarter(previous, clamped, objective.getGoalAmount())) {
-            player.sendMessage(Util.color("&6Job Progress &8» &7[" + describeObjective(objective.getDefinition()) + "] "
-                    + formatNumber(clamped) + "/" + formatNumber(objective.getGoalAmount()) + " completed."));
+        double available = Math.max(0, settings.getDailyCap() - profile.getDailyEarnings());
+        if (available <= 0) {
+            return;
         }
-        concludeIfFinished(player, active, completedNow);
-        saveActiveJobs();
-    }
-
-    private boolean reachedNextQuarter(double previous, double current, double goal) {
-        double divisor = goal <= 0 ? 1 : goal;
-        int previousQuarter = (int) Math.floor((previous / divisor) * 4);
-        int currentQuarter = (int) Math.floor((current / divisor) * 4);
-        return currentQuarter > previousQuarter;
-    }
-
-    private void reward(Player player, JobDefinition job) {
-        double rewardAmount = job.getReward();
+        double payout = Math.min(amount, available);
         BankManager bank = BankManager.get();
-        String formatted = rewardAmount + "";
         if (bank != null) {
-            bank.deposit(player.getUniqueId(), rewardAmount,
-                    "Completed job: " + job.getDisplayName());
-            formatted = bank.formatCurrency(rewardAmount);
+            bank.deposit(player.getUniqueId(), payout, "Occupation income: " + reason);
+            player.sendMessage(Util.color("&a+" + bank.formatCurrency(payout) + " &7" + reason + "."));
+        } else {
+            player.sendMessage(Util.color("&a+" + payout + " &7" + reason + "."));
         }
-
-        MessageStyler.sendPanel(player, "Job Complete",
-                "&7" + job.getDisplayName(),
-                "&7Reward: &a" + formatted);
-    }
-
-    private void finalizeJob(Player player, ActiveJob active) {
-        activeJobs.remove(player.getUniqueId());
-        saveActiveJobs();
-    }
-
-    private void concludeIfFinished(Player player, ActiveJob active, boolean completedObjective) {
-        if (active.isComplete()) {
-            reward(player, active.getJob());
-            finalizeJob(player, active);
-            return;
-        }
-        if (completedObjective && active.getJob().isOrdered()) {
-            for (ActiveObjective pending : active.getPendingObjectives()) {
-                player.sendMessage(Util.color("&eNext objective: &f" + describeObjective(pending.getDefinition())));
-                break;
-            }
-        }
-    }
-
-    private List<ActiveObjective> getMatchingObjectives(ActiveJob active, JobType type,
-            java.util.function.Predicate<JobObjective> filter) {
-        List<ActiveObjective> matches = new ArrayList<>();
-        for (ActiveObjective objective : active.getPendingObjectives()) {
-            if (objective.getDefinition().getType() == type && filter.test(objective.getDefinition())) {
-                matches.add(objective);
-            }
-        }
-        return matches;
-    }
-
-    private JobObjective parseObjective(String jobId, Map<?, ?> data) {
-        Object typeValue = data.containsKey("type") ? data.get("type") : "";
-        String rawType = String.valueOf(typeValue);
-        JobType type = JobType.fromString(rawType);
-        if (type == null) {
-            plugin.getLogger().warning("Unknown objective type '" + rawType + "' for job '" + jobId + "'. Skipping objective.");
-            return null;
-        }
-
-        Object targetValue = data.containsKey("target") ? data.get("target") : "";
-        String target = String.valueOf(targetValue);
-        List<String> aliases = new ArrayList<>();
-        Object aliasValue = data.get("aliases");
-        if (aliasValue instanceof List<?> list) {
-            for (Object value : list) {
-                if (value != null) {
-                    aliases.add(String.valueOf(value));
-                }
-            }
-        }
-        int minAmount = Math.max(1, readInt(data.get("amount-min"), readInt(data.get("amount"), 1)));
-        int maxAmount = Math.max(minAmount, readInt(data.get("amount-max"), minAmount));
-        Object consumeValue = data.containsKey("consume-items") ? data.get("consume-items") : false;
-        boolean consumeItems = Boolean.parseBoolean(String.valueOf(consumeValue));
-
-        List<String> allTargets = new ArrayList<>();
-        allTargets.add(target.toUpperCase(Locale.ROOT));
-        for (String alias : aliases) {
-            allTargets.add(alias.toUpperCase(Locale.ROOT));
-        }
-
-        if (!isValidTarget(type, allTargets)) {
-            plugin.getLogger().warning("Invalid target '" + target + "' for job '" + jobId + "'. Skipping objective.");
-            return null;
-        }
-
-        return new JobObjective(type, target, aliases, minAmount, maxAmount, consumeItems);
-    }
-
-    private int readInt(Object raw, int defaultValue) {
-        try {
-            return Integer.parseInt(String.valueOf(raw));
-        } catch (Exception ex) {
-            return defaultValue;
-        }
+        profile.bookkeepPayout(payout, reason, now, MAX_RECENT_PAYOUTS);
     }
 
     private void createDefaults() {
@@ -469,360 +403,166 @@ public class JobsManager {
         }
     }
 
-    private void loadJobs() {
-        jobPool.clear();
-        ConfigurationSection section = jobConfig.getConfigurationSection("jobs");
-        if (section == null) {
-            plugin.getLogger().warning("No jobs found in jobs.yml.");
-            return;
-        }
-
-        for (String id : section.getKeys(false)) {
-            ConfigurationSection node = section.getConfigurationSection(id);
-            if (node == null) continue;
-
-            List<JobObjective> objectives = new ArrayList<>();
-            List<Map<?, ?>> entries = node.getMapList("objectives");
-            if (!entries.isEmpty()) {
-                for (Map<?, ?> entry : entries) {
-                    JobObjective objective = parseObjective(id, entry);
-                    if (objective != null) {
-                        objectives.add(objective);
-                    }
-                    if (objectives.size() >= 3) {
-                        break;
-                    }
-                }
-            } else {
-                JobType type = JobType.fromString(node.getString("type"));
-                if (type != null) {
-                    String target = node.getString("target", "").toUpperCase(Locale.ROOT);
-                    List<String> aliases = new ArrayList<>();
-                    for (String alias : node.getStringList("aliases")) {
-                        aliases.add(alias.toUpperCase(Locale.ROOT));
-                    }
-                    int minAmount = Math.max(1, node.getInt("amount-min", node.getInt("amount", 1)));
-                    int maxAmount = Math.max(minAmount, node.getInt("amount-max", minAmount));
-                    boolean consumeItems = node.getBoolean("consume-items", false);
-                    List<String> allTargets = new ArrayList<>();
-                    allTargets.add(target);
-                    allTargets.addAll(aliases);
-                    if (isValidTarget(type, allTargets)) {
-                        objectives.add(new JobObjective(type, target, aliases, minAmount, maxAmount, consumeItems));
-                    }
+    private void loadSettings() {
+        occupationSettings.clear();
+        for (Occupation occupation : Occupation.values()) {
+            String path = "occupations." + occupation.name() + ".";
+            String display = jobConfig.getString(path + "display-name", occupation.getDisplayName());
+            List<String> description = jobConfig.getStringList(path + "description");
+            if (description.isEmpty()) {
+                description = occupation.getDefaultDescription();
+            }
+            double dailyCap = jobConfig.getDouble(path + "daily-cap", 5000.0);
+            Map<String, Double> rewards = new HashMap<>();
+            ConfigurationSection rewardSection = jobConfig.getConfigurationSection(path + "rewards");
+            if (rewardSection != null) {
+                for (String key : rewardSection.getKeys(false)) {
+                    rewards.put(key, rewardSection.getDouble(key));
                 }
             }
-
-            if (objectives.isEmpty()) {
-                plugin.getLogger().warning("Job '" + id + "' has no valid objectives. Skipping.");
-                continue;
+            Map<String, Integer> cooldowns = new HashMap<>();
+            ConfigurationSection cooldownSection = jobConfig.getConfigurationSection(path + "cooldowns");
+            if (cooldownSection != null) {
+                for (String key : cooldownSection.getKeys(false)) {
+                    cooldowns.put(key, cooldownSection.getInt(key));
+                }
             }
-
-            double difficulty = Math.max(0.1, node.getDouble("difficulty", 1.0));
-            double reward = node.getDouble("reward", difficulty * DEFAULT_REWARD_MULTIPLIER);
-            String name = node.getString("name", id);
-            List<String> lore = node.getStringList("description");
-            String[] description = lore.toArray(new String[0]);
-            boolean ordered = node.getBoolean("ordered", false);
-
-            JobDefinition definition = new JobDefinition(id, name, objectives, ordered, difficulty, reward, description);
-            jobPool.put(id, definition);
+            int depthThreshold = jobConfig.getInt(path + "depth-threshold", 20);
+            int sessionBlockThreshold = jobConfig.getInt(path + "build-session.block-threshold", 25);
+            int sessionUniqueThreshold = jobConfig.getInt(path + "build-session.unique-threshold", 5);
+            occupationSettings.put(occupation, new OccupationSettings(display, description, occupation.getIcon(),
+                    dailyCap, rewards, cooldowns, depthThreshold, sessionBlockThreshold, sessionUniqueThreshold));
         }
     }
 
-    private void loadActiveJobs() {
-        activeJobs.clear();
-        ConfigurationSection section = playerConfig.getConfigurationSection("players");
-        if (section == null) return;
-
-        for (String key : section.getKeys(false)) {
+    private void loadProfiles() {
+        profiles.clear();
+        if (!playerConfig.isConfigurationSection("players")) {
+            return;
+        }
+        for (String key : playerConfig.getConfigurationSection("players").getKeys(false)) {
+            Occupation occupation = Occupation.fromString(playerConfig.getString("players." + key + ".occupation"));
+            if (occupation == null) {
+                continue;
+            }
             try {
                 UUID uuid = UUID.fromString(key);
-                String jobId = playerConfig.getString("players." + key + ".job");
-                int slot = playerConfig.getInt("players." + key + ".slot", -1);
-                JobDefinition definition = jobPool.get(jobId);
-                if (definition != null) {
-                    List<ActiveObjective> objectives = new ArrayList<>();
-                    ConfigurationSection objectiveSection = playerConfig
-                            .getConfigurationSection("players." + key + ".objectives");
-                    for (int i = 0; i < definition.getObjectives().size(); i++) {
-                        JobObjective def = definition.getObjectives().get(i);
-                        double progress = objectiveSection != null
-                                ? objectiveSection.getDouble(i + ".progress", 0)
-                                : playerConfig.getDouble("players." + key + ".progress", 0);
-                        int goal = objectiveSection != null
-                                ? objectiveSection.getInt(i + ".goal", -1)
-                                : playerConfig.getInt("players." + key + ".goal", -1);
-                        if (goal < 0) {
-                            goal = Math.max(def.getMinAmount(), def.getMaxAmount());
-                        }
-                        Location start = readLocation(playerConfig,
-                                "players." + key + ".objectives." + i + ".start");
-                        if (start == null && objectiveSection == null) {
-                            start = readLocation(playerConfig, "players." + key + ".start");
-                        }
-                        objectives.add(new ActiveObjective(def, goal, progress, start));
+                long chosenAt = playerConfig.getLong("players." + key + ".chosenAt", System.currentTimeMillis());
+                String base = playerBasePath(key);
+                OccupationProfile profile = new OccupationProfile(occupation, chosenAt);
+                profile.setLifetimeEarnings(playerConfig.getDouble("players." + key + ".lifetimeEarnings", 0));
+                profile.setSessionEarnings(0); // session earnings reset each startup
+                profile.setLastPayoutAt(playerConfig.getLong("players." + key + ".lastPayoutAt", 0));
+                profile.setDailyEarnings(playerConfig.getDouble("players." + key + ".dailyEarnings", 0));
+                profile.setDailyResetAt(playerConfig.getLong("players." + key + ".dailyResetAt", 0));
+                List<String> placed = playerConfig.getStringList(base + "placed");
+                profile.setPlacedBlocks(new HashSet<>(placed));
+                placedBlockRegistry.addAll(profile.getPlacedBlocks());
+                profile.setRecentVictims(deserializeVictims(playerConfig.getStringList(base + "recentVictims")));
+                profile.setRecentLocations(new ArrayDeque<>(playerConfig.getStringList(base + "recentLocations")));
+                ConfigurationSection counterSec = playerConfig.getConfigurationSection(base + "counters");
+                if (counterSec != null) {
+                    for (String cKey : counterSec.getKeys(false)) {
+                        profile.getCounters().put(cKey, counterSec.getInt(cKey));
                     }
-                    activeJobs.put(uuid, new ActiveJob(definition, objectives, slot));
                 }
+                ConfigurationSection bestSec = playerConfig.getConfigurationSection(base + "bests");
+                if (bestSec != null) {
+                    for (String cKey : bestSec.getKeys(false)) {
+                        profile.getBests().put(cKey, bestSec.getInt(cKey));
+                    }
+                }
+                ConfigurationSection streakSec = playerConfig.getConfigurationSection(base + "streaks");
+                if (streakSec != null) {
+                    for (String cKey : streakSec.getKeys(false)) {
+                        profile.getStreaks().put(cKey, streakSec.getInt(cKey));
+                    }
+                }
+                profile.setRecentPayouts(deserializePayouts(playerConfig.getStringList(base + "recentPayouts")));
+                profiles.put(uuid, profile);
             } catch (IllegalArgumentException ignored) {
             }
         }
     }
 
-    private void saveActiveJobs() {
-        playerConfig.set("players", null);
-        for (Map.Entry<UUID, ActiveJob> entry : activeJobs.entrySet()) {
-            String base = "players." + entry.getKey() + ".";
-            ActiveJob job = entry.getValue();
-            playerConfig.set(base + "job", job.getJob().getId());
-            playerConfig.set(base + "slot", job.getSelectedSlot());
-            int index = 0;
-            for (ActiveObjective objective : job.getObjectives()) {
-                String path = base + "objectives." + index + ".";
-                playerConfig.set(path + "progress", objective.getProgress());
-                playerConfig.set(path + "goal", objective.getGoalAmount());
-                writeLocation(objective.getStartLocation(), path + "start");
-                index++;
-            }
-        }
-        writeCooldowns();
-        try {
-            playerConfig.save(playerDataFile);
-        } catch (IOException e) {
-            plugin.getLogger().warning("Failed to save jobs-data.yml: " + e.getMessage());
-        }
-    }
-
-    private boolean isValidTarget(JobType type, java.util.Collection<String> targets) {
-        try {
-            for (String target : targets) {
-                boolean valid = switch (type) {
-                    case KILL_MOB -> EntityType.valueOf(target) != null;
-                    case COLLECT_ITEM, MINE_BLOCK, FISH_ITEM, CRAFT_ITEM, PLACE_BLOCK, SMELT_ITEM, ENCHANT_ITEM ->
-                            Material.valueOf(target) != null;
-                    case BREED_ANIMAL, TAME_ENTITY -> EntityType.valueOf(target) != null;
-                    case TRAVEL_BIOME -> Biome.valueOf(target) != null;
-                    case TRAVEL_DISTANCE -> true;
-                };
-                if (valid) {
-                    return true;
-                }
-            }
-            return false;
-        } catch (Exception ex) {
+    private boolean isMatureCrop(Block block) {
+        if (block == null) {
             return false;
         }
-    }
-
-    public void reload() {
-        try {
-            jobConfig.load(jobFile);
-            loadJobs();
-        } catch (Exception e) {
-            plugin.getLogger().warning("Failed to reload jobs.yml: " + e.getMessage());
-        }
-    }
-
-    public void clearOffers(UUID uuid) {
-        offeredJobs.remove(uuid);
-    }
-
-    public void completeTrackingFor(UUID uuid) {
-        activeJobs.remove(uuid);
-        saveActiveJobs();
-    }
-
-    public void save() {
-        saveActiveJobs();
-    }
-
-    public void backupOffers(Player player) {
-        List<JobOffer> offers = getOfferedJobs(player.getUniqueId());
-        List<String> lines = new ArrayList<>();
-        for (int i = 0; i < offers.size(); i++) {
-            JobOffer offer = offers.get(i);
-            if (isSlotCoolingDown(player.getUniqueId(), i)) {
-                long seconds = getCooldownRemainingMillis(player.getUniqueId(), i) / 1000;
-                lines.add(MessageStyler.bulletLine("Option " + (i + 1), org.bukkit.ChatColor.GRAY,
-                        "Cooling down (" + seconds + "s remaining)"));
-                continue;
-            }
-            if (offer == null) {
-                lines.add(MessageStyler.bulletLine("Option " + (i + 1), org.bukkit.ChatColor.RED,
-                        "Unavailable"));
-                continue;
-            }
-            JobDefinition job = offer.getDefinition();
-            List<String> objectivePieces = new ArrayList<>();
-            for (int idx = 0; idx < job.getObjectives().size(); idx++) {
-                JobObjective objective = job.getObjectives().get(idx);
-                objectivePieces.add(objective.getType().name().replace('_', ' ') + " " + objective.getTarget() + " x"
-                        + offer.getAmount(idx));
-            }
-            lines.add(MessageStyler.bulletLine("Option " + (i + 1), org.bukkit.ChatColor.GOLD,
-                    job.getDisplayName() + " &7(" + String.join("; ", objectivePieces) + ")"));
-        }
-        MessageStyler.sendPanel(player, "Job Offers", lines.toArray(new String[0]));
-    }
-
-    public boolean isSlotCoolingDown(UUID playerId, int slotIndex) {
-        Long until = getCooldownMap(playerId).get(slotIndex);
-        if (until == null) {
+        Material type = block.getType();
+        if (!(block.getBlockData() instanceof Ageable ageable)) {
             return false;
         }
-        if (until <= System.currentTimeMillis()) {
-            getCooldownMap(playerId).remove(slotIndex);
-            return false;
-        }
-        return true;
+        return switch (type) {
+            case WHEAT, CARROTS, POTATOES, BEETROOTS, NETHER_WART, SWEET_BERRY_BUSH, COCOA ->
+                    ageable.getAge() >= ageable.getMaximumAge();
+            default -> false;
+        };
     }
 
-    public long getCooldownRemainingMillis(UUID playerId, int slotIndex) {
-        Long until = getCooldownMap(playerId).get(slotIndex);
-        if (until == null) {
-            return 0L;
-        }
-        return Math.max(0L, until - System.currentTimeMillis());
+    private boolean isLog(Material material) {
+        String name = material.name();
+        return name.endsWith("_LOG") || name.endsWith("_STEM");
     }
 
-    private void refreshOffers(UUID playerId) {
-        List<JobOffer> offers = offeredJobs.computeIfAbsent(playerId,
-                ignored -> new ArrayList<>(Collections.nCopies(3, null)));
-        ensureOfferSize(offers);
-
-        for (int i = 0; i < offers.size(); i++) {
-            if (isSlotCoolingDown(playerId, i)) {
-                offers.set(i, null);
-            } else if (offers.get(i) == null) {
-                offers.set(i, pickRandomOffer());
-            }
-        }
+    private boolean isOre(Material material) {
+        String name = material.name();
+        return name.endsWith("_ORE") || name.equals("ANCIENT_DEBRIS") || name.equals("NETHER_QUARTZ_ORE");
     }
 
-    private JobOffer pickRandomOffer() {
-        if (jobPool.isEmpty()) {
-            return null;
-        }
-        List<JobDefinition> pool = new ArrayList<>(jobPool.values());
-        Collections.shuffle(pool, random);
-        JobDefinition def = pool.get(0);
-        List<Integer> amounts = new ArrayList<>();
-        for (JobObjective objective : def.getObjectives()) {
-            amounts.add(objective.rollAmount(random));
-        }
-        return new JobOffer(def, amounts);
+    private boolean isHostileOverride(Entity entity) {
+        return switch (entity.getType()) {
+            case PHANTOM, SLIME, MAGMA_CUBE, GHAST, ENDERMAN, PIGLIN, PIGLIN_BRUTE, HOGLIN, ZOGLIN -> true;
+            default -> false;
+        };
     }
 
-    private void ensureOfferSize(List<JobOffer> offers) {
-        while (offers.size() < 3) {
-            offers.add(null);
-        }
+    private boolean isPlayerPlaced(Location location) {
+        return placedBlockRegistry.contains(serializeLocation(location));
     }
 
-    private void startCooldownForSlot(UUID uuid, int slotIndex) {
-        if (slotIndex < 0) {
-            return;
-        }
-        getCooldownMap(uuid).put(slotIndex, System.currentTimeMillis() + SLOT_COOLDOWN_MILLIS);
-    }
+    public record OccupationSettings(String displayName, List<String> description, Material icon, double dailyCap,
+            Map<String, Double> rewards, Map<String, Integer> cooldowns, int depthBonusThreshold,
+            int sessionBlockThreshold, int sessionUniqueThreshold) {
 
-    private Map<Integer, Long> getCooldownMap(UUID uuid) {
-        return slotCooldowns.computeIfAbsent(uuid, ignored -> new HashMap<>());
-    }
-
-    private void loadCooldowns() {
-        slotCooldowns.clear();
-        ConfigurationSection section = playerConfig.getConfigurationSection("cooldowns");
-        if (section == null) {
-            return;
+        public double getDailyCap() {
+            return dailyCap;
         }
 
-        for (String key : section.getKeys(false)) {
-            try {
-                UUID uuid = UUID.fromString(key);
-                ConfigurationSection child = section.getConfigurationSection(key);
-                if (child == null) {
-                    continue;
-                }
-                Map<Integer, Long> slots = getCooldownMap(uuid);
-                for (String slotKey : child.getKeys(false)) {
-                    try {
-                        int slot = Integer.parseInt(slotKey);
-                        long until = child.getLong(slotKey);
-                        if (until > System.currentTimeMillis()) {
-                            slots.put(slot, until);
-                        }
-                    } catch (NumberFormatException ignored) {
-                    }
-                }
-            } catch (IllegalArgumentException ignored) {
-            }
+        public double getReward(String key) {
+            return rewards.getOrDefault(key, 0.0);
+        }
+
+        public int getCooldown(String key) {
+            return cooldowns.getOrDefault(key, cooldowns.getOrDefault("default", 0));
+        }
+
+        public int getDepthBonusThreshold() {
+            return depthBonusThreshold;
+        }
+
+        public int getSessionBlockThreshold() {
+            return sessionBlockThreshold;
+        }
+
+        public int getSessionUniqueThreshold() {
+            return sessionUniqueThreshold;
         }
     }
 
-    private void writeCooldowns() {
-        playerConfig.set("cooldowns", null);
-        for (Map.Entry<UUID, Map<Integer, Long>> entry : slotCooldowns.entrySet()) {
-            String base = "cooldowns." + entry.getKey() + ".";
-            for (Map.Entry<Integer, Long> slot : entry.getValue().entrySet()) {
-                if (slot.getValue() > System.currentTimeMillis()) {
-                    playerConfig.set(base + slot.getKey(), slot.getValue());
-                }
-            }
-        }
+    public record PayoutRecord(String reason, double amount, long timestamp) {
     }
 
-    private void writeLocation(Location location, String path) {
-        if (location == null) {
-            playerConfig.set(path, null);
-            return;
-        }
-        playerConfig.set(path + ".world", location.getWorld().getName());
-        playerConfig.set(path + ".x", location.getX());
-        playerConfig.set(path + ".y", location.getY());
-        playerConfig.set(path + ".z", location.getZ());
+    private boolean allowNewVictim(OccupationProfile profile, UUID victim, int cooldownSeconds) {
+        return profile.allowVictim(victim, cooldownSeconds);
     }
 
-    private Location readLocation(FileConfiguration config, String path) {
-        String worldName = config.getString(path + ".world");
-        if (worldName == null) {
-            return null;
-        }
-        double x = config.getDouble(path + ".x");
-        double y = config.getDouble(path + ".y");
-        double z = config.getDouble(path + ".z");
-        return new Location(Bukkit.getWorld(worldName), x, y, z);
+    public static String serializeLocation(Location location) {
+        return location.getWorld().getName() + ":" + location.getBlockX() + ":" + location.getBlockY() + ":"
+                + location.getBlockZ();
     }
 
-    private String formatNumber(double value) {
-        if (value % 1 == 0) {
-            return Integer.toString((int) value);
-        }
-        return String.format(Locale.US, "%.1f", value);
-    }
-
-    private String describeObjective(JobObjective objective) {
-        return objective.getType().name().replace('_', ' ') + " -> " + objective.getTarget();
-    }
-
-    private int consumeItems(Player player, Material material, int requested) {
-        int remaining = Math.max(0, requested);
-        ItemStack[] contents = player.getInventory().getContents();
-        for (int i = 0; i < contents.length && remaining > 0; i++) {
-            ItemStack stack = contents[i];
-            if (stack == null || stack.getType() != material) {
-                continue;
-            }
-
-            int take = Math.min(stack.getAmount(), remaining);
-            stack.setAmount(stack.getAmount() - take);
-            remaining -= take;
-            if (stack.getAmount() <= 0) {
-                contents[i] = null;
-            }
-        }
-        player.getInventory().setContents(contents);
-        return requested - remaining;
+    public static String chunkKey(Chunk chunk) {
+        return chunk.getWorld().getName() + ":" + chunk.getX() + ":" + chunk.getZ();
     }
 }
