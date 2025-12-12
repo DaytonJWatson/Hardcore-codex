@@ -345,6 +345,7 @@ public class JobsManager {
                 payouts.add(new PayoutRecord(parts[0], Double.parseDouble(parts[1]), Long.parseLong(parts[2])));
             } catch (Exception ignored) {
             }
+            playerConfig.set(base + "unique-blocks", placed);
         }
         return payouts;
     }
