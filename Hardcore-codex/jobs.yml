@@ -1,192 +1,83 @@
-jobs:
-  zombie_hunter:
-    name: "&2Zombie Hunter"
-    type: KILL_MOB
-    target: ZOMBIE
-    amount-min: 10
-    amount-max: 25
-    difficulty: 1.0
-    reward: 250.0
+occupations:
+  WARRIOR:
+    display-name: "&cWarrior"
     description:
-      - "Cull the undead threat."
-      - "Slay the undead horde."
-  spider_silk:
-    name: "&dSilk Collector"
-    type: COLLECT_ITEM
-    target: STRING
-    amount-min: 32
-    amount-max: 64
-    difficulty: 1.2
-    reward: 325.0
-    consume-items: true
+      - "Paid for dangerous PvP and hostile mobs."
+      - "Anti-repeat cooldowns are strict."
+    daily-cap: 5000.0
+    rewards:
+      pvp-kill: 120.0
+      hostile-kill: 35.0
+    cooldowns:
+      default: 5
+      pvp-kill: 120
+    depth-threshold: 20
+    build-session:
+      block-threshold: 30
+      unique-threshold: 5
+  FARMER:
+    display-name: "&aFarmer"
     description:
-      - "Gather string for the fletcher's stockpile."
-  ender_eyes:
-    name: "&5Ender Research"
-    type: COLLECT_ITEM
-    target: ENDER_EYE
-    amount: 6
-    difficulty: 2.0
-    reward: 650.0
+      - "Harvest mature crops and breed livestock."
+      - "No credit for placed crops."
+    daily-cap: 4000.0
+    rewards:
+      harvest: 8.0
+    cooldowns:
+      default: 3
+  FISHERMAN:
+    display-name: "&bFisherman"
     description:
-      - "Secure eyes of ender for experiments."
-  blaze_bane:
-    name: "&6Blaze Bane"
-    type: KILL_MOB
-    target: BLAZE
-    amount: 10
-    difficulty: 2.2
-    reward: 750.0
+      - "Catch fish while actively fishing."
+      - "AFK fishing yields nothing."
+    daily-cap: 3500.0
+    rewards:
+      catch: 10.0
+    cooldowns:
+      default: 2
+  LUMBERJACK:
+    display-name: "&6Lumberjack"
     description:
-      - "Cool the nether furnace by slaying blazes."
-  diamond_miner:
-    name: "&bShiny Prospector"
-    type: MINE_BLOCK
-    target: DIAMOND_ORE
-    amount: 8
-    difficulty: 2.0
-    reward: 900.0
-    consume-items: true
+      - "Chop natural trees and replant."
+      - "No farmed log abuse."
+    daily-cap: 3500.0
+    rewards:
+      tree: 12.0
+    cooldowns:
+      default: 5
+  MINER:
+    display-name: "&7Miner"
     description:
-      - "Mine diamonds for the guild armorer."
-  master_fisher:
-    name: "&3River Supplier"
-    type: FISH_ITEM
-    target: SALMON
-    amount: 12
-    difficulty: 1.4
-    reward: 420.0
-    consume-items: true
+      - "Mine natural ores deeper underground."
+      - "Placed ores never pay."
+    daily-cap: 4500.0
+    rewards:
+      ore: 14.0
+      depth-bonus: 8.0
+    cooldowns:
+      default: 3
+    depth-threshold: 32
+  EXPLORER:
+    display-name: "&dExplorer"
     description:
-      - "Catch salmon for the town feast."
-  baker:
-    name: "&eVillage Baker"
-    type: CRAFT_ITEM
-    target: BREAD
-    amount: 24
-    difficulty: 1.1
-    reward: 360.0
-    consume-items: true
+      - "Earn for new chunks you meaningfully enter."
+      - "Strong anti-loop protections."
+    daily-cap: 3000.0
+    rewards:
+      chunk: 20.0
+    cooldowns:
+      default: 15
+      chunk: 60
+  BUILDER:
+    display-name: "&eBuilder"
     description:
-      - "Bake fresh bread for the market."
-  desert_explorer:
-    name: "&6Desert Explorer"
-    type: TRAVEL_BIOME
-    target: DESERT
-    amount: 1
-    difficulty: 1.3
-    reward: 400.0
-    description:
-      - "Chart the dunes and report back."
-  builder_for_hire:
-    name: "&7Builder for Hire"
-    type: PLACE_BLOCK
-    target: STONE_BRICKS
-    amount-min: 64
-    amount-max: 128
-    difficulty: 1.4
-    reward: 500.0
-    description:
-      - "Lay down bricks for the new keep walls."
-  ironworks:
-    name: "&fIronworks Assistant"
-    type: SMELT_ITEM
-    target: IRON_INGOT
-    amount-min: 24
-    amount-max: 48
-    difficulty: 1.5
-    reward: 520.0
-    description:
-      - "Smelt iron ingots for the forge."
-  arcane_apprentice:
-    name: "&5Arcane Apprentice"
-    type: ENCHANT_ITEM
-    target: DIAMOND_SWORD
-    amount: 2
-    difficulty: 2.2
-    reward: 900.0
-    description:
-      - "Enchant blades for the order."
-  pasture_keeper:
-    name: "&aPasture Keeper"
-    type: BREED_ANIMAL
-    target: COW
-    amount-min: 6
-    amount-max: 12
-    difficulty: 1.2
-    reward: 380.0
-    description:
-      - "Grow the herd for the butcher."
-  beast_whisperer:
-    name: "&9Beast Whisperer"
-    type: TAME_ENTITY
-    target: WOLF
-    amount: 3
-    difficulty: 1.8
-    reward: 620.0
-    description:
-      - "Tame wolves to guard the roads."
-      - "Reach a desert biome."
-  glacial_scout:
-    name: "&bGlacial Scout"
-    type: TRAVEL_BIOME
-    target: FROZEN_PEAKS
-    amount: 1
-    difficulty: 2.5
-    reward: 900.0
-    description:
-      - "Brave the cold and survey the cliffs."
-  long_trek:
-    name: "&aLong Trek"
-    type: TRAVEL_DISTANCE
-    target: HORIZON
-    amount: 500
-    difficulty: 1.8
-    reward: 750.0
-    description:
-      - "Travel 500 blocks from where you accepted the job."
-  endless_path:
-    name: "&dEndless Path"
-    type: TRAVEL_DISTANCE
-    target: BEYOND
-    amount: 1500
-    difficulty: 3.0
-    reward: 1800.0
-    description:
-      - "Journey far to prove your endurance."
-  desert_hunt_builder:
-    name: "&eDesert Expedition"
-    ordered: true
-    difficulty: 2.4
-    reward: 1200.0
-    description:
-      - "Track the dunes, clear threats, and light the way."
-    objectives:
-      - type: TRAVEL_BIOME
-        target: DESERT
-        amount: 1
-      - type: KILL_MOB
-        target: HUSK
-        amount-min: 8
-        amount-max: 16
-      - type: PLACE_BLOCK
-        target: TORCH
-        amount: 32
-  village_farm_upgrade:
-    name: "&aVillage Farm Upgrade"
-    difficulty: 2.3
-    reward: 1400.0
-    description:
-      - "Expand and irrigate the communal fields."
-    ordered: true
-    objectives:
-      - type: PLACE_BLOCK
-        target: FARMLAND
-        amount: 96
-      - type: PLACE_BLOCK
-        target: WATER
-        aliases: [WATER_BUCKET]
-        amount: 8
-      - type: PLACE_BLOCK
-        target: WHEAT
-        amount: 96
+      - "Paid for sustained build sessions with variety."
+      - "Spam and place-break loops are blocked."
+    daily-cap: 4000.0
+    rewards:
+      build-session: 75.0
+    cooldowns:
+      default: 30
+    build-session:
+      block-threshold: 30
+      unique-threshold: 5

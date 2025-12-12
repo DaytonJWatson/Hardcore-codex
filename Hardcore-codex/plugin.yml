@@ -38,5 +38,5 @@ commands:
     description: Opens the player shop browser.
     usage: /shops [manage]
   jobs:
-    description: Opens the random jobs board.
-    usage: /jobs [accept|abandon|progress|offers|reroll]
+    description: Opens the occupation selection menu.
+    usage: /jobs [set|info|admin]
