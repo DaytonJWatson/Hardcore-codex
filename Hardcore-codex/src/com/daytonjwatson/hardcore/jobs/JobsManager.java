@@ -279,7 +279,7 @@ public class JobsManager {
     public void save() {
         playerConfig.set("players", null);
         for (Map.Entry<UUID, OccupationProfile> entry : profiles.entrySet()) {
-            String base = "players." + entry.getKey() + ".";
+            String base = playerBasePath(entry.getKey().toString());
             OccupationProfile profile = entry.getValue();
             playerConfig.set(base + "occupation", profile.getOccupation().name());
             playerConfig.set(base + "chosenAt", profile.getChosenAt());
@@ -346,17 +346,12 @@ public class JobsManager {
                 payouts.add(new PayoutRecord(parts[0], Double.parseDouble(parts[1]), Long.parseLong(parts[2])));
             } catch (Exception ignored) {
             }
-            try {
-                payouts.add(new PayoutRecord(parts[0], Double.parseDouble(parts[1]), Long.parseLong(parts[2])));
-            } catch (Exception ignored) {
-            }
-            try {
-                payouts.add(new PayoutRecord(parts[0], Double.parseDouble(parts[1]), Long.parseLong(parts[2])));
-            } catch (Exception ignored) {
-            }
-            playerConfig.set(base + "unique-blocks", placed);
         }
         return payouts;
+    }
+
+    private String playerBasePath(String playerKey) {
+        return "players." + playerKey + ".";
     }
 
     private void reward(Player player, OccupationProfile profile, double amount, String reason, String key,
@@ -453,7 +448,7 @@ public class JobsManager {
             try {
                 UUID uuid = UUID.fromString(key);
                 long chosenAt = playerConfig.getLong("players." + key + ".chosenAt", System.currentTimeMillis());
-                String base = "players." + key + ".";
+                String base = playerBasePath(key);
                 OccupationProfile profile = new OccupationProfile(occupation, chosenAt);
                 profile.setLifetimeEarnings(playerConfig.getDouble("players." + key + ".lifetimeEarnings", 0));
                 profile.setSessionEarnings(0); // session earnings reset each startup
@@ -553,7 +548,6 @@ public class JobsManager {
         public int getSessionUniqueThreshold() {
             return sessionUniqueThreshold;
         }
-    }
 
     public record PayoutRecord(String reason, double amount, long timestamp) {
     }
