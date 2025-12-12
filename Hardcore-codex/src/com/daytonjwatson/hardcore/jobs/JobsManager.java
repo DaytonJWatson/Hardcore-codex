@@ -345,6 +345,10 @@ public class JobsManager {
                 payouts.add(new PayoutRecord(parts[0], Double.parseDouble(parts[1]), Long.parseLong(parts[2])));
             } catch (Exception ignored) {
             }
+            try {
+                payouts.add(new PayoutRecord(parts[0], Double.parseDouble(parts[1]), Long.parseLong(parts[2])));
+            } catch (Exception ignored) {
+            }
             playerConfig.set(base + "unique-blocks", placed);
         }
         return payouts;
@@ -519,6 +523,10 @@ public class JobsManager {
             Map<String, Double> rewards, Map<String, Integer> cooldowns, int depthBonusThreshold,
             int sessionBlockThreshold, int sessionUniqueThreshold) {
 
+        public double getDailyCap() {
+            return dailyCap;
+        }
+
         public double getReward(String key) {
             return rewards.getOrDefault(key, 0.0);
         }
@@ -538,7 +546,6 @@ public class JobsManager {
         public int getSessionUniqueThreshold() {
             return sessionUniqueThreshold;
         }
-    }
 
     public record PayoutRecord(String reason, double amount, long timestamp) {
     }
@@ -773,7 +780,7 @@ public class JobsManager {
         return profile.allowVictim(victim, cooldownSeconds);
     }
 
-    private String serializeLocation(Location location) {
+    private static String serializeLocation(Location location) {
         return location.getWorld().getName() + ":" + location.getBlockX() + ":" + location.getBlockY() + ":"
                 + location.getBlockZ();
     }
