@@ -16,7 +16,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import com.daytonjwatson.hardcore.jobs.JobsManager;
 import com.daytonjwatson.hardcore.jobs.Occupation;
-import com.daytonjwatson.hardcore.jobs.JobsManager.OccupationProfile;
+import com.daytonjwatson.hardcore.jobs.OccupationProfile;
 import com.daytonjwatson.hardcore.jobs.JobsManager.OccupationSettings;
 import com.daytonjwatson.hardcore.jobs.JobsManager.PayoutRecord;
 import com.daytonjwatson.hardcore.utils.Util;

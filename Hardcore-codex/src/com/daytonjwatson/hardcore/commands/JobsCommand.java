@@ -13,11 +13,11 @@ import org.bukkit.entity.Player;
 
 import com.daytonjwatson.hardcore.jobs.JobsManager;
 import com.daytonjwatson.hardcore.jobs.Occupation;
-import com.daytonjwatson.hardcore.jobs.JobsManager.OccupationProfile;
-import com.daytonjwatson.hardcore.jobs.JobsManager.OccupationSettings;
 import com.daytonjwatson.hardcore.utils.MessageStyler;
 import com.daytonjwatson.hardcore.utils.Util;
 import com.daytonjwatson.hardcore.views.JobsGui;
+import com.daytonjwatson.hardcore.jobs.OccupationProfile;
+import com.daytonjwatson.hardcore.jobs.JobsManager.OccupationSettings;
 
 public class JobsCommand implements CommandExecutor, TabCompleter {
 
