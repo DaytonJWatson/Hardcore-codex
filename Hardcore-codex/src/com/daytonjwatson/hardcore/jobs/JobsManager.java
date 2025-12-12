@@ -288,7 +288,8 @@ public class JobsManager {
             playerConfig.set(base + "lastPayoutAt", profile.getLastPayoutAt());
             playerConfig.set(base + "dailyEarnings", profile.getDailyEarnings());
             playerConfig.set(base + "dailyResetAt", profile.getDailyResetAt());
-            playerConfig.set(base + "placed", new ArrayList<>(profile.getPlacedBlocks()));
+            List<String> placed = new ArrayList<>(profile.getPlacedBlocks());
+            playerConfig.set(base + "placed", placed);
             playerConfig.set(base + "recentVictims", serializeVictims(profile.getRecentVictims()));
             playerConfig.set(base + "recentLocations", new ArrayList<>(profile.getRecentLocations()));
             playerConfig.set(base + "counters", profile.getCounters());
@@ -340,6 +341,10 @@ public class JobsManager {
             String[] parts = value.split("\\|");
             if (parts.length != 3) {
                 continue;
+            }
+            try {
+                payouts.add(new PayoutRecord(parts[0], Double.parseDouble(parts[1]), Long.parseLong(parts[2])));
+            } catch (Exception ignored) {
             }
             try {
                 payouts.add(new PayoutRecord(parts[0], Double.parseDouble(parts[1]), Long.parseLong(parts[2])));
@@ -448,35 +453,37 @@ public class JobsManager {
             try {
                 UUID uuid = UUID.fromString(key);
                 long chosenAt = playerConfig.getLong("players." + key + ".chosenAt", System.currentTimeMillis());
+                String base = "players." + key + ".";
                 OccupationProfile profile = new OccupationProfile(occupation, chosenAt);
                 profile.setLifetimeEarnings(playerConfig.getDouble("players." + key + ".lifetimeEarnings", 0));
                 profile.setSessionEarnings(0); // session earnings reset each startup
                 profile.setLastPayoutAt(playerConfig.getLong("players." + key + ".lastPayoutAt", 0));
                 profile.setDailyEarnings(playerConfig.getDouble("players." + key + ".dailyEarnings", 0));
                 profile.setDailyResetAt(playerConfig.getLong("players." + key + ".dailyResetAt", 0));
-                profile.setPlacedBlocks(new HashSet<>(playerConfig.getStringList("players." + key + ".placed")));
+                List<String> placed = playerConfig.getStringList(base + "placed");
+                profile.setPlacedBlocks(new HashSet<>(placed));
                 placedBlockRegistry.addAll(profile.getPlacedBlocks());
-                profile.setRecentVictims(deserializeVictims(playerConfig.getStringList("players." + key + ".recentVictims")));
-                profile.setRecentLocations(new ArrayDeque<>(playerConfig.getStringList("players." + key + ".recentLocations")));
-                ConfigurationSection counterSec = playerConfig.getConfigurationSection("players." + key + ".counters");
+                profile.setRecentVictims(deserializeVictims(playerConfig.getStringList(base + "recentVictims")));
+                profile.setRecentLocations(new ArrayDeque<>(playerConfig.getStringList(base + "recentLocations")));
+                ConfigurationSection counterSec = playerConfig.getConfigurationSection(base + "counters");
                 if (counterSec != null) {
                     for (String cKey : counterSec.getKeys(false)) {
                         profile.getCounters().put(cKey, counterSec.getInt(cKey));
                     }
                 }
-                ConfigurationSection bestSec = playerConfig.getConfigurationSection("players." + key + ".bests");
+                ConfigurationSection bestSec = playerConfig.getConfigurationSection(base + "bests");
                 if (bestSec != null) {
                     for (String cKey : bestSec.getKeys(false)) {
                         profile.getBests().put(cKey, bestSec.getInt(cKey));
                     }
                 }
-                ConfigurationSection streakSec = playerConfig.getConfigurationSection("players." + key + ".streaks");
+                ConfigurationSection streakSec = playerConfig.getConfigurationSection(base + "streaks");
                 if (streakSec != null) {
                     for (String cKey : streakSec.getKeys(false)) {
                         profile.getStreaks().put(cKey, streakSec.getInt(cKey));
                     }
                 }
-                profile.setRecentPayouts(deserializePayouts(playerConfig.getStringList("players." + key + ".recentPayouts")));
+                profile.setRecentPayouts(deserializePayouts(playerConfig.getStringList(base + "recentPayouts")));
                 profiles.put(uuid, profile);
             } catch (IllegalArgumentException ignored) {
             }
