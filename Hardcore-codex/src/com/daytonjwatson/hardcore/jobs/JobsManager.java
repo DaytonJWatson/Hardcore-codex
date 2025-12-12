@@ -548,7 +548,6 @@ public class JobsManager {
         public int getSessionUniqueThreshold() {
             return sessionUniqueThreshold;
         }
-    }
 
     public record PayoutRecord(String reason, double amount, long timestamp) {
     }
